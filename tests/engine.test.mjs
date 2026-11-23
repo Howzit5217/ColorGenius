@@ -77,7 +77,7 @@ test('every brand file is well formed', () => {
   }
 });
 test('all US national brands are loaded with full palettes', () => {
-  const min = { sw: 1700, bm: 3500, behr: 4000, valspar: 1500, ppg: 3000, glidden: 3000, hgsw: 850, dutchboy: 1200, de: 2000, dv: 1200, ck: 1300, magnolia: 150 };
+  const min = { sw: 1700, bm: 3500, behr: 4000, valspar: 1500, ppg: 3000, glidden: 3000, hgsw: 850, dutchboy: 1200, de: 2000, dv: 1200, ck: 1300, magnolia: 150, hl: 1400, colorhouse: 120, ral: 200 };
   for (const [id, n] of Object.entries(min)) assert.ok((E.getIndex().byBrand[id] || []).length >= n, `${id} has ${(E.getIndex().byBrand[id] || []).length}`);
 });
 
@@ -315,6 +315,132 @@ test('ceiling and trim: kind of white, matching walls, crown and trim tips', () 
   const siding = E.FIXED_ITEMS.find(f => f.id === 'siding-dark');
   assert.ok(door.results.every(x => Math.abs(x.color.L - siding.L) >= 12 || x.color.C > 20), 'doors stand out from the siding');
 });
+// ---------------- windows on several sides ----------------
+test('windows on several sides: facings list, phrases and light', () => {
+  const a = Object.assign({}, E.DEFAULT_ANSWERS, { facing: 'north', facings: ['north', 'south'] });
+  assert.deepEqual(E.facingsOf(a), ['north', 'south']);
+  assert.deepEqual(E.facingsOf({ facing: 'east' }), ['east'], 'the older single answer still works');
+  assert.equal(E.facingPhrase(a), 'north- and south-facing');
+  assert.equal(E.facingPhrase({ facings: ['north', 'east', 'south'] }), 'three-sided');
+  assert.equal(E.lightForAnswers(a), 'sun', 'a south window means sun even with a north one');
+  assert.equal(E.lightForAnswers({ facings: ['north'], facing: 'north', amount: 'medium', bulbs: 'unsure' }), 'north');
+  assert.ok(E.noWindows({ facing: 'none', facings: [] }));
+});
+test('north caution softens when another side brings sun; opposite and three sides get tips', () => {
+  const cool = E.getIndex().byBrand.bm.find(c => c.neutral && ['blue', 'blue-green', 'green-blue', 'violet'].includes(c.ut) && c.C > 3 && c.lrv > 50);
+  assert.ok(cool, 'a cool neutral exists');
+  const titles = facings => E.warningsFor(cool, Object.assign({}, E.DEFAULT_ANSWERS, { space: 'living', facing: facings[0], facings })).map(w => w.title);
+  assert.ok(titles(['north']).includes('May look icy or dingy in north light'));
+  const two = titles(['north', 'south']);
+  assert.ok(!two.includes('May look icy or dingy in north light'));
+  assert.ok(two.includes('Cooler on the north wall'));
+  assert.ok(two.includes('Light differs wall to wall'));
+  assert.ok(titles(['east', 'south', 'west']).includes('Bright from several sides'));
+  assert.ok(titles(['east', 'west']).includes('Light differs wall to wall'));
+});
+test('new rooms: stairway, laundry, sunroom and garage', () => {
+  for (const space of ['stairs', 'laundry', 'sunroom', 'garage']) {
+    assert.ok(E.SPACES[space], space);
+    const r = rec(Object.assign({}, E.DEFAULT_ANSWERS, { space }));
+    assert.equal(r.results.length, 6, space);
+    assert.ok(E.groupsFor(space).length, `${space} asks what is staying`);
+  }
+  const deep = E.getIndex().byBrand.sw.find(c => c.lrv < 15);
+  assert.ok(E.warningsFor(deep, Object.assign({}, E.DEFAULT_ANSWERS, { space: 'stairs' })).some(w => w.title === 'Tall stairwell walls'));
+  assert.ok(E.warningsFor(deep, Object.assign({}, E.DEFAULT_ANSWERS, { space: 'garage' })).some(w => w.title === 'Garage lighting'));
+  const bright = E.getIndex().byBrand.sw.find(c => c.lrv >= 90);
+  assert.ok(E.warningsFor(bright, Object.assign({}, E.DEFAULT_ANSWERS, { space: 'sunroom' })).some(w => w.title === 'Glare in a sunroom'));
+});
+
+// ---------------- collections inside a brand ----------------
+test('Benjamin Moore collections are recognized by code', () => {
+  const ids = Object.fromEntries(E.collectionsFor('bm').map(x => [x.id, x.count]));
+  for (const [id, min] of Object.entries({ classic: 1600, preview: 1200, hc: 180, oc: 140, af: 140, csp: 230, cc: 220, cw: 140 })) assert.ok(ids[id] >= min, `${id}: ${ids[id]}`);
+  const by = code => E.findColor('bm:' + code);
+  assert.equal(by('HC-172').coll, 'hc');
+  assert.equal(by('OC-17').coll, 'oc');
+  assert.equal(by('2000-10').coll, 'preview');
+  assert.equal(E.collectionLabel(by('HC-172')), 'Historical Colors');
+  assert.ok(E.getIndex().byBrand.bm.every(c => c.coll), 'every Benjamin Moore color has a collection');
+  for (const id of ['magnolia', 'ck', 'ppg', 'glidden', 'dv']) assert.ok(E.collectionsFor(id).length >= 2, id);
+  assert.equal(E.collectionsFor('sw').length, 0, 'brands without collections list none');
+});
+test('switched-off collections are left out of picks, matches and pairings', () => {
+  const only = Object.fromEntries(E.getIndex().brands.map(b => [b.id, b.id === 'bm']));
+  const offAll = Object.fromEntries(E.collectionsFor('bm').filter(x => x.id !== 'hc').map(x => ['bm:' + x.id, false]));
+  const r = E.recommend(Object.assign({}, E.DEFAULT_ANSWERS, { space: 'living' }), { brands: only, resultCount: 6, collections: offAll });
+  assert.ok(r.results.length > 0);
+  assert.ok(r.results.every(x => x.color.coll === 'hc'), 'only Historical Colors left');
+  const sw = E.findColor('sw:SW 7029') || E.getIndex().byBrand.sw[0];
+  const m = E.matchesFor(sw, { brands: only, collections: offAll }).find(x => x.color.brand === 'bm');
+  assert.equal(m.color.coll, 'hc');
+  const p = E.pairings(E.findColor('bm:HC-172'), { collections: offAll });
+  assert.ok(p.every(x => x.color.coll === 'hc'));
+  assert.ok(!E.allowedColor(E.findColor('bm:OC-17'), E.DEFAULT_ANSWERS, { collections: offAll }));
+});
+test('more brands: Hallman Lindsay, Colorhouse and RAL Classic', () => {
+  const idx = E.getIndex();
+  for (const [id, min] of Object.entries({ hl: 1400, colorhouse: 120, ral: 200 })) assert.ok((idx.byBrand[id] || []).length >= min, id);
+  assert.equal(idx.brandById.ral.group, 'standard');
+  assert.equal(E.search('RAL 9010', { limit: 1 })[0].color.id, 'ral:9010');
+  assert.equal(E.search('hallman hint of vanilla', { limit: 1 })[0].color.brand, 'hl');
+});
+
+// ---------------- staining ----------------
+require(path.join(ROOT, 'data/stains.js'));
+const WD = require(path.join(ROOT, 'js/wood.js'));
+const ST = require(path.join(ROOT, 'js/stain.js'));
+ST.init(window.CG_STAINS);
+const stainOf = name => { const s = ST.all().find(x => x.name === name); assert.ok(s, name); return { hex: s.hex, type: s.type }; };
+test('stain data: Minwax colors with familiar names', () => {
+  assert.ok(ST.all().length >= 250, `${ST.all().length} stains`);
+  for (const n of ['Natural', 'Golden Oak', 'Early American', 'Provincial', 'Special Walnut', 'Dark Walnut', 'Jacobean', 'Ebony', 'Classic Gray', 'Weathered Oak']) assert.ok(ST.all().some(s => s.name === n), n);
+  for (const s of ST.all()) { assert.match(s.hex, /^[0-9A-F]{6}$/, s.id); assert.ok(['semi', 'solid', 'white'].includes(s.type), s.id); }
+});
+test('every wood species is complete', () => {
+  for (const [id, sp] of Object.entries(WD.SPECIES)) {
+    assert.match(sp.light, /^[0-9A-F]{6}$/, id); assert.match(sp.dark, /^[0-9A-F]{6}$/, id);
+    assert.ok(sp.absorb > 0 && sp.ring > 0 && sp.uses.length, id);
+    assert.ok(C.hexToLab(sp.light)[0] > C.hexToLab(sp.dark)[0], `${id}: earlywood lighter than latewood`);
+  }
+  for (const j of Object.values(ST.JOBS)) assert.ok(WD.SPECIES[j.wood], j.label);
+});
+test('stain on wood: matches the swatch on red oak, lighter on maple, little change on walnut', () => {
+  for (const n of ['Early American', 'Special Walnut', 'Dark Walnut', 'Provincial']) {
+    const s = stainOf(n);
+    const onOak = WD.predictHex('red_oak', s);
+    assert.ok(C.deltaE2000(C.hexToLab(onOak), C.hexToLab(s.hex)) < 2.5, `${n} on red oak ${onOak} vs ${s.hex}`);
+    assert.ok(C.hexToLab(WD.predictHex('maple', s))[0] > C.hexToLab(onOak)[0] + 4, `${n} lighter on maple`);
+    const walnut = WD.bareHex('walnut');
+    assert.ok(C.deltaE2000(C.hexToLab(WD.predictHex('walnut', s)), C.hexToLab(walnut)) < C.deltaE2000(C.hexToLab(onOak), C.hexToLab(WD.bareHex('red_oak'))), `${n} changes walnut less than oak`);
+  }
+  // every stain darkens bare red oak except the whitewashes, which lighten it
+  const bare = C.hexToLab(WD.bareHex('red_oak'))[0];
+  const dark = stainOf('Jacobean'), white = ST.all().find(s => s.type === 'white');
+  assert.ok(C.hexToLab(WD.predictHex('red_oak', dark))[0] < bare - 25);
+  assert.ok(C.hexToLab(WD.predictHex('red_oak', { hex: white.hex, type: 'white' }))[0] > bare - 8);
+});
+test('stain picks follow the look, the wood and the job', () => {
+  const r = ST.recommend({ target: 'floors', wood: 'red_oak', looks: ['dark'] }, { resultCount: 6 });
+  assert.equal(r.results.length, 6);
+  assert.ok(r.results.every(x => C.hexToLab(x.predicted)[0] < 40), 'dark look gives dark floors');
+  assert.ok(r.products.some(p => /polyurethane/i.test(p.name)), 'floors get a topcoat');
+  const g = ST.recommend({ target: 'floors', wood: 'white_oak', looks: ['gray'] }, { resultCount: 6 });
+  assert.ok(g.results.every(x => C.labToLch(C.hexToLab(x.predicted))[1] < 14), 'gray look is low chroma');
+  const pine = ST.recommend({ target: 'furniture', wood: 'pine', looks: ['warm'] }, { resultCount: 4 });
+  assert.ok(pine.results[0].warnings.some(w => /blotchy/i.test(w.title)), 'pine warns about blotching');
+  assert.ok(pine.products.some(p => /conditioner/i.test(p.name)), 'pine gets a wood conditioner');
+  const fin = ST.recommend({ target: 'cabinets', wood: 'maple', condition: 'finished', looks: ['rich'] }, { resultCount: 4 });
+  assert.ok(fin.products.some(p => /gel stain/i.test(p.name)), 'finished wood gets a gel stain');
+  const deck = ST.recommend({ target: 'deck', looks: ['natural'] }, { resultCount: 4, brands: US });
+  assert.equal(deck.wood, 'pt_pine');
+  assert.ok(deck.guide, 'outdoor semi-transparent picks are tone guides');
+  assert.ok(deck.results[0].warnings.some(w => /pressure-treated/i.test(w.title)));
+  const fence = ST.recommend({ target: 'fence', grain: 'hide', looks: ['gray'] }, { resultCount: 4, brands: US });
+  assert.ok(fence.results.length && fence.results.every(x => x.kind === 'paint' && x.solid), 'solid exterior stain is tinted to paint colors');
+  assert.ok(fence.products.some(p => /solid/i.test(p.name)));
+});
+
 test('offline file list matches the brand files', () => {
   const files = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/files.json'), 'utf8'));
   assert.deepEqual(files.sort(), window.CG_BRANDS.map(b => `data/colors/${b.id}.js`).sort());

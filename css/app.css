@@ -178,7 +178,7 @@ p { margin: 0; }
 .group { display: grid; gap: 12px; }
 .group-label { font-size: 13px; font-weight: 600; color: var(--ink-2); display: flex; align-items: baseline; gap: 8px; }
 .group-label .hint { font-weight: 400; color: var(--ink-3); }
-.options { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.options { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); grid-auto-rows: 1fr; }
 .options.wide { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 .opt { position: relative; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-md); padding: 14px 14px 13px; text-align: left; display: grid; gap: 6px; align-content: start; min-height: 58px; transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
 .opt:hover { border-color: var(--line-2); }
@@ -579,7 +579,7 @@ html.ob-open, html.ob-open body { overflow: hidden; }
 .ob-dots i.on { background: var(--ink); }
 .ob-body { display: grid; gap: 16px; }
 .ob-body h1 { font-size: clamp(26px, 4.6vw, 36px); font-weight: 650; line-height: 1.12; }
-.ob-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 6px; }
+.ob-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 6px; }
 .ob-card { position: relative; display: grid; gap: 8px; align-content: start; text-align: left; padding: 18px; min-height: 170px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
 .ob-card:active { transform: scale(.98); }
 .ob-card[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
@@ -606,6 +606,71 @@ html.ob-open, html.ob-open body { overflow: hidden; }
 .ob-install > div { flex: 1; min-width: 0; font-size: 13.5px; }
 .ob-nav { z-index: 76; }
 @media (max-width: 560px) { .ob-cards { grid-template-columns: 1fr; } .ob-card { min-height: 0; } .ob-dots i { width: 16px; } }
+/* setup: brand search, per-group all/none, "what do you carry" cards */
+.ob-quick { align-items: center; }
+.ob-find { flex: 1 1 220px; min-width: 0; padding-block: 2px; }
+.searchbox > svg { flex: none; color: var(--ink-3); margin-left: -4px; }
+.ob-count { font-size: 13.5px; color: var(--ink-2); margin-top: -6px; }
+.group-head { display: flex; align-items: baseline; gap: 10px; }
+.group-head .spacer { flex: 1; }
+.group-head .link-btn { padding: 6px 2px; }
+.mchip-n { font-size: 11.5px; font-weight: 500; color: var(--ink-3); padding: 1px 7px; border-radius: 999px; background: var(--surface-2); }
+.mchip[aria-pressed="false"] { color: var(--ink-3); }
+.mchip[aria-pressed="false"] .msw { opacity: .55; }
+.ob-carry .mchip { padding-left: 14px; }
+.ob-carry { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.ob-carry-head { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.ob-carry .group-label { margin-top: 2px; }
+
+/* settings: brand search, groups, collections */
+.brand-tools { display: grid; gap: 10px; padding: 12px; margin-bottom: 14px; }
+.brand-tools .set-mini { padding: 0; }
+.brand-find { padding-block: 2px; }
+.brand-group { margin-bottom: 14px; }
+.brand-group-head { display: flex; align-items: baseline; gap: 14px; margin: 4px 2px 8px; }
+.brand-group-head .eyebrow { margin: 0; }
+.brand-group-head .spacer { flex: 1; }
+.brand-group-head .link-btn { padding: 4px 0; }
+.brand-item + .brand-item { border-top: 1px solid var(--line); }
+.brand-item .set-row { border-top: 0; }
+.coll-group { margin: 0 14px 12px 54px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg); overflow: hidden; }
+.coll-group summary { list-style: none; cursor: pointer; display: flex; gap: 10px; align-items: center; padding: 10px 12px; font-weight: 600; font-size: 13.5px; }
+.coll-group summary::-webkit-details-marker { display: none; }
+.coll-group summary::after { content: ""; width: 7px; height: 7px; margin: -3px 2px 0 0; border-right: 1.6px solid var(--ink-3); border-bottom: 1.6px solid var(--ink-3); transform: rotate(45deg); transition: transform var(--t-med) var(--ease); flex: none; }
+.coll-group[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
+.coll-group summary .muted { margin-left: auto; font-weight: 400; font-size: 12.5px; }
+.coll-group[open] summary { border-bottom: 1px solid var(--line); }
+.coll-group .set-row { padding: 10px 12px; border-top: 1px solid var(--line); }
+.coll-group .set-row:first-of-type { border-top: 0; }
+.coll-group .set-text b { font-size: 13.5px; }
+@media (max-width: 520px) { .coll-group { margin-left: 14px; } }
+
+/* kiosk: a shared touch screen in the store. Everything is bigger and long-press menus are off. */
+html.kiosk { --navbar-h: 88px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+html.kiosk input, html.kiosk textarea { -webkit-user-select: text; user-select: text; }
+html.kiosk body { font-size: 17px; }
+html.kiosk .btn { padding: 15px 26px; font-size: 16.5px; min-height: 54px; }
+html.kiosk .btn.small { padding: 11px 18px; font-size: 15px; min-height: 46px; }
+html.kiosk .wizard-nav { padding-block: 14px; }
+html.kiosk .wizard-nav .nav-next { min-width: 200px; }
+html.kiosk .wizard-nav .nav-back, html.kiosk .wizard-nav .nav-skip { min-width: 120px; }
+html.kiosk .tab { padding: 11px 20px; font-size: 16px; }
+html.kiosk .options { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+html.kiosk .opt { min-height: 84px; padding: 18px 18px 16px; }
+html.kiosk .opt .opt-title { font-size: 17.5px; }
+html.kiosk .opt .opt-sub { font-size: 14px; }
+html.kiosk .mchip { min-height: 54px; font-size: 16px; padding: 8px 18px 8px 8px; }
+html.kiosk .mchips { gap: 10px; }
+html.kiosk .compass { max-width: 340px; }
+html.kiosk .compass-btn { width: 70px; height: 70px; margin: -35px 0 0 -35px; font-size: 17px; }
+html.kiosk .chip-name { font-size: 18px; }
+html.kiosk .seg button { min-height: 46px; padding-inline: 16px; font-size: 15px; }
+html.kiosk .icon-btn { width: 48px; height: 48px; }
+.kiosk-idle { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 24px; background: color-mix(in srgb, #000 42%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: fadeIn var(--t-med) var(--ease); }
+.kiosk-idle-card { width: min(440px, 100%); background: var(--surface); border-radius: var(--r-lg); padding: 28px; display: grid; gap: 12px; text-align: center; box-shadow: var(--shadow-lg); }
+.kiosk-idle-card h2 { font-size: 28px; }
+.kiosk-idle-card p { color: var(--ink-2); margin: 0 0 8px; }
+.kiosk-idle-card .btn { justify-content: center; }
 
 /* install */
 .install-btn { flex: none; padding: 8px 13px; }
@@ -670,6 +735,10 @@ html.ob-open, html.ob-open body { overflow: hidden; }
   .modal { padding: 8px; }
 }
 @media (max-width: 420px) {
+  /* Back, Skip and Next must fit side by side on the narrowest phones */
+  .wizard-nav .nav-back, .wizard-nav .nav-skip { min-width: 78px; padding-inline: 12px; }
+  .wizard-nav .nav-next { min-width: 136px; padding-inline: 18px; }
+  .wizard-nav-inner { gap: 8px; }
   .options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .options.wide { grid-template-columns: 1fr; }
   .facts { grid-template-columns: 1fr 1fr; }
@@ -680,3 +749,69 @@ html.ob-open, html.ob-open body { overflow: hidden; }
   *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }
 }
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }
+
+/* ---------------- staining ---------------- */
+/* first question: two large cards, paint swatches or a bare-to-stained board */
+.job-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.job-card { position: relative; display: grid; grid-template-rows: auto 1fr; text-align: left; padding: 0; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.job-card:active { transform: scale(.985); }
+.job-card[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.job-card .tick { position: absolute; top: 12px; right: 12px; z-index: 2; width: 22px; height: 22px; border-radius: 999px; background: var(--ink); color: var(--on-primary); display: grid; place-items: center; transform: scale(0); transition: transform var(--t-med) var(--ease-spring); }
+.job-card[aria-pressed="true"] .tick { transform: scale(1); }
+.job-art { position: relative; display: flex; aspect-ratio: 44 / 17; overflow: hidden; }
+.job-paint i { flex: 1; }
+.job-stain .wood-cv { width: 100%; height: 100%; }
+.job-text { display: grid; gap: 4px; padding: 14px 16px 16px; }
+.job-text .opt-title { font-size: 17px; font-weight: 650; }
+.job-text .opt-sub { font-size: 13px; color: var(--ink-3); line-height: 1.4; }
+/* wood and look pickers: a real board on each */
+.wood-opts, .look-opts { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); grid-auto-rows: 1fr; }
+.look-opts { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.wood-opt, .look-opt { position: relative; display: grid; grid-template-rows: auto auto 1fr; gap: 4px; align-content: start; text-align: left; padding: 0 0 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); overflow: hidden; transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.wood-opt:active, .look-opt:active { transform: scale(.975); }
+.wood-opt[aria-pressed="true"], .look-opt[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.wood-opt .opt-title, .look-opt .opt-title { font-weight: 600; font-size: 15px; padding: 6px 12px 0; }
+.wood-opt .opt-sub, .look-opt .opt-sub { font-size: 12.5px; color: var(--ink-3); line-height: 1.35; padding: 0 12px; }
+.wood-opt .tick, .look-opt .tick { position: absolute; top: 8px; right: 8px; z-index: 2; width: 20px; height: 20px; border-radius: 999px; background: var(--ink); color: var(--on-primary); display: grid; place-items: center; transform: scale(0); transition: transform var(--t-med) var(--ease-spring); }
+.wood-opt[aria-pressed="true"] .tick, .look-opt[aria-pressed="true"] .tick { transform: scale(1); }
+.wood-art, .look-art { display: block; aspect-ratio: 11 / 5; background: #d8c3a0; overflow: hidden; }
+.look-art { aspect-ratio: 3 / 1; }
+.wood-cv { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity var(--t-med) var(--ease); }
+.wood-cv.ready { opacity: 1; }
+.more-woods > summary { cursor: pointer; list-style: none; font-weight: 600; font-size: 14px; padding: 6px 0; color: var(--ink-2); }
+.more-woods > summary::-webkit-details-marker { display: none; }
+.more-woods > summary::before { content: "+ "; }
+.more-woods[open] > summary::before { content: "– "; }
+.more-woods[open] > summary { margin-bottom: 10px; }
+/* results: each card is a board, bare on the left, stained on the right */
+.wood-sw { aspect-ratio: 8 / 5; background: #cdb08a; overflow: hidden; }
+.wood-sw .wood-cv { position: absolute; inset: 0; }
+.ba-tag { position: absolute; top: 8px; z-index: 1; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: rgba(20, 20, 20, .55); color: #fff; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); pointer-events: none; }
+.ba-l { left: 8px; }
+.ba-r { right: 8px; }
+.wood-sw .flags { z-index: 1; }
+.s-meta { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+/* detail: drag to compare bare and stained */
+.ba { position: relative; aspect-ratio: 90 / 34; border-radius: var(--r-md); overflow: hidden; background: #cdb08a; touch-action: pan-y; cursor: ew-resize; box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 8px 24px rgba(0, 0, 0, .08); }
+.ba .wood-cv { position: absolute; inset: 0; }
+.ba .ba-after { clip-path: inset(0 0 0 var(--split)); }
+.ba-line { position: absolute; top: 0; bottom: 0; left: var(--split); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .15); pointer-events: none; }
+.ba-knob { position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .3); }
+.ba-knob::before, .ba-knob::after { content: ""; position: absolute; top: 50%; width: 7px; height: 7px; margin-top: -4px; border-left: 2px solid #333; border-bottom: 2px solid #333; }
+.ba-knob::before { left: 8px; transform: rotate(45deg); }
+.ba-knob::after { right: 8px; transform: rotate(-135deg); }
+.ba-range { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: ew-resize; }
+.ba-hint { font-size: 12.5px; margin-top: -6px; }
+.mini-sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.woods-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.wood-tile { display: grid; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.wood-tile .wood-cv { aspect-ratio: 15 / 8; height: auto; border-radius: 8px; background: #cdb08a; }
+.buy li b { font-weight: 650; }
+html.kiosk .job-text .opt-title { font-size: 20px; }
+html.kiosk .wood-opt .opt-title, html.kiosk .look-opt .opt-title { font-size: 17px; }
+@media (max-width: 560px) {
+  .job-cards { grid-template-columns: 1fr; }
+  .job-art { aspect-ratio: 44 / 13; }
+  .wood-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .look-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

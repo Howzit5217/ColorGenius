@@ -13,6 +13,9 @@
  "data/colors/magnolia.js",
  "data/colors/kilz.js",
  "data/colors/vista.js",
+ "data/colors/hl.js",
+ "data/colors/colorhouse.js",
  "data/colors/resene.js",
- "data/colors/fb.js"
+ "data/colors/fb.js",
+ "data/colors/ral.js"
 ]

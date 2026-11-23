@@ -1,9 +1,9 @@
 /* ColorGenius service worker: makes the installed app open instantly and work offline.
    App files and color data are saved on first visit; when online the newest versions always load. */
-const VERSION = 'cg-2026-11-23-10';
+const VERSION = 'cg-2026-11-23-12';
 const SHELL = [
-  './', 'index.html', 'css/app.css', 'js/color.js', 'js/engine.js', 'js/app.js',
-  'data/brands.js', 'data/files.json', 'manifest.webmanifest',
+  './', 'index.html', 'css/app.css', 'js/color.js', 'js/wood.js', 'js/stain.js', 'js/engine.js', 'js/app.js',
+  'data/brands.js', 'data/stains.js', 'data/files.json', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-64.png',
 ];
 

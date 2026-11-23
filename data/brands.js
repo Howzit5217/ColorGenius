@@ -183,6 +183,32 @@ window.CG_BRANDS = [
   "active": 2785
  },
  {
+  "id": "hl",
+  "name": "Hallman Lindsay",
+  "prefix": "",
+  "region": "US (Wisconsin)",
+  "group": "us-more",
+  "source": "public community list (may be a few years old)",
+  "date": "2026-11-23",
+  "lrv": "calculated",
+  "mixNote": "Sold in Hallman Lindsay stores in Wisconsin.",
+  "count": 1469,
+  "active": 1469
+ },
+ {
+  "id": "colorhouse",
+  "name": "Colorhouse",
+  "prefix": "",
+  "region": "US (Oregon)",
+  "group": "us-more",
+  "source": "public community list (may be a few years old)",
+  "date": "2026-11-23",
+  "lrv": "calculated",
+  "mixNote": "Sold online and through a few retailers.",
+  "count": 128,
+  "active": 128
+ },
+ {
   "id": "resene",
   "name": "Resene",
   "prefix": "",
@@ -207,5 +233,18 @@ window.CG_BRANDS = [
   "mixNote": "",
   "count": 132,
   "active": 132
+ },
+ {
+  "id": "ral",
+  "name": "RAL Classic",
+  "prefix": "RAL",
+  "region": "International standard",
+  "group": "standard",
+  "source": "public community list of the RAL Classic chart",
+  "date": "2026-11-23",
+  "lrv": "calculated",
+  "mixNote": "A color standard, not a brand. Most paint counters can mix RAL colors; screen values are approximate.",
+  "count": 213,
+  "active": 213
  }
 ];

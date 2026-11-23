@@ -46,7 +46,11 @@
     office: { label: 'Home office', kind: 'interior', sheens: ['eggshell'] },
     kids: { label: 'Kids’ room', kind: 'interior', sheens: ['eggshell', 'satin'], sheenNote: 'washable', sleep: true, kid: true },
     nursery: { label: 'Nursery', kind: 'interior', sheens: ['eggshell', 'satin'], sheenNote: 'washable', sleep: true, kid: true },
-    entry: { label: 'Hallway / entry', kind: 'interior', sheens: ['eggshell', 'satin'], sheenNote: 'high traffic' },
+    entry: { label: 'Hallway / entry', kind: 'interior', sheens: ['eggshell', 'satin'], sheenNote: 'high traffic', busy: true },
+    stairs: { label: 'Stairway & landing', kind: 'interior', sheens: ['eggshell', 'satin'], sheenNote: 'high traffic', busy: true, tall: true },
+    laundry: { label: 'Laundry / mudroom', kind: 'interior', sheens: ['satin', 'semigloss'], sheenNote: 'moisture resistant', wet: true, busy: true },
+    sunroom: { label: 'Sunroom', kind: 'interior', sheens: ['matte', 'eggshell'], sunny: true },
+    garage: { label: 'Garage', kind: 'interior', sheens: ['eggshell', 'satin'], sheenNote: 'scrubbable', busy: true, dimByNature: true },
     basement: { label: 'Basement', kind: 'interior', sheens: ['eggshell', 'satin'], dimByNature: true },
     accent: { label: 'Accent wall', kind: 'interior', sheens: ['matte', 'eggshell'], sheenNote: 'match the room', accent: true },
     ceiling: { label: 'Ceiling', kind: 'interior', sheens: ['flat'], sheenNote: 'hides flaws overhead', surface: 'ceiling' },
@@ -81,7 +85,7 @@
   const FACING = { north: 'North', south: 'South', east: 'East', west: 'West', unsure: 'Not sure', none: 'No windows' };
   const AMOUNTS = { low: 'Dim', medium: 'Some light', high: 'Bright' };
   const BULBS = { warm: 'Warm (2700K)', soft: 'Soft white (3000K)', daylight: 'Daylight (5000K)', unsure: 'Not sure' };
-  const SIDING = { vinyl: 'Vinyl', wood: 'Wood', fiber: 'Fiber cement', stucco: 'Stucco', brick: 'Brick or masonry' };
+  const SIDING = { vinyl: 'Vinyl', wood: 'Wood lap', fiber: 'Fiber cement', shake: 'Shingle or shake', board: 'Board & batten', stucco: 'Stucco', brick: 'Brick or masonry' };
   // Things that stay: floors and carpet, trim and molding, counters, cabinets, furniture, fixtures, walls, and for
   // exteriors the roof, masonry, siding, trim and windows. Each has a typical color so the logic can compare undertones,
   // lightness and hue against every paint color. "kind" decides which rules apply and where it shows in the preview.
@@ -212,6 +216,10 @@
     dining: ['floor', 'trim', 'furniture'],
     office: ['floor', 'trim', 'furniture'],
     entry: ['floor', 'trim'],
+    stairs: ['floor', 'trim'],
+    laundry: ['cabinets', 'counters', 'floorHard', 'trim'],
+    sunroom: ['floor', 'trim', 'furniture'],
+    garage: ['floorHard', 'trim'],
     basement: ['floor', 'trim', 'furniture'],
     bedroom: ['floor', 'trim', 'bedding'],
     kids: ['floor', 'trim', 'bedding'],
@@ -244,7 +252,67 @@
     { id: 'dim', label: 'Dim corner', cct: 3600, intensity: 0.55 },
   ];
 
-  const DEFAULT_ANSWERS = { space: 'living', size: 'medium', siding: 'wood', facing: 'unsure', amount: 'medium', bulbs: 'unsure', styles: [], families: [], depth: 'any', fixed: [], customFixed: [], whiteType: '', trimPaint: false, crown: false };
+  const DEFAULT_ANSWERS = { space: 'living', size: 'medium', siding: 'wood', facing: 'unsure', facings: [], amount: 'medium', bulbs: 'unsure', styles: [], families: [], depth: 'any', fixed: [], customFixed: [], whiteType: '', trimPaint: false, crown: false };
+
+  // ---------------- collections inside a brand ----------------
+  // Some brands split their colors into named collections that a store may or may not carry (fan decks, chip
+  // displays, premium-only colors). Each color is placed by its code, which is how the brands number them.
+  // The first matching test wins; the last entry of each list catches everything else.
+  const COLLECTIONS = {
+    bm: [
+      { id: 'classic', label: 'Classic Color Collection', short: 'Classics', note: 'Numbered 001–1680', test: c => /^\d{3,4}$/.test(c) },
+      { id: 'preview', label: 'Color Preview', short: 'Color Preview', note: 'Codes like 2000-10', test: c => /^2\d{3}-\d+$/.test(c) },
+      { id: 'hc', label: 'Historical Colors', short: 'Historical', note: 'HC codes', test: c => /^HC-/.test(c) },
+      { id: 'oc', label: 'Off-White Collection', short: 'Off-White', note: 'OC codes', test: c => /^OC-/.test(c) },
+      { id: 'af', label: 'Affinity', short: 'Affinity', note: 'AF codes', test: c => /^AF-/.test(c) },
+      { id: 'csp', label: 'Color Stories', short: 'Color Stories', note: 'CSP codes. Full-spectrum colors that only some premium lines (such as Aura) can mix', test: c => /^CSP-/.test(c) },
+      { id: 'cc', label: 'Designer Classics', short: 'Designer Classics', note: 'CC codes', test: c => /^CC-/.test(c) },
+      { id: 'cw', label: 'Williamsburg Collection', short: 'Williamsburg', note: 'CW codes', test: c => /^CW-/.test(c) },
+      { id: 'es', label: 'Exterior stain colors', short: 'Stain colors', note: 'ES codes', test: c => /^ES-/.test(c) },
+      { id: 'other', label: 'Other colors', short: 'Other', test: () => true },
+    ],
+    magnolia: [
+      { id: 'main', label: 'Magnolia Home palette', short: 'Main palette', note: 'MAG codes', test: c => /^MAG\d/.test(c) },
+      { id: 'castle', label: 'Castle Collection', short: 'Castle', note: 'MAGCC codes', test: c => /^MAGCC/.test(c) },
+      { id: 'lake', label: 'Lake House Collection', short: 'Lake House', note: 'MAGLH codes', test: c => /^MAGLH/.test(c) },
+      { id: 'other', label: 'Other colors', short: 'Other', test: () => true },
+    ],
+    ck: [
+      { id: 'deck', label: 'Color fan deck', short: 'Fan deck', note: 'Codes like 01A-1', test: c => /^\d/.test(c) },
+      { id: 'neutrals', label: 'Whites & neutrals card', short: 'Whites & neutrals', note: 'N-, CW- and WNCC codes', test: c => /^(N-|CW-|WNCC)/.test(c) },
+      { id: 'ext', label: 'Exterior color card', short: 'Exterior card', note: 'EXTCC codes', test: c => /^EXTCC/.test(c) },
+      { id: 'kids', label: 'Kids’ rooms card', short: 'Kids’ rooms', note: 'KIDCC codes', test: c => /^KIDCC/.test(c) },
+      { id: 'other', label: 'Other colors', short: 'Other', test: () => true },
+    ],
+    ppg: [
+      { id: 'ppg', label: 'PPG color system', short: 'PPG codes', note: 'Codes like PPG1025-1', test: c => /^PPG\d/.test(c) },
+      { id: 'sidingsafe', label: 'SidingSafe vinyl colors', short: 'SidingSafe', note: 'PPG-SS codes, safe for vinyl siding', test: c => /^PPG-SS/.test(c) },
+      { id: 'legacy', label: 'Older color codes', short: 'Older codes', note: 'Codes like 30YY 64/082', test: () => true },
+    ],
+    glidden: [
+      { id: 'ppg', label: 'PPG color system', short: 'PPG codes', note: 'Codes like PPG1025-1', test: c => /^PPG\d/.test(c) },
+      { id: 'legacy', label: 'Older color codes', short: 'Older codes', note: 'Codes like 30YY 64/082', test: () => true },
+    ],
+    dv: [
+      { id: 'ow', label: 'Interior Whites', short: 'Interior Whites', note: 'OW codes', test: c => /^OW/.test(c) },
+      { id: 'main', label: 'Color Essentials', short: 'Color Essentials', test: () => true },
+    ],
+  };
+  function collectionOf(brandId, code) {
+    const list = COLLECTIONS[brandId]; if (!list) return '';
+    const hit = list.find(x => x.test(String(code)));
+    return hit ? hit.id : '';
+  }
+  // collections listed in display order, each with how many colors it holds (empty ones are left out)
+  function collectionsFor(brandId) {
+    const list = COLLECTIONS[brandId]; if (!list) return [];
+    const counts = {};
+    for (const c of INDEX.byBrand[brandId] || []) counts[c.coll] = (counts[c.coll] || 0) + 1;
+    return list.filter(x => counts[x.id]).map(x => ({ id: x.id, label: x.label, short: x.short, note: x.note || '', count: counts[x.id] }));
+  }
+  const collectionLabel = c => { const x = (COLLECTIONS[c.brand] || []).find(k => k.id === c.coll); return x ? x.label : ''; };
+  // settings.collections holds only switched-off collections, as { 'bm:csp': false }
+  const collectionOn = (c, cols) => !cols || !c.coll || cols[c.brand + ':' + c.coll] !== false;
 
   // ---------------- data index ----------------
   let INDEX = { colors: [], byBrand: {}, brands: [], brandById: {} };
@@ -258,7 +326,7 @@
         const [code, name, hex, lrv, flags, extra] = r;
         if (!/^[0-9A-F]{6}$/i.test(hex)) continue;
         const d = C.describe(hex, lrv);
-        const c = { id: b.id + ':' + code, brand: b.id, code: String(code), name, hex: hex.toUpperCase(), lrv: lrv == null ? d.lrv : lrv, flags: flags | 0, extra: extra || '', lab: d.lab, L: d.L, C: d.C, h: d.h, fam: d.family, ut: d.undertone, temp: d.temperature, neutral: d.neutral };
+        const c = { id: b.id + ':' + code, brand: b.id, code: String(code), name, hex: hex.toUpperCase(), lrv: lrv == null ? d.lrv : lrv, flags: flags | 0, extra: extra || '', coll: collectionOf(b.id, code), lab: d.lab, L: d.L, C: d.C, h: d.h, fam: d.family, ut: d.undertone, temp: d.temperature, neutral: d.neutral };
         colors.push(c); byBrand[b.id].push(c);
       }
     }
@@ -273,7 +341,7 @@
     const list = [];
     for (const r of rows) {
       const [code, name, hex, lrv, flags, extra] = r; const d = C.describe(hex, lrv);
-      list.push({ id: meta.id + ':' + code, brand: meta.id, code: String(code), name, hex: hex.toUpperCase(), lrv: lrv == null ? d.lrv : lrv, flags: flags | 0, extra: extra || '', lab: d.lab, L: d.L, C: d.C, h: d.h, fam: d.family, ut: d.undertone, temp: d.temperature, neutral: d.neutral });
+      list.push({ id: meta.id + ':' + code, brand: meta.id, code: String(code), name, hex: hex.toUpperCase(), lrv: lrv == null ? d.lrv : lrv, flags: flags | 0, extra: extra || '', coll: collectionOf(meta.id, code), lab: d.lab, L: d.L, C: d.C, h: d.h, fam: d.family, ut: d.undertone, temp: d.temperature, neutral: d.neutral });
     }
     INDEX.colors = INDEX.colors.filter(c => c.brand !== meta.id).concat(list);
     INDEX.byBrand[meta.id] = list;
@@ -292,12 +360,30 @@
   const isWhiteish = c => c.fam === 'white';
   const pinkish = c => c.neutral && (c.ut === 'pink' || c.ut === 'violet') && c.C > 4;
   const hueDiff = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
-  const lowLight = a => a.facing === 'north' || a.amount === 'low' || a.facing === 'none' || (SPACES[a.space] || {}).dimByNature;
-  const brightWarmLight = a => (a.facing === 'south' || a.facing === 'west') && a.amount === 'high';
+  // Window directions. Rooms can have windows on several sides; `facings` is the list, `facing` the older single answer.
+  const DIRS = ['north', 'east', 'south', 'west'];
+  function facingsOf(a) {
+    if (Array.isArray(a.facings) && a.facings.length) return a.facings.filter(d => DIRS.includes(d));
+    return DIRS.includes(a.facing) ? [a.facing] : [];
+  }
+  const noWindows = a => a.facing === 'none' || (Array.isArray(a.facings) && a.facings.includes('none'));
+  const hasDir = (a, d) => facingsOf(a).includes(d);
+  const onlyNorth = a => { const f = facingsOf(a); return f.length > 0 && f.every(d => d === 'north'); };
+  const lowLight = a => onlyNorth(a) || a.amount === 'low' || noWindows(a) || (SPACES[a.space] || {}).dimByNature;
+  const brightWarmLight = a => (hasDir(a, 'south') || hasDir(a, 'west')) && a.amount === 'high';
+  // "north-facing", "north- and east-facing", "windows on three sides"
+  function facingPhrase(a) {
+    const f = facingsOf(a);
+    if (!f.length) return '';
+    if (f.length === 1) return `${f[0]}-facing`;
+    if (f.length === 2) return `${f[0]}- and ${f[1]}-facing`;
+    return f.length === 3 ? 'three-sided' : 'four-sided';
+  }
 
   function allowedColor(c, a, s) {
     if (s.brands && s.brands[c.brand] === false) return false;
     if ((c.flags & F.DISC) && !s.showDiscontinued) return false;
+    if (!collectionOn(c, s.collections)) return false;
     const sp = SPACES[a.space] || SPACES.living;
     const knownIE = c.flags & (F.INT | F.EXT);
     if (sp.kind === 'exterior' && knownIE && !(c.flags & F.EXT)) return false;
@@ -451,7 +537,7 @@
       if (c.neutral && (c.ut === 'yellow' || c.ut === 'peach') && c.L > 75) u -= 0.15;
       if (c.temp === 'cool' || c.ut === 'neutral') { u += 0.1; if (c.neutral) reasons.push('Its cooler balance keeps strong sun from turning it yellow'); }
     }
-    if (a.facing === 'south' && a.amount !== 'high' && c.temp === 'cool') u += 0.05;
+    if (hasDir(a, 'south') && a.amount !== 'high' && c.temp === 'cool') u += 0.05;
     if (a.prefTemp === 'warm') { if (c.temp === 'warm') { u += 0.2; reasons.push('Soft, warm white as asked'); } else if (c.temp === 'cool') u -= 0.2; }
     if (a.prefTemp === 'cool') { if (c.temp === 'cool' || c.ut === 'neutral') { u += 0.15; reasons.push('Crisp, clean white as asked'); } else if (c.temp === 'warm' && c.C > 3) u -= 0.2; }
     if (a.bulbs === 'warm' && c.temp === 'cool' && c.neutral) u -= 0.1;
@@ -550,13 +636,13 @@
     // depth vs light
     if (!ext) {
       if (c.lrv < 10 && (lowLight(a) || a.size === 'small') && !sp.accent && sp.surface !== 'trim' && sp.surface !== 'cabinets')
-        add('caution', 'Will read close to black', `LRV ${c.lrv} reflects very little light. In a ${a.facing === 'none' ? 'windowless' : lowLight(a) ? 'dim' : 'small'} room it will look darker than the chip and make the space feel smaller. Great if that cocoon feel is the goal; otherwise go one or two steps lighter.`);
+        add('caution', 'Will read close to black', `LRV ${c.lrv} reflects very little light. In a ${noWindows(a) ? 'windowless' : lowLight(a) ? 'dim' : 'small'} room it will look darker than the chip and make the space feel smaller. Great if that cocoon feel is the goal; otherwise go one or two steps lighter.`);
       else if (c.lrv < 20 && lowLight(a) && wall && !sp.accent)
         add('heads-up', 'Darker in this light', 'Low or north light makes deep colors look darker and flatter than the chip. Expect it to read a step or two deeper.');
       if (c.lrv >= 30 && c.lrv < 55 && c.neutral && lowLight(a) && (c.fam === 'gray' || c.fam === 'beige'))
         add('heads-up', 'Mid-tone neutrals can turn muddy', 'Grays and greiges in this range can look dull or shadowy in dim light. A version one step lighter on the same strip often looks the way people expect.');
       if (c.lrv >= 88 && brightWarmLight(a) && wall)
-        add('heads-up', 'Can glare in strong sun', `LRV ${c.lrv} bounces back almost all light. In a bright ${a.facing}-facing room it can feel stark or glaring by afternoon.`);
+        add('heads-up', 'Can glare in strong sun', `LRV ${c.lrv} bounces back almost all light. In a bright ${facingPhrase(a)} room it can feel stark or glaring by afternoon.`);
       if (sp.surface === 'ceiling' && c.lrv < 70)
         add('heads-up', 'Ceiling will feel lower', `Ceilings under about LRV 70 visually drop the ceiling. That can feel cozy, but most ceilings sit around LRV 80–90.`);
       if (sp.kid && c.lrv < 12)
@@ -567,17 +653,25 @@
 
     // light direction and undertone
     const coolUT = c.ut === 'blue' || c.ut === 'blue-green' || c.ut === 'green-blue' || c.ut === 'violet';
-    if (!ext && (a.facing === 'north') && c.neutral && coolUT && c.C > 2)
-      add('caution', 'May look icy or dingy in north light', 'North light is cool and bluish, which strengthens cool undertones. This color can look colder, grayer or a little blue. A warmer neutral usually holds up better.');
-    if (!ext && a.facing === 'north' && isWhiteish(c) && c.lrv < 82)
+    // north-only rooms get the cool-light cautions; a second, sunnier side softens them to a heads-up
+    const north = hasDir(a, 'north'), sunnyToo = hasDir(a, 'south') || hasDir(a, 'west') || hasDir(a, 'east');
+    if (!ext && north && c.neutral && coolUT && c.C > 2) {
+      if (onlyNorth(a)) add('caution', 'May look icy or dingy in north light', 'North light is cool and bluish, which strengthens cool undertones. This color can look colder, grayer or a little blue. A warmer neutral usually holds up better.');
+      else if (sunnyToo) add('heads-up', 'Cooler on the north wall', 'The other windows warm the room, but walls near the north window will still read cooler and a little bluer.');
+    }
+    if (!ext && onlyNorth(a) && isWhiteish(c) && c.lrv < 82)
       add('heads-up', 'Whites look grayer facing north', 'Soft whites can read as light gray in north light. To make it read as white, pick a cleaner, brighter white.');
     if (!ext && brightWarmLight(a) && c.neutral && (c.ut === 'yellow' || c.ut === 'peach') && c.C > 4)
       add('heads-up', 'Strong sun boosts yellow', 'Warm afternoon sun amplifies yellow and peach undertones. This can look noticeably creamier or more golden than the chip.');
-    if (!ext && a.facing === 'west')
-      add('tip', 'Changes through the day', 'West-facing rooms are cool and flat in the morning and warm orange by evening. Check the sample around 5 pm too.');
-    if (!ext && a.facing === 'east')
+    if (!ext && hasDir(a, 'west'))
+      add('tip', 'Changes through the day', 'West windows bring cool, flat light in the morning and warm orange light by evening. Check the sample around 5 pm too.');
+    if (!ext && hasDir(a, 'east') && !hasDir(a, 'west'))
       add('tip', 'Bright morning, cooler afternoon', 'East light is warm and bright early, then cooler and flatter later. Check the sample in the afternoon.');
-    if (!ext && a.facing === 'none')
+    if (!ext && ((north && hasDir(a, 'south')) || (hasDir(a, 'east') && hasDir(a, 'west'))))
+      add('tip', 'Light differs wall to wall', 'With windows on opposite sides, the same color reads warmer on one side and cooler on the other. Tape samples on both.');
+    if (!ext && facingsOf(a).length >= 3)
+      add('tip', 'Bright from several sides', 'Light from three or more sides makes colors look lighter and cleaner than the chip. A step deeper often reads as intended.');
+    if (!ext && noWindows(a))
       add('heads-up', 'Bulbs decide everything here', 'With no windows, the color depends entirely on the bulbs. Test the sample under the room’s actual bulbs before committing.');
 
     // undertone surprises
@@ -605,8 +699,13 @@
       add('heads-up', 'Energizing for a sleep space', 'Very saturated reds, oranges and yellows feel stimulating. A softer, muted version is easier to sleep in.');
     if ((c.C > 40 && (c.fam === 'red' || c.fam === 'orange' || c.fam === 'yellow')) || c.lrv < 8)
       add('tip', 'Coverage', 'Deep or bright colors like this usually need a gray-tinted primer and two to three coats for even color.');
-    if (c.lrv < 15 && !ext && (a.space === 'entry' || sp.kid))
+    if (c.lrv < 15 && !ext && (sp.busy || sp.kid))
       add('tip', 'Shows scuffs', 'Dark colors show scuffs and touch-ups more in high-traffic areas. Use a scrubbable Eggshell or Satin.');
+    // space-specific notes
+    if (sp.tall && c.lrv < 30) add('tip', 'Tall stairwell walls', 'Stairwell walls are hard to reach and repaint. A deep color here is a big commitment, so test a large sample first.');
+    if (a.space === 'garage') add('tip', 'Garage lighting', 'Most garages use cool LED or fluorescent tubes, which make colors look cooler and grayer than the chip.');
+    if (sp.sunny && c.C > 30) add('heads-up', 'Strong sun fades color', 'Sunrooms get so much direct light that saturated colors fade faster. A premium line with good fade resistance helps.');
+    if (sp.sunny && c.lrv >= 88) add('heads-up', 'Glare in a sunroom', 'Very bright whites bounce a lot of light in a room this sunny. A softer white is easier on the eyes.');
 
     // exterior
     if (ext) {
@@ -629,7 +728,7 @@
     tips.push({ title: 'Finish', text: sp.sheen + '.' });
     if (sp.surface === 'trim') tips.push({ title: 'Baseboards, casing & crown', text: 'Use one color for baseboards, door and window casing, and crown so the trim reads as one. Semi-Gloss on baseboards stands up to scuffs and mopping.' });
     if (a.trimPaint && sp.kind === 'interior' && !sp.surface && top) {
-      const w = pairings(top).find(p => p.role === 'Trim & ceiling');
+      const w = pairings(top, s).find(p => p.role === 'Trim & ceiling');
       if (w) tips.push({ title: 'Trim & baseboards', text: `Pair with ${w.color.name} (${codeLabel(w.color)}) on baseboards, casing and doors in Semi-Gloss or Satin.` });
     }
     if (a.crown) tips.push({ title: 'Crown molding', text: 'Paint crown molding the trim color for a crisp outline, or the ceiling color to make a low ceiling feel taller.' });
@@ -755,9 +854,9 @@
       else if (has('enamel')) s -= 5;
       if (a.space === 'bathroom') { if (has('bath')) { s += 3; why.push('Made for humid bathrooms'); } if (has('washable')) { s += 1; if (!has('bath')) why.push('Washable, holds up to bathroom moisture'); } }
       else if (has('bath')) s -= 3;
-      if (a.space === 'kitchen') { if (has('washable')) { s += 1.5; why.push('Washable for kitchen splatter'); } if (has('scuff')) s += 0.8; }
-      if (sp.kid || a.space === 'entry') { if (has('scuff')) { s += 2; why.push('Resists scuffs in a busy space'); } if (has('washable')) s += 0.8; }
-      if (use === 'exterior' && (a.facing === 'north' || a.amount === 'low') && has('mildew')) { s += 1.2; why.push('Mildew resistant for a shaded wall'); }
+      if (a.space === 'kitchen' || a.space === 'laundry') { if (has('washable')) { s += 1.5; why.push('Washable for kitchen splatter'); } if (has('scuff')) s += 0.8; }
+      if (sp.kid || sp.busy) { if (has('scuff')) { s += 2; why.push('Resists scuffs in a busy space'); } if (has('washable')) s += 0.8; }
+      if (use === 'exterior' && (onlyNorth(a) || a.amount === 'low') && has('mildew')) { s += 1.2; why.push('Mildew resistant for a shaded wall'); }
       if (use === 'exterior' && a.amount === 'high' && has('rich')) { s += 0.8; why.push('Holds color in strong sun'); }
       if (deep && (has('rich') || has('onecoat') || has('premium'))) { s += 1; why.push(color.lrv < 15 ? 'Better hide for a deep color' : 'Keeps a bold color rich'); }
       if (!why.length && has('popular')) why.push('A dependable all-rounder');
@@ -784,7 +883,7 @@
     const s = settings || {};
     const sp = SPACES[a.space] || SPACES.living;
     const ext = sp.kind === 'exterior';
-    const busy = sp.kid || a.space === 'entry' || a.space === 'kitchen';
+    const busy = sp.kid || sp.busy || a.space === 'kitchen';
     const pros = [], cons = [];
 
     const st = (a.styles || []).filter(x => STYLES[x]).map(x => [x, styleMatch(c, x)]).sort((p, q) => q[1] - p[1])[0];
@@ -977,6 +1076,7 @@
       let best = null, bestD = Infinity;
       for (const c of INDEX.byBrand[b.id] || []) {
         if ((c.flags & F.DISC) && !opts.showDiscontinued) continue;
+        if (!collectionOn(c, opts.collections)) continue;
         if (c.id === color.id) continue;
         if (Math.abs(c.L - color.L) > bestD * 1.6 + 1) continue; // cheap prune: lightness alone already too far
         const d = C.deltaE2000(color.lab, c.lab);
@@ -992,10 +1092,11 @@
     return list.map(c => ({ c, d: C.deltaE2000(lab, c.lab) })).sort((x, y) => x.d - y.d).slice(0, n || 1).map(x => x.c);
   }
   function labFromLch(L, Cc, h) { const r = h * Math.PI / 180; return [L, Cc * Math.cos(r), Cc * Math.sin(r)]; }
-  function pairings(color) {
+  function pairings(color, opts) {
     const out = [];
+    const ok = c => collectionOn(c, opts && opts.collections);
     // trim white: same brand, white, undertone in harmony
-    const whites = (INDEX.byBrand[color.brand] || []).filter(c => isWhiteish(c) && c.lrv >= 80 && !(c.flags & F.DISC) && c.id !== color.id);
+    const whites = (INDEX.byBrand[color.brand] || []).filter(c => ok(c) && isWhiteish(c) && c.lrv >= 80 && !(c.flags & F.DISC) && c.id !== color.id);
     if (whites.length) {
       const wantWarm = color.temp === 'warm';
       const scoreW = w => (wantWarm ? (w.temp === 'cool' ? 6 : 0) + Math.abs(w.C - 4) : (w.temp === 'warm' && w.C > 4 ? 6 : 0) + w.C) - (w.flags & F.POPULAR ? 2.5 : 0) + Math.abs(w.lrv - 86) * 0.15;
@@ -1003,10 +1104,10 @@
       out.push({ role: 'Trim & ceiling', color: w });
     }
     const sameHue = c => hueDiff(c.h, color.h) < 18 || (color.C < 6 && c.C < 8);
-    if (color.L < 82) { const l = nearestInBrand(labFromLch(Math.min(96, color.L + 22), color.C * 0.75, color.h), color.brand, c => sameHue(c) && c.id !== color.id)[0]; if (l) out.push({ role: 'Lighter, same family', color: l }); }
-    if (color.L > 30) { const dk = nearestInBrand(labFromLch(Math.max(18, color.L - 26), Math.min(color.C * 1.1 + 2, 60), color.h), color.brand, c => sameHue(c) && c.id !== color.id)[0]; if (dk) out.push({ role: 'Deeper, same family', color: dk }); }
+    if (color.L < 82) { const l = nearestInBrand(labFromLch(Math.min(96, color.L + 22), color.C * 0.75, color.h), color.brand, c => ok(c) && sameHue(c) && c.id !== color.id)[0]; if (l) out.push({ role: 'Lighter, same family', color: l }); }
+    if (color.L > 30) { const dk = nearestInBrand(labFromLch(Math.max(18, color.L - 26), Math.min(color.C * 1.1 + 2, 60), color.h), color.brand, c => ok(c) && sameHue(c) && c.id !== color.id)[0]; if (dk) out.push({ role: 'Deeper, same family', color: dk }); }
     const accH = color.C < 8 ? (color.temp === 'warm' ? 215 : 60) : (color.h + 180) % 360;
-    const accent = nearestInBrand(labFromLch(color.L > 60 ? 42 : 70, color.C < 8 ? 24 : Math.min(30, color.C), accH), color.brand, c => c.id !== color.id)[0];
+    const accent = nearestInBrand(labFromLch(color.L > 60 ? 42 : 70, color.C < 8 ? 24 : Math.min(30, color.C), accH), color.brand, c => ok(c) && c.id !== color.id)[0];
     if (accent) out.push({ role: 'Accent', color: accent });
     return out;
   }
@@ -1024,7 +1125,7 @@
     let nq = normalize(q);
     // strip a leading brand word or prefix ("sw 7029", "bm oc 17", "behr swiss coffee")
     let brandHint = null;
-    const hints = { sw: 'sw', sherwin: 'sw', 'sherwin williams': 'sw', bm: 'bm', benjamin: 'bm', 'benjamin moore': 'bm', behr: 'behr', valspar: 'valspar', glidden: 'glidden', ppg: 'ppg', pittsburgh: 'ppg', hgsw: 'hgsw', hgtv: 'hgsw', 'dutch boy': 'dutchboy', dunn: 'de', 'dunn edwards': 'de', de: 'de', 'diamond vogel': 'dv', clark: 'ck', 'clark kensington': 'ck', 'clark and kensington': 'ck', ck: 'ck', 'c k': 'ck', magnolia: 'magnolia', 'magnolia home': 'magnolia', kilz: 'kilz', vista: 'vista', resene: 'resene', farrow: 'fb', 'farrow ball': 'fb', 'f b': 'fb' };
+    const hints = { sw: 'sw', sherwin: 'sw', 'sherwin williams': 'sw', bm: 'bm', benjamin: 'bm', 'benjamin moore': 'bm', behr: 'behr', valspar: 'valspar', glidden: 'glidden', ppg: 'ppg', pittsburgh: 'ppg', hgsw: 'hgsw', hgtv: 'hgsw', 'dutch boy': 'dutchboy', dunn: 'de', 'dunn edwards': 'de', de: 'de', 'diamond vogel': 'dv', clark: 'ck', 'clark kensington': 'ck', 'clark and kensington': 'ck', ck: 'ck', 'c k': 'ck', magnolia: 'magnolia', 'magnolia home': 'magnolia', kilz: 'kilz', vista: 'vista', resene: 'resene', farrow: 'fb', 'farrow ball': 'fb', 'f b': 'fb', hallman: 'hl', 'hallman lindsay': 'hl', colorhouse: 'colorhouse', yolo: 'colorhouse', ral: 'ral' };
     for (const k of Object.keys(hints).sort((x, y) => y.length - x.length)) {
       if (nq === k || nq.startsWith(k + ' ')) { brandHint = hints[k]; nq = nq.slice(k.length).trim(); break; }
     }
@@ -1050,9 +1151,9 @@
 
   function lightForAnswers(a) {
     a = a || {};
-    if (a.facing === 'none') return a.bulbs === 'daylight' ? 'cool' : a.bulbs === 'soft' ? 'soft' : 'warm';
-    if (a.facing === 'north') return 'north';
-    if (a.facing === 'south' || a.facing === 'west') return 'sun';
+    if (noWindows(a)) return a.bulbs === 'daylight' ? 'cool' : a.bulbs === 'soft' ? 'soft' : 'warm';
+    if (hasDir(a, 'south') || hasDir(a, 'west')) return 'sun';
+    if (onlyNorth(a)) return 'north';
     if (a.amount === 'low') return 'dim';
     return 'daylight';
   }
@@ -1083,7 +1184,8 @@
 
   const api = { F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
     init, addBrand, getIndex, findColor, codeLabel, target, familyMatch, styleMatch, scoreColor, warningsFor, roomTips, recommend,
-    matchesFor, pairings, search, lightForAnswers, parseCustomCsv, allowedColor };
+    matchesFor, pairings, search, lightForAnswers, parseCustomCsv, allowedColor, facingsOf, facingPhrase, noWindows, DIRS,
+    COLLECTIONS, collectionOf, collectionsFor, collectionLabel, collectionOn };
   root.CG = root.CG || {};
   root.CG.engine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
