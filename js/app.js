@@ -654,9 +654,25 @@
       <button type="button" class="star" data-star="${esc(c.id)}" aria-pressed="${starred}" aria-label="${starred ? 'Remove from' : 'Add to'} shortlist">${starSvg}</button>
     </article>`;
   }
+  // Light preview picker: a row of buttons on wide screens, one compact in-house dropdown on phones
   function lightBar(current, name) {
     const opts = [{ id: 'none', label: 'Chip color' }].concat(E.LIGHTS);
-    return `<div class="lightbar"><span class="eyebrow">See it in</span><div class="seg" role="group" aria-label="Light preview">${opts.map(l => `<button type="button" data-light-pick="${name}" data-val="${l.id}" aria-pressed="${current === l.id}">${esc(l.label)}</button>`).join('')}</div></div>`;
+    const sel = selectHtml('light-' + name, opts.map(l => [l.id, l.label]), current, 'See it in');
+    SELECTS['light-' + name].onChange = v => applyLightPick(name, v);
+    return `<div class="lightbar"><span class="eyebrow lb-label">See it in</span>
+      <div class="seg lb-seg" role="group" aria-label="Light preview">${opts.map(l => `<button type="button" data-light-pick="${name}" data-val="${l.id}" aria-pressed="${current === l.id}">${esc(l.label)}</button>`).join('')}</div>
+      <span class="lb-select">${sel}</span></div>`;
+  }
+  function applyLightPick(which, val) {
+    if (which === 'grid') state.gridLight = val; else if (which === 'room') state.roomLight = val; else state.presentLight = val;
+    $$(`[data-light-pick="${which}"]`).forEach(b => b.setAttribute('aria-pressed', b.dataset.val === val));
+    // keep the dropdown in step with the button row
+    const cfg = SELECTS['light-' + which], btn = document.getElementById('light-' + which);
+    if (cfg) cfg.value = val;
+    if (cfg && btn) { const o = cfg.options.find(x => x[0] === val); if (o) $('.cg-select-label', btn).textContent = o[1]; }
+    const scope = which === 'grid' ? document.querySelector('.view:not([hidden])') : which === 'room' ? $('#detailSheet') : $('#present');
+    $$('[data-hex]', scope).forEach(el => { if (el.dataset.lightLocked) return; el.dataset.light = val; el.style.backgroundColor = paint(el.dataset.hex, val); });
+    if (which === 'room') updateRoomScene();
   }
 
   function renderResults(animate) {
@@ -677,11 +693,13 @@
       </div>
       <div class="results-tools">
         ${settings.lightPreview ? lightBar(state.gridLight, 'grid') : '<span></span>'}
-        <div class="tool-btns"><button type="button" class="btn small" data-compare="results">Compare</button><button type="button" class="btn small" data-act="edit">Edit answers</button><button type="button" class="btn small primary" data-act="restart">Start over</button></div>
+        <div class="tool-btns"><button type="button" class="btn small" data-compare="results">Compare</button><button type="button" class="btn small hide-sm" data-act="edit">Edit answers</button><button type="button" class="btn small primary" data-act="restart">Start over</button></div>
       </div>
       ${(R.notices || []).map((w, i) => `<div class="warn ${w.level === 'heads-up' ? 'headsup' : w.level}" style="--i:${i};margin-bottom:16px"><b>${esc(w.title)}</b><span>${esc(w.text)}</span></div>`).join('')}
       <div class="grid" id="resultGrid">${R.results.map(r => chipCard(r.color, { role: r.role, flags: flagsFor(r), light: state.gridLight })).join('')}</div>
-      <div class="tips">${withPaintTip(R).map(t => `<div class="tip-card"><b>${esc(t.title)}</b><p>${esc(t.text)}</p>${t.title === 'Finish' ? `<button type="button" class="btn small" data-sheens="${esc(R.results[0].color.id)}" style="justify-self:start;margin-top:6px">Compare sheens</button>` : ''}</div>`).join('')}</div>
+      <section class="tips-panel" aria-labelledby="tipsTitle"><h2 id="tipsTitle" class="tips-title">Good to know</h2>
+        <div class="tips">${withPaintTip(R).map(t => `<div class="tip-row"><b>${esc(t.title)}</b><p>${esc(t.text)}${t.title === 'Finish' ? ` <button type="button" class="link-btn" data-sheens="${esc(R.results[0].color.id)}">Compare sheens</button>` : ''}</p></div>`).join('')}</div>
+      </section>
       ${st.length ? '' : ''}`;
     if (animate && !reduced()) fanIn($('#resultGrid'));
   }
@@ -728,15 +746,7 @@
     const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.open) { openDetail(t.dataset.open, !!t.closest('#detailSheet')); return; }
     if (t.dataset.star) { toggleStar(t.dataset.star); return; }
-    if (t.dataset.lightPick) {
-      const which = t.dataset.lightPick, val = t.dataset.val;
-      if (which === 'grid') state.gridLight = val; else if (which === 'room') state.roomLight = val; else state.presentLight = val;
-      $$(`[data-light-pick="${which}"]`).forEach(b => b.setAttribute('aria-pressed', b.dataset.val === val));
-      const scope = which === 'grid' ? document.querySelector('.view:not([hidden])') : which === 'room' ? $('#detailSheet') : $('#present');
-      $$('[data-hex]', scope).forEach(el => { if (el.dataset.lightLocked) return; el.dataset.light = val; el.style.backgroundColor = paint(el.dataset.hex, val); });
-      if (which === 'room') updateRoomScene();
-      return;
-    }
+    if (t.dataset.lightPick) { applyLightPick(t.dataset.lightPick, t.dataset.val); return; }
   });
 
   function toggleStar(id) {

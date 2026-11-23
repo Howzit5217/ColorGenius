@@ -343,10 +343,16 @@ input[type="search"] { -webkit-appearance: none; appearance: none; }
 .star { position: absolute; right: 10px; top: 10px; width: 34px; height: 34px; border-radius: 999px; border: 0; background: rgba(255, 255, 255, .78); color: #151515; display: grid; place-items: center; backdrop-filter: blur(6px); transition: transform var(--t-fast) var(--ease-spring); }
 .star:active { transform: scale(.85); }
 .star[aria-pressed="true"] svg path { fill: #151515; }
-.tips { margin-top: 34px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
-.tip-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
-.tip-card b { font-size: 13px; }
-.tip-card p { font-size: 13.5px; color: var(--ink-2); }
+/* "Good to know": one panel of divided rows instead of a stack of separate cards */
+.tips-panel { margin-top: 30px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px 18px 4px; }
+.tips-title { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; margin-bottom: 6px; }
+.tips { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); column-gap: 28px; }
+.tip-row { padding: 12px 0 13px; border-top: 1px solid var(--line); display: grid; gap: 3px; align-content: start; }
+.tip-row b { font-size: 13.5px; font-weight: 600; }
+.tip-row p { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+.tip-row .link-btn { display: inline; padding: 0; margin-left: 2px; font-size: 13.5px; }
+/* light picker: the dropdown only shows on phones */
+.lb-select { display: none; }
 .empty { text-align: center; padding: 60px 16px; color: var(--ink-2); display: grid; gap: 12px; justify-items: center; }
 
 /* ---------------- lookup ---------------- */
@@ -616,6 +622,28 @@ html.ob-open, html.ob-open body { overflow: hidden; }
   .tab .short { display: inline; }
   .install-btn { width: 40px; height: 40px; padding: 0; justify-content: center; border-radius: 999px; }
   .install-btn span { display: none; }
+  /* results on phones: one swipeable row of answers, a compact light dropdown, two equal buttons, stacked card labels */
+  .results-head { gap: 10px; margin-bottom: 14px; }
+  .results-head h1 { font-size: 25px; }
+  .summary { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; margin-left: calc(-1 * var(--gutter-l)); margin-right: calc(-1 * var(--gutter-r)); padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
+  .summary::-webkit-scrollbar { display: none; }
+  .summary button { flex: none; white-space: nowrap; }
+  .results-tools { gap: 10px; margin-bottom: 14px; }
+  .lb-seg { display: none; }
+  .lightbar { flex-wrap: nowrap; width: 100%; gap: 10px; }
+  .lb-label { flex: none; }
+  .lb-select { display: block; flex: 1; min-width: 0; }
+  .lb-select .cg-select { width: 100%; }
+  .results-tools .tool-btns { width: 100%; flex-wrap: nowrap; }
+  .results-tools .tool-btns .btn { flex: 1; justify-content: center; padding-block: 10px; }
+  .hide-sm { display: none !important; }
+  .chip-label { padding: 10px 12px 12px; gap: 2px; }
+  .chip-role { font-size: 11px; }
+  .chip-meta { flex-direction: column; gap: 0; font-size: 12px; }
+  .chip-meta .brand { color: var(--ink-3); }
+  .lrv { margin-top: 6px; }
+  .tips-panel { margin-top: 22px; padding: 14px 16px 2px; }
+  .present-bar .lightbar { flex: 1; }
   @keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
   @keyframes sheetDown { to { transform: translateY(100%); } }
 }
