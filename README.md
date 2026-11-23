@@ -13,12 +13,21 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   2. Which way the windows face, using a compass picker, plus how much daylight and what bulbs.
   3. Style, with up to two picks shown as real color previews.
   4. Color families and how light or dark.
-  5. What's staying:
-     - **Indoors:** floors (11 types, from honey oak and cherry to gray LVP, carpet, tile and concrete), countertops, cabinets, furniture and fabrics, fixtures, and fireplaces.
-     - **Outdoors:** the roof, brick or stone, and window frames.
-     - **Anything else:** a named item with a color picker.
+  5. What's staying. Only the rows that fit the job appear, mostly one tap each:
+     - **Bedrooms:** floor, trim and bedding.
+     - **Kitchens:** cabinets, countertops, floor and hardware.
+     - **Bathrooms:** vanity, countertop, floor and faucets.
+     - **Ceilings and trim:** the walls staying.
+     - **Front doors:** the siding and trim colors the door has to stand out from.
+     - **Other exteriors:** roof, brick or stone, trim and windows.
 
-     Each paint color is checked against the colors of these items. The checks catch undertone clashes, too much yellow with orange oak, pink next to cherry or brick, near-miss whites, low contrast and complementary pairings. The preview shows the chosen floor, counters, cabinets, sofa and roof.
+     Floors take two taps: the type first (wood or LVP, carpet with five colors, tile or stone, concrete), then its color. Rooms also ask about trim, baseboards and crown molding (bright white, cream, stained wood or black, plus "Painting the trim too" and "Has crown molding"). Anything else can be added with a name and the in-house color picker.
+
+     Each paint color is checked against all of this. The checks catch undertone clashes (carpet and walls count as large surfaces), too much yellow with orange oak, pink next to cherry or brick, creamy or stark whites next to existing trim, doors that won't stand out from the siding, low contrast and complementary pairings. The preview shows the chosen floor, counters, cabinets, sofa and roof.
+
+  Ceilings and trim replace question 4 with one quick choice:
+  - **Ceilings:** crisp white, soft warm white, a light tint of the walls, or something bold.
+  - **Trim:** crisp white, soft warm white, match the walls, or black.
 - **Recommendations** from about 31,000 colors. Results are spread out so you don't get six versions of the same beige. Each comes with reasons it fits and its LRV (light reflectance value).
 - **Warnings** written in plain language. They cover:
   - Colors that will read too dark or too light in that light.

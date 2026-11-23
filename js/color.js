@@ -129,8 +129,9 @@
     if (h < 305) return 'blue';
     return 'violet';
   }
-  function temperature(C, h) {
-    if (C < 2.5) return 'neutral';
+  function temperature(C, h, L) {
+    // same neutral cut-off as undertone(), so a white is never "no undertone" and "warm" at once
+    if (C < 2.5 || (L > 88 && C < 3.5)) return 'neutral';
     if (h >= 345 || h < 112) return 'warm';
     if (h >= 150 && h < 310) return 'cool';
     return 'neutral';
@@ -149,7 +150,7 @@
     if (lrv == null) lrv = lrvFromHex(hex);
     const fam = family(L, C, h);
     const ut = undertone(C, h, L);
-    const temp = temperature(C, h);
+    const temp = temperature(C, h, L);
     const neutral = ['white', 'gray', 'beige', 'brown', 'black'].includes(fam) || C < 12;
     let summary;
     if (neutral) summary = ut === 'neutral' ? 'True neutral, no strong undertone' : `${temp === 'warm' ? 'Warm' : temp === 'cool' ? 'Cool' : 'Balanced'} neutral with a ${ut} undertone`;

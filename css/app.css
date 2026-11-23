@@ -56,6 +56,22 @@
 html, body { margin: 0; }
 /* keep room for the scrollbar on every screen so pinned buttons never shift sideways */
 html { scrollbar-gutter: stable; }
+
+/* Scrollbars: a slim rounded thumb with no track or arrow buttons, like a phone's own scroll indicator.
+   Touch screens get a thinner one; horizontal scrollers inside the page hide theirs on touch and rely on swiping. */
+::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 22%, transparent); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; min-height: 40px; }
+::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--ink) 38%, transparent); }
+@supports (-moz-appearance: none) { * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 25%, transparent) transparent; } }
+@media (pointer: coarse) {
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-thumb { border-width: 1px; min-height: 32px; }
+  .cmp-wrap, .tabs, .lightbar .seg { scrollbar-width: none; }
+  .cmp-wrap::-webkit-scrollbar, .tabs::-webkit-scrollbar, .lightbar .seg::-webkit-scrollbar { display: none; height: 0; }
+}
+.cmp-wrap { overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; overflow-x: hidden;
@@ -66,7 +82,20 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 [hidden] { display: none !important; }
-:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px; }
+/* Phones draw a gray rectangle on tap that ignores rounded corners; turn it off and use shaped press feedback instead.
+   Focus rings follow each element's own corners (no border-radius override here). */
+html { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+:focus:not(:focus-visible) { outline: none; }
+.seg button:active, .tab:active, .summary button:active, .custom-chip button:active, .line-alt:active { transform: scale(.95); }
+.row:active, .pair:active, .chip:active, .cmp-head:active { transform: scale(.985); }
+.seg button, .tab, .summary button, .row, .pair, .compass-btn { transition-property: background, color, box-shadow, border-color, transform; transition-duration: var(--t-fast); transition-timing-function: var(--ease); }
+@media (hover: none) {
+  /* no sticky hover colors after a tap on touch screens */
+  .opt:hover, .row:hover, .pair:hover, .icon-btn:hover, .compass-btn:hover, .summary button:hover { border-color: var(--line); }
+  .chip:hover, .pair:hover { transform: none; box-shadow: var(--shadow); }
+  .btn.primary:hover { opacity: 1; }
+}
 h1, h2, h3 { text-wrap: balance; margin: 0; letter-spacing: -0.015em; }
 p { margin: 0; }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
@@ -175,6 +204,81 @@ p { margin: 0; }
 .wizard-nav .spacer { flex: 1; }
 .wizard-nav .nav-back, .wizard-nav .nav-skip { min-width: 92px; justify-content: center; }
 .wizard-nav .nav-next { min-width: 156px; justify-content: center; }
+/* question 5: compact material chips, one row per group */
+.mgroup { gap: 10px; }
+.mchips { display: flex; flex-wrap: wrap; gap: 8px; }
+.mchip { display: inline-flex; align-items: center; gap: 9px; min-height: 42px; padding: 6px 14px 6px 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 14px; font-weight: 500; text-align: left; line-height: 1.2; transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.mchip:active { transform: scale(.96); }
+.mchip[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); font-weight: 600; }
+.msw { width: 30px; height: 30px; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .1); }
+.mchip[aria-pressed="true"] .msw { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .1), 0 0 0 2px var(--surface), 0 0 0 3.5px var(--ink); }
+.msub { display: grid; gap: 8px; margin-top: 2px; padding: 12px; border-radius: var(--r-md); background: var(--surface-2); }
+.msub-label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.msub .mchip { background: var(--surface); }
+.mtype[aria-expanded="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.mchip-flag { border-style: dashed; }
+.mchip-flag[aria-pressed="true"] { border-style: solid; }
+.flag-sw { display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); }
+.custom-more > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px dashed var(--line-2); font-size: 14px; font-weight: 500; color: var(--ink-2); }
+.custom-more > summary::-webkit-details-marker { display: none; }
+.custom-more[open] > summary { color: var(--ink); border-style: solid; margin-bottom: 10px; }
+
+/* in-house controls: text input, dropdown menu, color picker, slider, search clear */
+.cg-input { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: 10px; padding: 9px 11px; font-size: 15px; outline: none; transition: border-color var(--t-fast), box-shadow var(--t-fast); -webkit-appearance: none; appearance: none; }
+.cg-input:focus { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 12%, transparent); }
+.cg-select, .cg-color { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; max-width: 100%; padding: 6px 10px 6px 12px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 500; text-align: left; transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast) var(--ease); }
+.cg-select:hover, .cg-color:hover { border-color: var(--ink-3); }
+.cg-select:active, .cg-color:active { transform: scale(.98); }
+.cg-select[aria-expanded="true"], .cg-color[aria-expanded="true"] { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 12%, transparent); }
+.cg-select-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cg-chev { flex: none; color: var(--ink-3); transition: transform var(--t-med) var(--ease); }
+[aria-expanded="true"] > .cg-chev { transform: rotate(180deg); }
+.cg-color { padding-left: 6px; }
+.cg-color-sw { width: 26px; height: 26px; border-radius: 7px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); flex: none; }
+.cg-color-hex { font-size: 13px; color: var(--ink-2); }
+.set-row .cg-select { max-width: 52%; }
+.searchbox .cg-color { border-radius: 999px; min-height: 38px; }
+.searchbox .cg-color .cg-color-hex { display: none; }
+.cg-pop { position: fixed; z-index: 90; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg); animation: popMenu 180ms var(--ease); }
+.cg-pop.out { animation: popMenuOut 150ms var(--ease) forwards; }
+@keyframes popMenu { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes popMenuOut { to { opacity: 0; transform: scale(.97); } }
+.cg-menu { padding: 6px; max-height: min(320px, 60vh); overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 2px; max-width: calc(100vw - 24px); }
+.cg-opt { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; border: 0; background: none; padding: 10px 12px; border-radius: 9px; font-size: 14.5px; text-align: left; color: var(--ink); }
+.cg-opt:hover, .cg-opt:focus-visible { background: var(--surface-2); outline: none; }
+.cg-opt .cg-check { opacity: 0; color: var(--ink); flex: none; }
+.cg-opt[aria-selected="true"] { font-weight: 600; }
+.cg-opt[aria-selected="true"] .cg-check { opacity: 1; }
+.cg-picker { width: 268px; padding: 12px; display: grid; gap: 12px; }
+.cp-sv { position: relative; height: 160px; border-radius: 10px; cursor: crosshair; touch-action: none; background-image: linear-gradient(to top, #000, rgba(0, 0, 0, 0)), linear-gradient(to right, #fff, rgba(255, 255, 255, 0)); outline: none; }
+.cp-sv:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+.cp-sv-dot, .cp-hue-dot { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 2.5px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .35), 0 2px 6px rgba(0, 0, 0, .3); pointer-events: none; }
+.cp-hue { position: relative; height: 14px; border-radius: 999px; cursor: pointer; touch-action: none; outline: none; background: linear-gradient(to right, #f00, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00); }
+.cp-hue:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+.cp-hue-dot { top: 50%; }
+.cp-row { display: flex; align-items: center; gap: 8px; }
+.cp-prev { width: 36px; height: 36px; border-radius: 9px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); flex: none; }
+.cp-hex { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; border: 1px solid var(--line-2); border-radius: 10px; padding-left: 10px; background: var(--surface); }
+.cp-hex span { color: var(--ink-3); font-family: var(--font-mono); }
+.cp-hex .cg-input { border: 0; box-shadow: none; padding: 8px 8px 8px 0; width: 100%; min-width: 0; text-transform: uppercase; }
+.cp-hex:focus-within { border-color: var(--ink); }
+.cp-quick { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.cp-q { aspect-ratio: 1; border: 0; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); transition: transform var(--t-fast) var(--ease); }
+.cp-q:active { transform: scale(.9); }
+.cg-range { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; cursor: pointer; }
+.cg-range:focus { outline: none; }
+.cg-range::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; background: linear-gradient(to right, var(--ink) var(--fill, 50%), var(--line-2) var(--fill, 50%)); }
+.cg-range::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .2); transition: transform var(--t-fast) var(--ease); }
+.cg-range:active::-webkit-slider-thumb { transform: scale(1.12); }
+.cg-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px color-mix(in srgb, var(--ink) 18%, transparent); }
+.cg-range::-moz-range-track { height: 6px; border-radius: 6px; background: var(--line-2); }
+.cg-range::-moz-range-progress { height: 6px; border-radius: 6px; background: var(--ink); }
+.cg-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .2); }
+input[type="search"]::-webkit-search-cancel-button, input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+input[type="search"] { -webkit-appearance: none; appearance: none; }
+.search-clear { flex: none; width: 28px; height: 28px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); display: grid; place-items: center; transition: transform var(--t-fast) var(--ease), background var(--t-fast); }
+.search-clear:active { transform: scale(.9); }
+
 /* custom "something else" items */
 .custom-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px; }
 .custom-add input[type="text"] { flex: 1 1 180px; min-width: 0; border: 1px solid var(--line-2); background: var(--surface); border-radius: 9px; padding: 9px 11px; font-size: 15px; }

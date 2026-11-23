@@ -82,65 +82,157 @@
   const AMOUNTS = { low: 'Dim', medium: 'Some light', high: 'Bright' };
   const BULBS = { warm: 'Warm (2700K)', soft: 'Soft white (3000K)', daylight: 'Daylight (5000K)', unsure: 'Not sure' };
   const SIDING = { vinyl: 'Vinyl', wood: 'Wood', fiber: 'Fiber cement', stucco: 'Stucco', brick: 'Brick or masonry' };
-  // Things that stay: floors, counters, cabinets, furniture, fixtures, and for exteriors the roof, masonry and windows.
-  // Each has a typical color so the logic can compare undertones, lightness and hue against every paint color.
-  // "where" says which jobs it is offered for; "kind" decides which rules apply and where it shows in the preview.
-  const FX = (id, group, where, kind, label, hex) => ({ id, group, where, kind, label, hex });
+  // Things that stay: floors and carpet, trim and molding, counters, cabinets, furniture, fixtures, walls, and for
+  // exteriors the roof, masonry, siding, trim and windows. Each has a typical color so the logic can compare undertones,
+  // lightness and hue against every paint color. "kind" decides which rules apply and where it shows in the preview.
+  const FX = (id, kind, label, hex) => ({ id, kind, label, hex });
   const FIXED_ITEMS = [
-    FX('floor-light-oak', 'Floors', 'interior', 'floor', 'Light oak floors', 'C8A57A'),
-    FX('warm-wood', 'Floors', 'interior', 'floor', 'Honey or orange wood floors', 'B5763C'),
-    FX('floor-cherry', 'Floors', 'interior', 'floor', 'Cherry or red oak floors', '8C4630'),
-    FX('floor-walnut', 'Floors', 'interior', 'floor', 'Dark walnut or espresso floors', '4A3326'),
-    FX('floor-gray-wood', 'Floors', 'interior', 'floor', 'Gray wood or LVP floors', '9A9894'),
-    FX('floor-blond', 'Floors', 'interior', 'floor', 'Whitewashed or blond wood floors', 'DCCCB5'),
-    FX('floor-carpet-beige', 'Floors', 'interior', 'floor', 'Beige carpet', 'CDBFA7'),
-    FX('floor-carpet-gray', 'Floors', 'interior', 'floor', 'Gray carpet', 'A6A6A3'),
-    FX('cool-tile', 'Floors', 'interior', 'floor', 'Gray tile or stone floors', 'A8AAAA'),
-    FX('floor-travertine', 'Floors', 'interior', 'floor', 'Beige tile or travertine', 'D3C3A5'),
-    FX('floor-concrete', 'Floors', 'interior', 'floor', 'Concrete floors', 'A4A29D'),
-    FX('counter-white', 'Counters & cabinets', 'interior', 'counter', 'White quartz or marble counters', 'EDEDEA'),
-    FX('counter-gray', 'Counters & cabinets', 'interior', 'counter', 'Gray quartz or granite counters', '9B9C9B'),
-    FX('counter-black', 'Counters & cabinets', 'interior', 'counter', 'Black granite counters', '2A2A2B'),
-    FX('counter-beige', 'Counters & cabinets', 'interior', 'counter', 'Beige or brown granite counters', 'B5A083'),
-    FX('counter-butcher', 'Counters & cabinets', 'interior', 'counter', 'Butcher block counters', 'B98A58'),
-    FX('white-cabinets', 'Counters & cabinets', 'interior', 'cabinet', 'White cabinets or trim', 'F4F3EF'),
-    FX('cab-wood', 'Counters & cabinets', 'interior', 'cabinet', 'Wood cabinets', 'A26F3E'),
-    FX('cab-gray', 'Counters & cabinets', 'interior', 'cabinet', 'Gray cabinets', '8F9396'),
-    FX('cab-dark', 'Counters & cabinets', 'interior', 'cabinet', 'Dark or black cabinets', '2E2F31'),
-    FX('sofa-gray', 'Furniture & fabrics', 'interior', 'furniture', 'Gray sofa or fabrics', '8E9091'),
-    FX('sofa-cream', 'Furniture & fabrics', 'interior', 'furniture', 'Cream or beige sofa', 'D9CEBB'),
-    FX('sofa-leather', 'Furniture & fabrics', 'interior', 'furniture', 'Brown leather furniture', '7A4A2C'),
-    FX('sofa-navy', 'Furniture & fabrics', 'interior', 'furniture', 'Navy or blue fabrics', '2F3E5C'),
-    FX('sofa-green', 'Furniture & fabrics', 'interior', 'furniture', 'Green fabrics', '4F6B4C'),
-    FX('sofa-blush', 'Furniture & fabrics', 'interior', 'furniture', 'Blush or pink fabrics', 'D6A79D'),
-    FX('sofa-mustard', 'Furniture & fabrics', 'interior', 'furniture', 'Mustard or rust fabrics', 'B7832F'),
-    FX('furn-light-wood', 'Furniture & fabrics', 'interior', 'furniture', 'Light wood furniture', 'C9A97F'),
-    FX('dark-furniture', 'Furniture & fabrics', 'interior', 'furniture', 'Dark wood furniture', '3F2E25'),
-    FX('brass', 'Fixtures & accents', 'interior', 'fixture', 'Brass or gold fixtures', 'B8954A'),
-    FX('fix-chrome', 'Fixtures & accents', 'interior', 'fixture', 'Chrome or nickel fixtures', 'C3C6C8'),
-    FX('fix-black', 'Fixtures & accents', 'interior', 'fixture', 'Matte black fixtures', '2B2B2C'),
-    FX('brick', 'Fixtures & accents', 'interior', 'stone', 'Red brick fireplace or wall', 'A04A33'),
-    FX('stone-gray', 'Fixtures & accents', 'interior', 'stone', 'Gray stone fireplace', '8D8C88'),
-    FX('stone-tan', 'Fixtures & accents', 'interior', 'stone', 'Tan stone fireplace', 'B8A486'),
-    FX('roof-black', 'Roof', 'exterior', 'roof', 'Black or charcoal roof', '35373A'),
-    FX('roof-gray', 'Roof', 'exterior', 'roof', 'Gray or weathered roof', '7A7B79'),
-    FX('roof-brown', 'Roof', 'exterior', 'roof', 'Brown roof', '5F4938'),
-    FX('roof-red', 'Roof', 'exterior', 'roof', 'Red or terracotta tile roof', 'A3553C'),
-    FX('roof-green', 'Roof', 'exterior', 'roof', 'Green metal roof', '3F5A47'),
-    FX('ext-brick-red', 'Stone & brick', 'exterior', 'stone', 'Red brick', '9B4A35'),
-    FX('ext-brick-tan', 'Stone & brick', 'exterior', 'stone', 'Tan or buff brick', 'C2A27E'),
-    FX('ext-stone-gray', 'Stone & brick', 'exterior', 'stone', 'Gray stone', '8E8D89'),
-    FX('ext-stone-tan', 'Stone & brick', 'exterior', 'stone', 'Tan or brown stone', 'A68E6E'),
-    FX('win-white', 'Windows', 'exterior', 'window', 'White vinyl windows', 'F2F2EE'),
-    FX('win-almond', 'Windows', 'exterior', 'window', 'Almond or tan windows', 'D8CDB6'),
-    FX('win-bronze', 'Windows', 'exterior', 'window', 'Bronze windows', '4E4036'),
-    FX('win-black', 'Windows', 'exterior', 'window', 'Black windows', '2A2B2C'),
+    FX('floor-light-oak', 'floor', 'Light oak floors', 'C8A57A'),
+    FX('warm-wood', 'floor', 'Honey or orange wood floors', 'B5763C'),
+    FX('floor-cherry', 'floor', 'Cherry or red oak floors', '8C4630'),
+    FX('floor-walnut', 'floor', 'Dark walnut or espresso floors', '4A3326'),
+    FX('floor-gray-wood', 'floor', 'Gray wood or LVP floors', '9A9894'),
+    FX('floor-blond', 'floor', 'Whitewashed or blond wood floors', 'DCCCB5'),
+    FX('floor-carpet-cream', 'carpet', 'Cream carpet', 'E4DCCB'),
+    FX('floor-carpet-beige', 'carpet', 'Beige carpet', 'CDBFA7'),
+    FX('floor-carpet-oatmeal', 'carpet', 'Oatmeal or greige carpet', 'BDB4A6'),
+    FX('floor-carpet-gray', 'carpet', 'Gray carpet', 'A6A6A3'),
+    FX('floor-carpet-brown', 'carpet', 'Brown or tan carpet', '8E7660'),
+    FX('cool-tile', 'floor', 'Gray tile or stone floors', 'A8AAAA'),
+    FX('floor-white-tile', 'floor', 'White or marble tile', 'ECEBE7'),
+    FX('floor-travertine', 'floor', 'Beige tile or travertine', 'D3C3A5'),
+    FX('floor-concrete', 'floor', 'Concrete floors', 'A4A29D'),
+    FX('trim-white', 'trim', 'Bright white trim', 'F4F4F1'),
+    FX('trim-cream', 'trim', 'Cream or off-white trim', 'EEE6D5'),
+    FX('trim-wood', 'trim', 'Stained wood trim', 'A0683A'),
+    FX('trim-dark', 'trim', 'Black or dark trim', '2C2D2F'),
+    FX('counter-white', 'counter', 'White quartz or marble counters', 'EDEDEA'),
+    FX('counter-gray', 'counter', 'Gray quartz or granite counters', '9B9C9B'),
+    FX('counter-black', 'counter', 'Black granite counters', '2A2A2B'),
+    FX('counter-beige', 'counter', 'Beige or brown granite counters', 'B5A083'),
+    FX('counter-butcher', 'counter', 'Butcher block counters', 'B98A58'),
+    FX('white-cabinets', 'cabinet', 'White cabinets', 'F4F3EF'),
+    FX('cab-wood', 'cabinet', 'Wood cabinets', 'A26F3E'),
+    FX('cab-gray', 'cabinet', 'Gray cabinets', '8F9396'),
+    FX('cab-dark', 'cabinet', 'Dark or black cabinets', '2E2F31'),
+    FX('sofa-gray', 'furniture', 'Gray fabrics', '8E9091'),
+    FX('sofa-cream', 'furniture', 'Cream or beige fabrics', 'D9CEBB'),
+    FX('sofa-leather', 'furniture', 'Brown leather', '7A4A2C'),
+    FX('sofa-navy', 'furniture', 'Navy or blue fabrics', '2F3E5C'),
+    FX('sofa-green', 'furniture', 'Green fabrics', '4F6B4C'),
+    FX('sofa-blush', 'furniture', 'Blush or pink fabrics', 'D6A79D'),
+    FX('sofa-mustard', 'furniture', 'Mustard or rust fabrics', 'B7832F'),
+    FX('furn-light-wood', 'furniture', 'Light wood furniture', 'C9A97F'),
+    FX('dark-furniture', 'furniture', 'Dark wood furniture', '3F2E25'),
+    FX('brass', 'fixture', 'Brass or gold', 'B8954A'),
+    FX('fix-chrome', 'fixture', 'Chrome or nickel', 'C3C6C8'),
+    FX('fix-black', 'fixture', 'Matte black', '2B2B2C'),
+    FX('brick', 'stone', 'Red brick fireplace', 'A04A33'),
+    FX('stone-gray', 'stone', 'Gray stone fireplace', '8D8C88'),
+    FX('stone-tan', 'stone', 'Tan stone fireplace', 'B8A486'),
+    FX('walls-white', 'wall', 'White walls', 'F0EEE8'),
+    FX('walls-warm', 'wall', 'Beige or greige walls', 'D6CCBC'),
+    FX('walls-gray', 'wall', 'Gray walls', 'C2C4C3'),
+    FX('walls-color', 'wall', 'Blue or green walls', '9DAEA9'),
+    FX('walls-dark', 'wall', 'Dark walls', '4A4F55'),
+    FX('roof-black', 'roof', 'Black or charcoal roof', '35373A'),
+    FX('roof-gray', 'roof', 'Gray or weathered roof', '7A7B79'),
+    FX('roof-brown', 'roof', 'Brown roof', '5F4938'),
+    FX('roof-red', 'roof', 'Red or terracotta tile roof', 'A3553C'),
+    FX('roof-green', 'roof', 'Green metal roof', '3F5A47'),
+    FX('ext-brick-red', 'stone', 'Red brick', '9B4A35'),
+    FX('ext-brick-tan', 'stone', 'Tan or buff brick', 'C2A27E'),
+    FX('ext-stone-gray', 'stone', 'Gray stone', '8E8D89'),
+    FX('ext-stone-tan', 'stone', 'Tan or brown stone', 'A68E6E'),
+    FX('siding-white', 'siding', 'White siding', 'EEEDE8'),
+    FX('siding-light', 'siding', 'Light gray or beige siding', 'CFCBC2'),
+    FX('siding-mid', 'siding', 'Mid gray or taupe siding', '9B968D'),
+    FX('siding-dark', 'siding', 'Dark gray or charcoal siding', '4E5256'),
+    FX('siding-color', 'siding', 'Blue or green siding', '6E8490'),
+    FX('xtrim-white', 'trim', 'White trim', 'F3F2EE'),
+    FX('xtrim-cream', 'trim', 'Cream trim', 'EDE3CF'),
+    FX('xtrim-dark', 'trim', 'Black or dark trim', '2C2D2F'),
+    FX('win-white', 'window', 'White windows', 'F2F2EE'),
+    FX('win-almond', 'window', 'Almond or tan windows', 'D8CDB6'),
+    FX('win-bronze', 'window', 'Bronze windows', '4E4036'),
+    FX('win-black', 'window', 'Black windows', '2A2B2C'),
   ];
+  // short chip names for question 5 (the full names are used in warnings and summaries)
+  const SHORT = {
+    'floor-light-oak': 'Light oak', 'warm-wood': 'Honey oak', 'floor-cherry': 'Cherry / red oak', 'floor-walnut': 'Dark walnut', 'floor-gray-wood': 'Gray wood / LVP', 'floor-blond': 'Blond wood',
+    'floor-carpet-cream': 'Cream carpet', 'floor-carpet-beige': 'Beige carpet', 'floor-carpet-oatmeal': 'Oatmeal carpet', 'floor-carpet-gray': 'Gray carpet', 'floor-carpet-brown': 'Brown carpet',
+    'cool-tile': 'Gray tile', 'floor-white-tile': 'White tile', 'floor-travertine': 'Beige tile', 'floor-concrete': 'Concrete',
+    'trim-white': 'Bright white', 'trim-cream': 'Cream', 'trim-wood': 'Stained wood', 'trim-dark': 'Black',
+    'counter-white': 'White quartz', 'counter-gray': 'Gray stone', 'counter-black': 'Black granite', 'counter-beige': 'Beige granite', 'counter-butcher': 'Butcher block',
+    'white-cabinets': 'White', 'cab-wood': 'Wood', 'cab-gray': 'Gray', 'cab-dark': 'Black',
+    'sofa-gray': 'Gray', 'sofa-cream': 'Cream', 'sofa-leather': 'Brown leather', 'sofa-navy': 'Navy', 'sofa-green': 'Green', 'sofa-blush': 'Blush', 'sofa-mustard': 'Mustard', 'furn-light-wood': 'Light wood', 'dark-furniture': 'Dark wood',
+    brass: 'Brass', 'fix-chrome': 'Chrome', 'fix-black': 'Matte black', brick: 'Red brick', 'stone-gray': 'Gray stone', 'stone-tan': 'Tan stone',
+    'walls-white': 'White', 'walls-warm': 'Beige', 'walls-gray': 'Gray', 'walls-color': 'Blue / green', 'walls-dark': 'Dark',
+    'roof-black': 'Black', 'roof-gray': 'Gray', 'roof-brown': 'Brown', 'roof-red': 'Red tile', 'roof-green': 'Green metal',
+    'ext-brick-red': 'Red brick', 'ext-brick-tan': 'Tan brick', 'ext-stone-gray': 'Gray stone', 'ext-stone-tan': 'Tan stone',
+    'siding-white': 'White', 'siding-light': 'Light', 'siding-mid': 'Mid gray', 'siding-dark': 'Charcoal', 'siding-color': 'Blue / green',
+    'xtrim-white': 'White', 'xtrim-cream': 'Cream', 'xtrim-dark': 'Black', 'win-white': 'White', 'win-almond': 'Almond', 'win-bronze': 'Bronze', 'win-black': 'Black',
+  };
   const describeItem = hex => { const d = C.describe(hex); return { lab: d.lab, L: d.L, C: d.C, h: d.h, temp: d.temperature, ut: d.undertone, fam: d.family }; };
-  for (const f of FIXED_ITEMS) Object.assign(f, describeItem(f.hex));
+  for (const f of FIXED_ITEMS) Object.assign(f, describeItem(f.hex), { short: SHORT[f.id] || f.label });
   const FIXED_BY_ID = Object.fromEntries(FIXED_ITEMS.map(f => [f.id, f]));
   const FIXED = Object.fromEntries(FIXED_ITEMS.map(f => [f.id, f.label]));
-  const FIXED_KINDS = { floor: 'Floor', counter: 'Countertop', cabinet: 'Cabinets', furniture: 'Furniture or fabric', fixture: 'Fixture', stone: 'Stone or brick', roof: 'Roof', window: 'Windows', custom: 'Other' };
+  const FIXED_KINDS = { floor: 'Floor', carpet: 'Carpet', trim: 'Trim', counter: 'Countertop', cabinet: 'Cabinets', furniture: 'Furniture or fabric', fixture: 'Fixture', stone: 'Stone or brick', wall: 'Walls', siding: 'Siding', roof: 'Roof', window: 'Windows', custom: 'Other' };
+  const ids = kind => FIXED_ITEMS.filter(f => f.kind === kind).map(f => f.id);
+  const HARD_FLOORS = ['floor-light-oak', 'warm-wood', 'floor-cherry', 'floor-walnut', 'floor-gray-wood', 'floor-blond', 'cool-tile', 'floor-white-tile', 'floor-travertine', 'floor-concrete'];
+  // Question 5 groups. one: true means one pick per group (tap another to switch). Flags are yes/no extras.
+  // Floors are asked in two taps: the type first (wood, carpet, tile, concrete), then its color
+  const WOOD = ['floor-light-oak', 'warm-wood', 'floor-cherry', 'floor-walnut', 'floor-gray-wood', 'floor-blond'];
+  const TILE = ['cool-tile', 'floor-white-tile', 'floor-travertine'];
+  const FLOOR_TYPES = { wood: { label: 'Wood or LVP', ids: WOOD }, carpet: { label: 'Carpet', ids: ids('carpet') }, tile: { label: 'Tile or stone', ids: TILE }, concrete: { label: 'Concrete', ids: ['floor-concrete'] } };
+  const HARD_TYPES = { wood: FLOOR_TYPES.wood, tile: FLOOR_TYPES.tile, concrete: FLOOR_TYPES.concrete };
+  const FIXED_GROUPS = {
+    floor: { title: 'Floor', one: true, types: FLOOR_TYPES, ids: [...WOOD, ...ids('carpet'), ...TILE, 'floor-concrete'] },
+    floorHard: { title: 'Floor', one: true, types: HARD_TYPES, ids: HARD_FLOORS },
+    trim: { title: 'Trim, baseboards & crown', one: true, ids: ['trim-white', 'trim-cream', 'trim-wood', 'trim-dark'], flags: { trimPaint: 'Painting the trim too', crown: 'Has crown molding' } },
+    trimFlags: { title: 'Molding', flags: { crown: 'Has crown molding' } },
+    furniture: { title: 'Furniture & fabrics', max: 2, ids: ids('furniture') },
+    bedding: { title: 'Bedding & furniture', max: 2, ids: ids('furniture') },
+    fireplace: { title: 'Fireplace', one: true, ids: ['brick', 'stone-gray', 'stone-tan'] },
+    cabinets: { title: 'Cabinets', one: true, ids: ids('cabinet') },
+    vanity: { title: 'Vanity', one: true, ids: ids('cabinet') },
+    counters: { title: 'Countertops', one: true, ids: ids('counter') },
+    fixtures: { title: 'Faucets & hardware', one: true, ids: ids('fixture') },
+    walls: { title: 'Walls staying', one: true, ids: ids('wall') },
+    otherWalls: { title: 'Other walls', one: true, ids: ids('wall') },
+    roof: { title: 'Roof', one: true, ids: ids('roof') },
+    masonry: { title: 'Brick or stone', one: true, ids: ['ext-brick-red', 'ext-brick-tan', 'ext-stone-gray', 'ext-stone-tan'] },
+    siding: { title: 'Siding staying', one: true, ids: ids('siding') },
+    xtrim: { title: 'Trim staying', one: true, ids: ['xtrim-white', 'xtrim-cream', 'xtrim-dark'] },
+    windows: { title: 'Windows', one: true, ids: ids('window') },
+  };
+  // Which groups each job asks about, most important first
+  const SPACE_GROUPS = {
+    living: ['floor', 'trim', 'furniture', 'fireplace'],
+    dining: ['floor', 'trim', 'furniture'],
+    office: ['floor', 'trim', 'furniture'],
+    entry: ['floor', 'trim'],
+    basement: ['floor', 'trim', 'furniture'],
+    bedroom: ['floor', 'trim', 'bedding'],
+    kids: ['floor', 'trim', 'bedding'],
+    nursery: ['floor', 'trim', 'bedding'],
+    kitchen: ['cabinets', 'counters', 'floorHard', 'fixtures', 'trim'],
+    bathroom: ['vanity', 'counters', 'floorHard', 'fixtures', 'trim'],
+    accent: ['otherWalls', 'floor', 'furniture'],
+    ceiling: ['walls', 'trimFlags'],
+    trim: ['walls', 'floor', 'trimFlags'],
+    cabinets: ['counters', 'floorHard', 'fixtures', 'walls'],
+    ext_body: ['roof', 'masonry', 'xtrim', 'windows'],
+    ext_trim: ['roof', 'siding', 'windows'],
+    front_door: ['siding', 'xtrim', 'roof'],
+  };
+  const groupsFor = space => (SPACE_GROUPS[space] || SPACE_GROUPS.living).map(k => Object.assign({ key: k }, FIXED_GROUPS[k]));
+  const allowedFixed = space => new Set(groupsFor(space).flatMap(g => g.ids || []));
+  // Ceiling and trim jobs ask "what kind of white" instead of color families
+  const WHITE_TYPES = {
+    ceiling: { crisp: 'Crisp, bright white', warm: 'Soft, warm white', tint: 'A light tint of the walls', bold: 'Something bold' },
+    trim: { crisp: 'Crisp, bright white', warm: 'Soft, warm white', match: 'Match the walls', dark: 'Black or dark' },
+  };
   const LIGHTS = [
     { id: 'daylight', label: 'Daylight', cct: 6500, intensity: 1 },
     { id: 'north', label: 'North light', cct: 7600, intensity: 0.86 },
@@ -152,7 +244,7 @@
     { id: 'dim', label: 'Dim corner', cct: 3600, intensity: 0.55 },
   ];
 
-  const DEFAULT_ANSWERS = { space: 'living', size: 'medium', siding: 'wood', facing: 'unsure', amount: 'medium', bulbs: 'unsure', styles: [], families: [], depth: 'any', fixed: [], customFixed: [] };
+  const DEFAULT_ANSWERS = { space: 'living', size: 'medium', siding: 'wood', facing: 'unsure', amount: 'medium', bulbs: 'unsure', styles: [], families: [], depth: 'any', fixed: [], customFixed: [], whiteType: '', trimPaint: false, crown: false };
 
   // ---------------- data index ----------------
   let INDEX = { colors: [], byBrand: {}, brands: [], brandById: {} };
@@ -259,6 +351,16 @@
     if (sp.surface === 'ceiling' && depth !== 'deep') cmax = Math.min(cmax, 5);
     if (sp.surface === 'trim' && depth === 'any') cmax = Math.min(cmax, 7);
     if (sp.accent) cmax = Math.max(cmax, 45);
+    // "what kind of white" answers for ceilings and trim (set in recommend)
+    if (a.prefTemp === 'cool' && fams.length && fams.every(f => f === 'white')) { ideal = Math.max(ideal, 88); cmax = Math.min(cmax, 4.5); }
+    if (a.darkTrim) { cmin = 0; cmax = 12; } // black, charcoal, navy, bronze
+    if (a.tint) { lo = 58; hi = 90; ideal = 76; cmin = 3; cmax = 14; }
+    if (a.bold) { lo = 5; hi = 70; ideal = 35; cmin = 8; cmax = 70; }
+    if (a.matchWalls) {
+      const w = fixedItems(a).find(f => f.kind === 'wall');
+      if (w) { const wl = C.lrvFromHex(w.hex); lo = Math.max(2, wl - 12); hi = Math.min(95, wl + 12); ideal = wl; cmin = 0; cmax = Math.max(14, w.C + 6); }
+      else { lo = 40; hi = 88; ideal = 66; cmin = 0; cmax = 16; }
+    }
     if (cmin > cmax) cmin = Math.max(0, cmax - 10);
     return { lo, hi, ideal, cmin, cmax };
   }
@@ -350,6 +452,8 @@
       if (c.temp === 'cool' || c.ut === 'neutral') { u += 0.1; if (c.neutral) reasons.push('Its cooler balance keeps strong sun from turning it yellow'); }
     }
     if (a.facing === 'south' && a.amount !== 'high' && c.temp === 'cool') u += 0.05;
+    if (a.prefTemp === 'warm') { if (c.temp === 'warm') { u += 0.2; reasons.push('Soft, warm white as asked'); } else if (c.temp === 'cool') u -= 0.2; }
+    if (a.prefTemp === 'cool') { if (c.temp === 'cool' || c.ut === 'neutral') { u += 0.15; reasons.push('Crisp, clean white as asked'); } else if (c.temp === 'warm' && c.C > 3) u -= 0.2; }
     if (a.bulbs === 'warm' && c.temp === 'cool' && c.neutral) u -= 0.1;
     if (a.bulbs === 'daylight' && c.neutral && (c.ut === 'yellow' || c.ut === 'peach') && c.C > 6) u -= 0.1;
     const st = (a.styles || []).map(s => STYLES[s]).filter(Boolean);
@@ -380,31 +484,52 @@
     if (!items.length) return out;
     const warn = (level, title, text) => { if (!out.warnings.some(w => w.title === title)) out.warnings.push({ level, title, text }); };
     const neutralWall = c.neutral && c.fam !== 'black';
+    const sp = SPACES[a.space] || SPACES.living;
+    const whiteJob = sp.surface === 'trim' || sp.surface === 'ceiling';
     for (const e of items) {
       const name = lowerFirst(e.label);
-      const big = ['roof', 'stone'].includes(e.kind);
-      const strongWarm = e.temp === 'warm' && e.C >= (big ? 8 : 14) && e.L < 80;      // orange oak, cherry, brass, leather, brick, brown roof
+      // large surfaces (carpet, walls, siding, roof, masonry) set the room's undertone even when their color is soft
+      const big = ['roof', 'stone', 'carpet', 'wall', 'siding'].includes(e.kind);
+      const strongWarm = e.temp === 'warm' && e.C >= (big ? 8 : 14) && e.L < 82;      // orange oak, cherry, brass, leather, brick, beige carpet, brown roof
       const reddish = (e.h >= 345 || e.h < 45) && e.C >= 18;                          // cherry, red brick, terracotta
-      const orangeWood = e.h >= 45 && e.h < 85 && e.C >= 22 && e.L < 75;              // honey oak, butcher block, wood cabinets
+      const orangeWood = e.h >= 45 && e.h < 85 && e.C >= 22 && e.L < 75;              // honey oak, butcher block, wood cabinets, stained trim
       const coolGray = e.C < 7 && e.L > 25 && e.L < 90 && (e.temp !== 'warm' || e.ut === 'neutral'); // gray tile, LVP, carpet, concrete, gray stone
       const whiteSurface = e.L >= 88 && e.C < 6;
+      const creamSurface = e.L >= 88 && e.C >= 6 && e.C < 14 && e.temp === 'warm';
       if (neutralWall) {
-        if (strongWarm && isCoolUT(c) && c.C > 2.5) { out.score -= 0.12; warn('caution', `Clashes with the ${name}`, `Cool, blue-leaning neutrals fight with warm materials like the ${name} and make them look more orange.`); }
+        if (strongWarm && isCoolUT(c) && c.C > 2.5) { out.score -= e.C >= 14 ? 0.12 : 0.08; warn(e.C >= 14 ? 'caution' : 'heads-up', `Clashes with the ${name}`, `Cool, blue-leaning neutrals fight with warm materials like the ${name} and make them look more orange or yellow.`); }
         else if (strongWarm && c.temp === 'warm') { out.score += 0.05; out.reasons.push(`Warm undertone works with the ${name}`); }
         if (orangeWood && isYellowUT(c) && c.C > 9) { out.score -= 0.07; warn('heads-up', `Too much yellow with the ${name}`, `A yellow-leaning beige next to the ${name} can make the whole room read orange. A greige or a softer white balances it.`); }
         if (reddish && c.ut === 'pink' && c.C > 3) { out.score -= 0.1; warn('heads-up', `Pink shows next to the ${name}`, `Red tones in the ${name} pull the pink out of this color. Hold the chip against it to check.`); }
         if (coolGray && isYellowUT(c) && c.C > 6) { out.score -= 0.08; warn('heads-up', `Yellow next to the ${name}`, `Yellow-leaning neutrals next to the cool ${name} can make both look off. A balanced or cooler neutral is safer.`); }
         else if (coolGray && (c.temp === 'cool' || c.ut === 'neutral')) { out.score += 0.04; out.reasons.push(`Cool balance works with the ${name}`); }
       }
-      if (whiteSurface && c.fam === 'white') {
+      // whites side by side (bright trim or quartz next to a creamy white, or cream trim next to a stark white)
+      if ((whiteSurface || creamSurface) && (c.fam === 'white' || (c.L > 86 && c.C < 12))) {
         const d = C.deltaE2000(c.lab, e.lab);
-        if (d >= 1.5 && d < 6 && ((isYellowUT(c) && c.C > 4) || c.lab[2] - e.lab[2] > 3)) { out.score -= 0.06; warn('heads-up', `Creamy next to the ${name}`, `Next to the ${name}, this white can look dingy or yellow. Either match the whites or choose a clearly different color.`); }
+        if (d >= 1.5 && d < 7) {
+          if (c.lab[2] - e.lab[2] > 3) { out.score -= 0.06; warn('heads-up', `Creamy next to the ${name}`, `Next to the ${name}, this white can look dingy or yellow. Either match the whites or choose a clearly different color.`); }
+          else if (e.lab[2] - c.lab[2] > 3) { out.score -= 0.05; warn('heads-up', `Stark next to the ${name}`, `Next to the warmer ${name}, this cleaner white can look stark or bluish and make the trim look yellowed. Match the whites or pick a warmer one.`); }
+        }
+      }
+      // painting trim or a ceiling against walls that are staying: keep the white in the walls' temperature family
+      if (whiteJob && e.kind === 'wall' && c.fam === 'white') {
+        if (e.temp === 'warm' && isCoolUT(c) && c.C > 2) { out.score -= 0.07; warn('heads-up', `Cool white against the ${name}`, `A blue-leaning white next to warm walls can look stark. A white with a little warmth ties in better.`); }
+        else if (e.temp !== 'warm' && isYellowUT(c) && c.C > 5) { out.score -= 0.07; warn('heads-up', `Creamy white against the ${name}`, `A yellow-leaning white next to cooler walls can look dingy. A cleaner white sits better.`); }
+        else { out.score += 0.04; out.reasons.push(`White suits the ${name}`); }
+      }
+      // a front door has to stand out from the siding
+      if (sp.surface === 'door' && e.kind === 'siding') {
+        if (Math.abs(c.L - e.L) < 12 && (hueDiff(c.h, e.h) < 50 || c.C < 12)) { out.score -= 0.1; warn('heads-up', `Won’t stand out from the ${name}`, `The door is close in lightness to the ${name}, so it won’t pop from the street. Go much darker, lighter or more colorful.`); }
+        else if (Math.abs(c.L - e.L) >= 25 || c.C > 30) { out.score += 0.05; out.reasons.push(`Stands out against the ${name}`); }
       }
       if (c.C >= 10 && e.C >= 18 && hueDiff(c.h, e.h) >= 120) { out.score += 0.05; out.reasons.push(`Complements the ${name}`); }
-      if (Math.abs(c.L - e.L) < 7 && ['floor', 'counter', 'cabinet', 'roof', 'stone'].includes(e.kind) && c.C < 25 && e.C < 25 && hueDiff(c.h, e.h) < 40)
+      if (Math.abs(c.L - e.L) < 7 && ['floor', 'carpet', 'counter', 'cabinet', 'roof', 'stone', 'trim', 'siding'].includes(e.kind) && c.C < 25 && e.C < 25 && hueDiff(c.h, e.h) < 40)
         warn('tip', `Blends with the ${name}`, `This is close in lightness and tone to the ${name}, so the two will read as one surface. Fine for a calm look; go lighter or darker for definition.`);
-      if (c.lrv < 15 && e.L < 32 && ['furniture', 'cabinet', 'floor', 'counter'].includes(e.kind))
+      if (c.lrv < 15 && e.L < 32 && ['furniture', 'cabinet', 'floor', 'carpet', 'counter', 'trim'].includes(e.kind))
         warn('tip', `Dark on dark with the ${name}`, `A deep color next to the ${name} has little contrast. Add lighter accents or good lighting so the space doesn’t feel heavy.`);
+      if (e.kind === 'carpet' && c.lrv >= 75 && e.L < 60)
+        warn('tip', `Carpet darkens the lower wall`, `The ${name} reflects its own color onto the bottom of the walls, so a very light wall can look a touch warmer and darker near the floor.`);
     }
     out.score = Math.max(-0.3, Math.min(0.15, out.score));
     out.reasons = out.reasons.filter((x, i, arr) => arr.indexOf(x) === i);
@@ -498,10 +623,17 @@
   const LEVEL_RANK = { caution: 0, 'heads-up': 1, tip: 2 };
   const sortWarnings = list => list.slice().sort((x, y) => LEVEL_RANK[x.level] - LEVEL_RANK[y.level]);
 
-  function roomTips(a, s) {
+  function roomTips(a, s, top) {
     a = Object.assign({}, DEFAULT_ANSWERS, a || {});
     const sp = SPACES[a.space] || SPACES.living; const tips = [];
     tips.push({ title: 'Finish', text: sp.sheen + '.' });
+    if (sp.surface === 'trim') tips.push({ title: 'Baseboards, casing & crown', text: 'Use one color for baseboards, door and window casing, and crown so the trim reads as one. Semi-Gloss on baseboards stands up to scuffs and mopping.' });
+    if (a.trimPaint && sp.kind === 'interior' && !sp.surface && top) {
+      const w = pairings(top).find(p => p.role === 'Trim & ceiling');
+      if (w) tips.push({ title: 'Trim & baseboards', text: `Pair with ${w.color.name} (${codeLabel(w.color)}) on baseboards, casing and doors in Semi-Gloss or Satin.` });
+    }
+    if (a.crown) tips.push({ title: 'Crown molding', text: 'Paint crown molding the trim color for a crisp outline, or the ceiling color to make a low ceiling feel taller.' });
+    if ((a.fixed || []).includes('trim-wood') && !a.trimPaint) tips.push({ title: 'Stained trim', text: 'Stained wood trim is warm and orange-leaning, so the picks lean toward warm and earthy colors. Cool blue-grays are flagged.' });
     if (s && s.inStoreSamples) tips.push({ title: 'Samples', text: 'Pull the chips from the display and tape them up on two walls, one near the window and one away from it.' });
     else tips.push({ title: 'Samples', text: 'Suggest a sample pot or peel-and-stick sample and checking it on two walls at different times of day.' });
     if (sp.wet) tips.push({ title: 'Moisture', text: 'Use a mildew-resistant kitchen and bath paint and allow full cure before showers or cooking steam.' });
@@ -699,14 +831,22 @@
     if (fa != null && fa === 0) fam *= 0.3; // color families were picked and this color isn't in any of them
     const sp = SPACES[a.space] || SPACES.living;
     // ceilings and trim with no color preference: whites first
-    if ((sp.surface === 'ceiling' || sp.surface === 'trim') && fa == null && a.depth !== 'deep' && a.depth !== 'mid')
+    if ((sp.surface === 'ceiling' || sp.surface === 'trim') && fa == null && a.depth !== 'deep' && a.depth !== 'mid' && !a.tint && !a.bold && !a.matchWalls)
       fam = Math.min(fam, isWhiteish(c) ? 1 : c.neutral && c.C < 8 ? 0.45 : 0.1) + (isWhiteish(c) ? 0.2 : 0);
+    // a front door is the place for color when nothing else was asked for
+    if (sp.surface === 'door' && fa == null && sa == null) fam = c.C > 25 ? 0.9 : c.C > 12 ? 0.7 : c.lrv < 10 ? 0.75 : 0.45;
+    if (a.tint) fam = c.fam === 'white' ? 0.3 : (c.C >= 3 && c.C <= 14 ? 0.95 : 0.4);
+    if (a.bold) fam = c.C > 25 ? 1 : c.C > 15 ? 0.6 : 0.2;
+    if (a.matchWalls) { const w = fixedItems(a).find(f => f.kind === 'wall'); fam = w ? Math.max(0, 1 - C.deltaE2000(c.lab, w.lab) / 14) : (c.neutral ? 0.8 : 0.3); }
     const d = depthFit(c, t);
     const ch = chromaFit(c, t);
     const lf = lightFit(c, a);
     const fx = (a.fixed && a.fixed.length) || (a.customFixed && a.customFixed.length) ? fixedEffects(c, a) : null;
     let score = 0.40 * fam + 0.27 * d + 0.13 * ch + 0.15 * lf.score + (fx ? fx.score : 0);
     if (c.flags & F.POPULAR) score += (sp.surface === 'ceiling' || sp.surface === 'trim' || !(a.styles || []).length) ? 0.07 : 0.05;
+    // "crisp" or "soft, warm" white was asked for: make that the deciding factor among whites
+    if (a.prefTemp === 'cool') score += c.temp === 'warm' ? -0.18 : 0.04;
+    if (a.prefTemp === 'warm') score += c.temp === 'warm' ? 0.06 : c.temp === 'cool' ? -0.18 : -0.04;
     if (sp.surface === 'body' && a.siding === 'vinyl' && c.lrv < 45) score -= 0.4;
     return { score, fam, depth: d, chroma: ch, light: lf.score, lightReasons: lf.reasons.concat(fx ? fx.reasons.slice(0, 2) : []) };
   }
@@ -757,6 +897,17 @@
       notices.push({ level: 'caution', title: 'Dark colors held back for vinyl', text: 'Dark colors absorb heat and can warp vinyl siding, so these are the deepest safe choices. Many brands make vinyl-safe formulas for darker colors; check the brand and the siding maker’s limit before going darker.' });
     }
     if (s.storeOnly && s.storeBrand && s.brands && s.brands[s.storeBrand] === false) notices.push({ level: 'heads-up', title: 'Store brand is turned off', text: 'Turn the store brand back on in settings to see its colors.' });
+    // ceilings and trim answer "what kind of white" instead of color families
+    if ((spc.surface === 'ceiling' || spc.surface === 'trim') && a.whiteType) {
+      const w = a.whiteType;
+      if (w === 'crisp') Object.assign(a, { families: ['white'], depth: 'light', prefTemp: 'cool' });
+      if (w === 'warm') Object.assign(a, { families: ['white'], depth: 'light', prefTemp: 'warm' });
+      if (w === 'tint') Object.assign(a, { families: [], depth: 'light', tint: true });
+      if (w === 'bold') Object.assign(a, { families: [], depth: 'any', bold: true });
+      if (w === 'dark') Object.assign(a, { families: ['dark'], depth: 'deep', darkTrim: true });
+      if (w === 'match') Object.assign(a, { families: [], depth: 'any', matchWalls: true });
+      if (w === 'match' && !fixedItems(a).some(f => f.kind === 'wall')) notices.push({ level: 'heads-up', title: 'Pick the wall color to match', text: 'Choose the walls staying in question 5 so the trim can match them. For now these are versatile light neutrals.' });
+    }
     const t = target(a);
     let pool = INDEX.colors.filter(c => allowedColor(c, a, s));
     if (s.storeBrand && s.storeOnly) pool = pool.filter(c => c.brand === s.storeBrand);
@@ -804,7 +955,7 @@
     }));
     if (fams.length && results.length && results.every(r => Math.max(...fams.map(f => familyMatch(r.color, f))) < 0.5))
       notices.push({ level: 'heads-up', title: 'Nothing matched those color families here', text: 'These are the closest fits for the rest of the answers. Try different colors or a different depth.' });
-    return { answers: original, target: t, results, tips: roomTips(a, s), notices, poolSize: pool.length };
+    return { answers: original, target: t, results, tips: roomTips(a, s, results[0] && results[0].color), notices, poolSize: pool.length };
   }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
@@ -922,7 +1073,7 @@
     return { brands, errors };
   }
 
-  const api = { F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
+  const api = { F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
     init, addBrand, getIndex, findColor, codeLabel, target, familyMatch, styleMatch, scoreColor, warningsFor, roomTips, recommend,
     matchesFor, pairings, search, lightForAnswers, parseCustomCsv, allowedColor };
   root.CG = root.CG || {};

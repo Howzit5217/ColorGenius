@@ -267,6 +267,43 @@ test('what is staying: floors, counters, furniture, roof and custom items change
   assert.notDeepEqual(plain.results.map(r => r.color.id), withOak.results.map(r => r.color.id), 'materials change the picks');
   assert.ok(E.FIXED_ITEMS.length >= 40 && E.FIXED_ITEMS.every(f => /^[0-9A-F]{6}$/.test(f.hex) && f.label && f.kind));
 });
+test('question 5 adapts to the job, and every listed item exists', () => {
+  const titles = s => E.groupsFor(s).map(g => g.title);
+  assert.ok(titles('bedroom').includes('Bedding & furniture') && titles('bedroom').includes('Floor'));
+  assert.ok(E.groupsFor('bedroom').find(g => g.key === 'floor').ids.some(id => id.includes('carpet')), 'bedrooms offer carpet');
+  assert.ok(!E.groupsFor('kitchen').find(g => g.key === 'floorHard').ids.some(id => id.includes('carpet')), 'kitchens do not');
+  assert.ok(titles('kitchen').includes('Countertops') && !titles('kitchen').includes('Bedding & furniture'));
+  assert.ok(titles('bathroom').includes('Vanity'));
+  assert.ok(titles('front_door').includes('Siding staying'));
+  assert.ok(!titles('trim').includes('Trim, baseboards & crown'), 'the trim job does not ask about existing trim');
+  assert.ok(E.groupsFor('living').find(g => g.key === 'trim').flags.crown);
+  for (const space of Object.keys(E.SPACES)) for (const g of E.groupsFor(space)) for (const id of g.ids || []) assert.ok(E.FIXED_ITEMS.some(f => f.id === id), `${space}: ${id}`);
+  assert.ok(E.allowedFixed('kitchen').has('counter-white') && !E.allowedFixed('kitchen').has('roof-black'));
+});
+test('ceiling and trim: kind of white, matching walls, crown and trim tips', () => {
+  const crisp = rec({ space: 'ceiling', whiteType: 'crisp' });
+  for (const x of crisp.results) assert.ok(x.color.fam === 'white' && x.color.temp !== 'warm', x.color.name);
+  const warm = rec({ space: 'trim', whiteType: 'warm' });
+  assert.ok(warm.results.filter(x => x.color.temp === 'warm').length >= 4);
+  const dark = rec({ space: 'trim', whiteType: 'dark' });
+  for (const x of dark.results) assert.ok(x.color.lrv < 15 && x.color.C < 14, x.color.name);
+  const match = rec({ space: 'trim', whiteType: 'match', fixed: ['walls-gray'] });
+  const wall = E.FIXED_ITEMS.find(f => f.id === 'walls-gray');
+  assert.ok(C.deltaE2000(match.results[0].color.lab, wall.lab) < 8, 'matches the walls');
+  assert.ok(rec({ space: 'trim', whiteType: 'match' }).notices.some(n => /wall color/i.test(n.title)));
+  assert.ok(rec({ space: 'living', crown: true }).tips.some(t => /crown/i.test(t.title)));
+  assert.ok(rec({ space: 'living', trimPaint: true }).tips.some(t => /trim/i.test(t.title)));
+  assert.ok(rec({ space: 'trim' }).tips.some(t => /baseboards/i.test(t.title)));
+  const creamy = E.getIndex().byBrand.sw.find(c => c.fam === 'white' && c.ut === 'yellow' && c.C > 5);
+  assert.ok(E.warningsFor(creamy, { space: 'living', fixed: ['trim-white'] }).some(w => /creamy/i.test(w.title)));
+  const stark = E.getIndex().byBrand.sw.find(c => c.fam === 'white' && c.C < 3 && c.L > 93);
+  assert.ok(E.warningsFor(stark, { space: 'living', fixed: ['trim-cream'] }).some(w => /stark/i.test(w.title)));
+  const gray = E.getIndex().byBrand.sw.find(c => c.neutral && c.fam === 'gray' && c.ut === 'blue' && c.C > 3);
+  assert.ok(E.warningsFor(gray, { space: 'bedroom', fixed: ['floor-carpet-beige'] }).some(w => /carpet/i.test(w.title)), 'carpet sets the undertone');
+  const door = rec({ space: 'front_door', fixed: ['siding-dark'] });
+  const siding = E.FIXED_ITEMS.find(f => f.id === 'siding-dark');
+  assert.ok(door.results.every(x => Math.abs(x.color.L - siding.L) >= 12 || x.color.C > 20), 'doors stand out from the siding');
+});
 test('offline file list matches the brand files', () => {
   const files = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/files.json'), 'utf8'));
   assert.deepEqual(files.sort(), window.CG_BRANDS.map(b => `data/colors/${b.id}.js`).sort());

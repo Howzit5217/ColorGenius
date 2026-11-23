@@ -37,7 +37,7 @@
   const state = {
     view: 'find', step: 0, answers: clone(E.DEFAULT_ANSWERS), results: null,
     gridLight: 'none', roomLight: 'daylight', detailId: null, detailStack: [], query: '',
-    screen: detectScreen(), stylePalettes: {}, ready: false,
+    screen: detectScreen(), stylePalettes: {}, ready: false, ftype: {},
   };
   const reduced = () => settings.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -150,6 +150,18 @@
     green: ['C9D3BE', '8FA588', '4E6650'], blue: ['C9D6E0', '7F9BB2', '2F4A66'], earthy: ['D9A783', 'B5653F', '7A4A33'],
     'pink-purple': ['EBCFCF', 'C79AA6', '6E4D6A'], dark: ['3A3D42', '2B3A36', '1F2329'], bold: ['D8443A', 'E3A02B', '1F6F8B'],
   };
+  // Question 5 chips. Floors ask the type first (wood, carpet, tile, concrete), then show that type's colors.
+  const itemChip = (f, g, a) => `<button type="button" class="mchip" data-fixed="${f.id}" data-group="${g.key}" aria-pressed="${a.fixed.includes(f.id)}" aria-label="${esc(f.label)}"><span class="msw" style="background:${matBg(f)}"></span>${esc(f.short)}</button>`;
+  function typeOf(g, a) {
+    if (state.ftype[g.key]) return state.ftype[g.key];
+    return Object.keys(g.types).find(k => g.types[k].ids.some(id => a.fixed.includes(id))) || '';
+  }
+  function typeRows(g, a) {
+    const cur = typeOf(g, a);
+    const t = cur && g.types[cur];
+    return `<div class="mchips">${Object.entries(g.types).map(([k, tp]) => { const f = E.FIXED_ITEMS.find(x => x.id === tp.ids[Math.min(1, tp.ids.length - 1)]); return `<button type="button" class="mchip mtype" data-ftype="${k}" data-group="${g.key}" aria-pressed="${cur === k}" aria-expanded="${cur === k && tp.ids.length > 1}"><span class="msw" style="background:${matBg(f)}"></span>${esc(tp.label)}</button>`; }).join('')}</div>
+      ${t && t.ids.length > 1 ? `<div class="msub"><p class="msub-label">Which ${esc(t.label.split(' ')[0].toLowerCase())} color?</p><div class="mchips">${t.ids.map(id => itemChip(E.FIXED_ITEMS.find(x => x.id === id), g, a)).join('')}</div></div>` : ''}`;
+  }
   // A small material sample for each "what's staying" option: planks, tile joints, stone speckle, shingles, metal sheen.
   function matBg(f) {
     const c = '#' + f.hex;
@@ -180,6 +192,159 @@
   const check = '<span class="tick" aria-hidden="true"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M2.5 6.2l2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
   const optBtn = (attrs, pressed, inner) => `<button type="button" class="opt" ${attrs} aria-pressed="${pressed}">${check}${inner}</button>`;
   const seg = (name, map, value, label) => `<div class="seg" role="group" aria-label="${esc(label)}">${Object.entries(map).map(([k, v]) => `<button type="button" data-seg="${name}" data-val="${k}" aria-pressed="${value === k}">${esc(v)}</button>`).join('')}</div>`;
+
+  // ================================================================
+  // IN-HOUSE CONTROLS: dropdown menus and color picker (no browser defaults)
+  // ================================================================
+  const chevron = '<svg class="cg-chev" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 5.5L7 9l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const SELECTS = {};   // id -> { options: [[value, label]], value, onChange }
+  const COLORS = {};    // id -> { hex, onChange }
+  // Defaults for the controls inside question 5 (their values live in state)
+  SELECTS.cfKind = { onChange: v => { state.cfKind = v; } };
+  COLORS.cfColor = { onChange: hex => { state.cfColor = hex; } };
+
+  function selectHtml(id, options, value, label) {
+    const cur = options.find(o => String(o[0]) === String(value)) || options[0];
+    SELECTS[id] = Object.assign(SELECTS[id] || {}, { options, value: cur[0] });
+    return `<button type="button" class="cg-select" id="${id}" data-select="${id}" aria-haspopup="listbox" aria-expanded="false" aria-label="${esc(label)}: ${esc(cur[1])}"><span class="cg-select-label">${esc(cur[1])}</span>${chevron}</button>`;
+  }
+  function colorHtml(id, hex, label) {
+    hex = String(hex || '8A6F55').replace('#', '').toUpperCase();
+    COLORS[id] = Object.assign(COLORS[id] || {}, { hex });
+    return `<button type="button" class="cg-color" id="${id}" data-colorpick="${id}" aria-haspopup="dialog" aria-label="${esc(label)}: #${hex}"><span class="cg-color-sw" style="background:#${hex}"></span><span class="cg-color-hex mono">#${hex}</span>${chevron}</button>`;
+  }
+
+  // one floating panel shared by menus and the color picker
+  let pop = null, popAnchor = null, popKind = '';
+  function closePop(focusBack) {
+    if (!pop) return;
+    const el = pop, anchor = popAnchor;
+    pop = null; popAnchor = null; popKind = '';
+    if (anchor) anchor.setAttribute('aria-expanded', 'false');
+    if (reduced()) el.remove(); else { el.classList.add('out'); setTimeout(() => el.remove(), 160); }
+    if (focusBack && anchor && document.contains(anchor)) anchor.focus({ preventScroll: true });
+  }
+  function placePop(el, anchor) {
+    const r = anchor.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    const w = Math.min(Math.max(r.width, el.offsetWidth), vw - 24);
+    let left = Math.min(Math.max(12, r.left), vw - w - 12);
+    const below = vh - r.bottom, above = r.top;
+    const h = el.offsetHeight;
+    const up = below < h + 16 && above > below;
+    el.style.left = left + 'px';
+    el.style.minWidth = Math.min(r.width, vw - 24) + 'px';
+    el.style.top = (up ? Math.max(12, r.top - h - 6) : Math.min(vh - h - 12, r.bottom + 6)) + 'px';
+    el.style.transformOrigin = up ? 'bottom left' : 'top left';
+  }
+  function openSelect(anchor) {
+    const id = anchor.dataset.select, cfg = SELECTS[id]; if (!cfg) return;
+    if (pop && popAnchor === anchor) { closePop(true); return; }
+    closePop();
+    const el = document.createElement('div');
+    el.className = 'cg-pop cg-menu'; el.setAttribute('role', 'listbox'); el.setAttribute('aria-label', anchor.getAttribute('aria-label') || '');
+    el.innerHTML = cfg.options.map(([v, l]) => `<button type="button" role="option" class="cg-opt" data-value="${esc(v)}" aria-selected="${String(v) === String(cfg.value)}"><span>${esc(l)}</span><svg class="cg-check" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7.2l2.6 2.6L11 4.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`).join('');
+    document.body.appendChild(el);
+    pop = el; popAnchor = anchor; popKind = 'select';
+    anchor.setAttribute('aria-expanded', 'true');
+    placePop(el, anchor);
+    const sel = $('[aria-selected="true"]', el) || $('.cg-opt', el);
+    sel.focus({ preventScroll: true }); sel.scrollIntoView({ block: 'nearest' });
+    el.addEventListener('click', e => { const o = e.target.closest('.cg-opt'); if (o) chooseOption(id, o.dataset.value); });
+    el.addEventListener('keydown', e => {
+      const opts = $$('.cg-opt', el); const i = opts.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); (opts[i + 1] || opts[0]).focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); (opts[i - 1] || opts[opts.length - 1]).focus(); }
+      else if (e.key === 'Home') { e.preventDefault(); opts[0].focus(); }
+      else if (e.key === 'End') { e.preventDefault(); opts[opts.length - 1].focus(); }
+      else if (e.key === 'Tab') closePop();
+      else if (e.key.length === 1 && /\S/.test(e.key)) { const k = e.key.toLowerCase(); const hit = opts.slice(i + 1).concat(opts.slice(0, i + 1)).find(o => o.textContent.trim().toLowerCase().startsWith(k)); if (hit) hit.focus(); }
+    });
+  }
+  function chooseOption(id, value) {
+    const cfg = SELECTS[id]; const opt = cfg.options.find(o => String(o[0]) === String(value)); if (!opt) return;
+    cfg.value = opt[0];
+    const btn = document.getElementById(id);
+    if (btn) { $('.cg-select-label', btn).textContent = opt[1]; btn.setAttribute('aria-label', (btn.getAttribute('aria-label') || '').split(':')[0] + ': ' + opt[1]); }
+    closePop(true);
+    if (cfg.onChange) cfg.onChange(opt[0]);
+  }
+
+  // ---- color picker: shade square, hue bar, hex box, quick swatches ----
+  const QUICK = ['F2F1EC', 'D9CEBB', 'C8A57A', 'B5763C', '8C4630', '4A3326', '9A9894', '8E9091', '2F3E5C', '4F6B4C', 'D6A79D', '2B2B2C'];
+  function hexToHsv(hex) {
+    const [r, g, b] = C.hexToRgb(hex).map(v => v / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    let h = 0;
+    if (d) { if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+    return [h, mx ? d / mx : 0, mx];
+  }
+  function hsvToHex(h, s, v) {
+    const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+    const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return C.rgbToHex([(r + m) * 255, (g + m) * 255, (b + m) * 255]);
+  }
+  function openColor(anchor) {
+    const id = anchor.dataset.colorpick, cfg = COLORS[id]; if (!cfg) return;
+    if (pop && popAnchor === anchor) { closePop(true); return; }
+    closePop();
+    let [h, s, v] = hexToHsv(cfg.hex);
+    const el = document.createElement('div');
+    el.className = 'cg-pop cg-picker'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Pick a color');
+    el.innerHTML = `
+      <div class="cp-sv" tabindex="0" aria-label="Shade: use arrow keys"><span class="cp-sv-dot"></span></div>
+      <div class="cp-hue" tabindex="0" aria-label="Hue: use arrow keys"><span class="cp-hue-dot"></span></div>
+      <div class="cp-row"><span class="cp-prev"></span><label class="cp-hex"><span>#</span><input type="text" class="cg-input mono" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Hex color"></label><button type="button" class="btn small primary cp-done">Done</button></div>
+      <div class="cp-quick">${QUICK.map(q => `<button type="button" class="cp-q" data-q="${q}" style="background:#${q}" aria-label="#${q}"></button>`).join('')}</div>`;
+    document.body.appendChild(el);
+    pop = el; popAnchor = anchor; popKind = 'color';
+    anchor.setAttribute('aria-expanded', 'true');
+    const sv = $('.cp-sv', el), hue = $('.cp-hue', el), hexIn = $('.cp-hex input', el);
+    const draw = (fromInput) => {
+      const hex = hsvToHex(h, s, v);
+      sv.style.backgroundColor = '#' + hsvToHex(h, 1, 1);
+      $('.cp-sv-dot', el).style.left = (s * 100) + '%'; $('.cp-sv-dot', el).style.top = ((1 - v) * 100) + '%';
+      $('.cp-hue-dot', el).style.left = (h / 360 * 100) + '%';
+      $('.cp-prev', el).style.background = '#' + hex;
+      if (!fromInput) hexIn.value = hex;
+      cfg.hex = hex;
+      const sw = $('.cg-color-sw', anchor), tx = $('.cg-color-hex', anchor);
+      if (sw) sw.style.background = '#' + hex; if (tx) tx.textContent = '#' + hex;
+      if (cfg.onChange) cfg.onChange(hex, false);
+    };
+    const drag = (node, fn) => {
+      node.addEventListener('pointerdown', e => {
+        e.preventDefault(); node.setPointerCapture(e.pointerId); node.focus({ preventScroll: true });
+        const move = ev => { const r = node.getBoundingClientRect(); fn(Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height))); draw(); };
+        move(e);
+        const up = () => { node.removeEventListener('pointermove', move); node.removeEventListener('pointerup', up); node.removeEventListener('pointercancel', up); };
+        node.addEventListener('pointermove', move); node.addEventListener('pointerup', up); node.addEventListener('pointercancel', up);
+      });
+    };
+    drag(sv, (x, y) => { s = x; v = 1 - y; });
+    drag(hue, x => { h = Math.min(359.9, x * 360); });
+    sv.addEventListener('keydown', e => { const st = e.shiftKey ? 0.1 : 0.02; if (e.key === 'ArrowLeft') s = Math.max(0, s - st); else if (e.key === 'ArrowRight') s = Math.min(1, s + st); else if (e.key === 'ArrowUp') v = Math.min(1, v + st); else if (e.key === 'ArrowDown') v = Math.max(0, v - st); else return; e.preventDefault(); draw(); });
+    hue.addEventListener('keydown', e => { const st = e.shiftKey ? 20 : 4; if (e.key === 'ArrowLeft') h = Math.max(0, h - st); else if (e.key === 'ArrowRight') h = Math.min(359.9, h + st); else return; e.preventDefault(); draw(); });
+    hexIn.addEventListener('input', () => { const m = hexIn.value.replace('#', '').match(/^[0-9a-f]{6}$/i); if (m) { [h, s, v] = hexToHsv(m[0]); draw(true); } });
+    el.addEventListener('click', e => {
+      const q = e.target.closest('.cp-q'); if (q) { [h, s, v] = hexToHsv(q.dataset.q); draw(); return; }
+      if (e.target.closest('.cp-done')) { if (cfg.onChange) cfg.onChange(cfg.hex, true); closePop(true); }
+    });
+    draw();
+    placePop(el, anchor);
+    sv.focus({ preventScroll: true });
+  }
+
+  document.addEventListener('click', e => {
+    const s = e.target.closest('[data-select]'); if (s) { openSelect(s); return; }
+    const c = e.target.closest('[data-colorpick]'); if (c) { openColor(c); return; }
+    if (pop && !e.target.closest('.cg-pop')) closePop();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && pop) { e.stopImmediatePropagation(); closePop(true); } }, true);
+  window.addEventListener('resize', () => closePop());
+  document.addEventListener('scroll', e => { if (pop && !(e.target instanceof Element && e.target.closest('.cg-pop'))) closePop(); }, true);
+  // remember whether "Add something else" is open across re-renders
+  document.addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('custom-more')) state.customOpen = e.target.open; }, true);
 
   function renderFind() {
     if (state.results) return renderResults();
@@ -259,6 +424,16 @@
         </div>`;
     }
     if (id === 'color') {
+      // ceilings and trim: one quick "what kind of white" choice instead of color families
+      const wt = E.WHITE_TYPES[sp.surface];
+      if (wt) {
+        const sample = { crisp: ['F4F5F3', 'EEF0EF', 'E6E9E9'], warm: ['F4EFE4', 'EFE7D6', 'E9DFCB'], tint: ['E4E7E0', 'E9E1D9', 'DDE3E6'], bold: ['2F4A66', '6E8F7A', 'B5653F'], match: ['D6CCBC', 'C2C4C3', '9DAEA9'], dark: ['2B2C2E', '2F3B4C', '3E3A35'] };
+        return `
+        <div class="step-head"><p class="eyebrow">Question 4</p><h1>What kind of ${sp.surface === 'ceiling' ? 'ceiling' : 'trim'} color?</h1><p>One tap. Skip to get the most popular whites.</p></div>
+        <div class="options wide">
+          ${Object.entries(wt).map(([k, v]) => optBtn(`data-white="${k}"`, a.whiteType === k, `<span class="opt-title">${esc(v)}</span><span class="chips">${sample[k].map(h => `<span style="background:#${h}"></span>`).join('')}</span>`)).join('')}
+        </div>`;
+      }
       return `
         <div class="step-head"><p class="eyebrow">Question 4</p><h1>Which colors?</h1><p>Pick any that apply, or skip to let the style decide.</p></div>
         <div class="options">
@@ -268,21 +443,28 @@
     }
     if (id === 'room') {
       const ext = sp.kind === 'exterior';
-      const items = E.FIXED_ITEMS.filter(f => f.where === (ext ? 'exterior' : 'interior'));
-      const groups = items.map(f => f.group).filter((g, i, arr) => arr.indexOf(g) === i);
+      const groups = E.groupsFor(a.space);
       const custom = a.customFixed || [];
-      const kinds = Object.entries(E.FIXED_KINDS).filter(([k]) => (ext ? ['roof', 'stone', 'window', 'custom'] : ['floor', 'counter', 'cabinet', 'furniture', 'fixture', 'stone', 'custom']).includes(k));
+      const kinds = Object.entries(E.FIXED_KINDS).filter(([k]) => (ext ? ['roof', 'stone', 'siding', 'trim', 'window', 'custom'] : ['floor', 'carpet', 'trim', 'counter', 'cabinet', 'furniture', 'fixture', 'stone', 'wall', 'custom']).includes(k));
+      const where = { ceiling: 'around the ceiling', trim: 'around the trim', cabinets: 'around the cabinets', accent: 'in the room' }[a.space] || (ext ? '' : 'in the ' + sp.label.toLowerCase());
       return `
-        <div class="step-head"><p class="eyebrow">Question 5</p><h1>${ext ? 'What else is on the house?' : 'Anything staying in the room?'}</h1><p>${ext ? 'The roof, brick or stone, and window colors change which body and trim colors work. Pick any that apply.' : 'Floors, counters, furniture and fixtures change which undertones work. Pick any that apply.'}</p></div>
-        ${groups.map(g => `<div class="group"><p class="section-title">${esc(g)}</p><div class="options">${items.filter(f => f.group === g).map(f => `<button type="button" class="opt material" data-fixed="${f.id}" aria-pressed="${a.fixed.includes(f.id)}">${check}<span class="mat" style="background:${matBg(f)}"></span><span class="opt-title">${esc(f.label)}</span></button>`).join('')}</div></div>`).join('')}
-        <div class="group"><p class="section-title">Something else</p>
-          <div class="custom-add">
-            <input type="text" id="cfLabel" maxlength="40" placeholder="Name it, e.g. area rug" aria-label="Item name" autocomplete="off">
-            <select id="cfKind" aria-label="What it is">${kinds.map(([k, v]) => `<option value="${k}" ${k === 'custom' ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>
-            <input type="color" id="cfColor" value="#8a6f55" aria-label="Its color">
-            <button type="button" class="btn small" data-act="add-custom">Add</button>
-          </div>
-          ${custom.length ? `<div class="custom-list">${custom.map((x, i) => `<span class="custom-chip"><i style="background:#${esc(x.hex)}"></i>${esc(x.label)}<button type="button" data-remove-custom="${i}" aria-label="Remove ${esc(x.label)}">×</button></span>`).join('')}</div>` : ''}
+        <div class="step-head"><p class="eyebrow">Question 5</p><h1>${ext ? 'What else is on the house?' : `What\u2019s staying ${esc(where)}?`}</h1><p>Tap what matches. One per row unless noted; skip anything that doesn\u2019t apply.</p></div>
+        ${groups.map(g => `<div class="group mgroup"><p class="group-label">${esc(g.title)}${g.max ? ` <span class="hint">up to ${g.max}</span>` : ''}</p>
+          ${g.types ? typeRows(g, a) : ''}
+          <div class="mchips"${g.types ? ' hidden' : ''}>
+            ${(g.types ? [] : g.ids || []).map(fid => itemChip(E.FIXED_ITEMS.find(x => x.id === fid), g, a)).join('')}
+            ${Object.entries(g.flags || {}).map(([k, v]) => `<button type="button" class="mchip mchip-flag" data-flag="${k}" aria-pressed="${!!a[k]}"><span class="msw flag-sw" aria-hidden="true">${k === 'crown' ? '<svg viewBox="0 0 20 20" width="14" height="14"><path d="M3 6h14M4 9h12M6 12h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' : '<svg viewBox="0 0 20 20" width="14" height="14"><path d="M4 14l8-8 3 3-8 8H4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>'}</span>${esc(v)}</button>`).join('')}
+          </div></div>`).join('')}
+        <div class="group mgroup">
+          ${custom.length ? `<div class="custom-list">${custom.map((x, i) => `<span class="custom-chip"><i style="background:#${esc(x.hex)}"></i>${esc(x.label)}<button type="button" data-remove-custom="${i}" aria-label="Remove ${esc(x.label)}">\u00d7</button></span>`).join('')}</div>` : ''}
+          <details class="custom-more" ${state.customOpen ? 'open' : ''}><summary>+ Add something else</summary>
+            <div class="custom-add">
+              <input type="text" id="cfLabel" class="cg-input" maxlength="40" placeholder="Name it, e.g. area rug" aria-label="Item name" autocomplete="off">
+              ${selectHtml('cfKind', kinds, state.cfKind || 'custom', 'What it is')}
+              ${colorHtml('cfColor', state.cfColor || '8A6F55', 'Its color')}
+              <button type="button" class="btn small" data-act="add-custom">Add</button>
+            </div>
+          </details>
         </div>`;
     }
     return '';
@@ -318,8 +500,12 @@
     if (t.dataset.space) {
       a.space = t.dataset.space;
       const sp = E.SPACES[a.space];
-      // inside and outside have different "what's staying" lists
-      a.fixed = a.fixed.filter(id => (E.FIXED_ITEMS.find(f => f.id === id) || {}).where === sp.kind);
+      // each job has its own "what's staying" list and its own question 4
+      state.ftype = {};
+      const allowed = E.allowedFixed(a.space);
+      a.fixed = a.fixed.filter(id => allowed.has(id));
+      if (!E.WHITE_TYPES[sp.surface]) a.whiteType = '';
+      if (sp.surface) a.trimPaint = false;
       if (sp.dimByNature && a.amount === 'medium') a.amount = 'low';
       if (sp.kind === 'exterior' && (a.facing === 'none')) a.facing = 'unsure';
       rerenderStep();
@@ -334,11 +520,42 @@
       return;
     }
     if (t.dataset.family) { toggleIn(a.families, t.dataset.family); t.setAttribute('aria-pressed', a.families.includes(t.dataset.family)); return; }
-    if (t.dataset.fixed) { toggleIn(a.fixed, t.dataset.fixed); t.setAttribute('aria-pressed', a.fixed.includes(t.dataset.fixed)); return; }
+    if (t.dataset.white) {
+      a.whiteType = a.whiteType === t.dataset.white ? '' : t.dataset.white;
+      $$('[data-white]').forEach(b => b.setAttribute('aria-pressed', b.dataset.white === a.whiteType));
+      return;
+    }
+    if (t.dataset.fixed) {
+      const id = t.dataset.fixed;
+      const g = E.FIXED_GROUPS[t.dataset.group] || {};
+      const inGroup = x => (g.ids || []).includes(x);
+      if (a.fixed.includes(id)) a.fixed = a.fixed.filter(x => x !== id);
+      else {
+        if (g.one) a.fixed = a.fixed.filter(x => !inGroup(x)); // one per row: tapping another switches
+        if (g.max) { const mine = a.fixed.filter(inGroup); if (mine.length >= g.max) a.fixed = a.fixed.filter(x => x !== mine[0]); }
+        a.fixed.push(id);
+      }
+      $$('[data-fixed]').forEach(b => b.setAttribute('aria-pressed', a.fixed.includes(b.dataset.fixed)));
+      return;
+    }
+    if (t.dataset.ftype) {
+      const g = Object.assign({ key: t.dataset.group }, E.FIXED_GROUPS[t.dataset.group]); const k = t.dataset.ftype; const tp = g.types[k];
+      const inGroup = x => g.ids.includes(x);
+      if (typeOf(g, a) === k) { state.ftype[g.key] = ''; a.fixed = a.fixed.filter(x => !inGroup(x)); } // tap again to clear
+      else {
+        state.ftype[g.key] = k;
+        a.fixed = a.fixed.filter(x => !inGroup(x) || tp.ids.includes(x));
+        if (tp.ids.length === 1) a.fixed.push(tp.ids[0]); // concrete has only one color
+      }
+      rerenderStep();
+      const sub = $(`[data-group="${g.key}"][data-ftype="${k}"]`); if (sub && !reduced()) { const s = sub.closest('.mgroup').querySelector('.msub'); if (s) s.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.2,.8,.2,1)' }); }
+      return;
+    }
+    if (t.dataset.flag) { a[t.dataset.flag] = !a[t.dataset.flag]; $$(`[data-flag="${t.dataset.flag}"]`).forEach(b => b.setAttribute('aria-pressed', !!a[t.dataset.flag])); return; }
     if (t.dataset.act === 'add-custom') {
       const label = ($('#cfLabel').value || '').trim() || 'Custom item';
-      const hex = ($('#cfColor').value || '#8a6f55').replace('#', '').toUpperCase();
-      a.customFixed = (a.customFixed || []).concat([{ label: label.slice(0, 40), hex, kind: $('#cfKind').value }]);
+      a.customFixed = (a.customFixed || []).concat([{ label: label.slice(0, 40), hex: state.cfColor || '8A6F55', kind: state.cfKind || 'custom' }]);
+      state.customOpen = true;
       rerenderStep(); return;
     }
     if (t.dataset.removeCustom != null) { a.customFixed.splice(+t.dataset.removeCustom, 1); rerenderStep(); return; }
@@ -347,10 +564,10 @@
     if (act === 'back' && state.step > 0) goStep(state.step - 1, -1);
     if (act === 'next' || act === 'skip') {
       const id = steps()[state.step];
-      if (act === 'skip') { if (id === 'look') a.styles = []; if (id === 'color') { a.families = []; a.depth = 'any'; } if (id === 'room') { a.fixed = []; a.customFixed = []; } }
+      if (act === 'skip') { if (id === 'look') a.styles = []; if (id === 'color') { a.families = []; a.depth = 'any'; a.whiteType = ''; } if (id === 'room') { a.fixed = []; a.customFixed = []; a.trimPaint = false; a.crown = false; } }
       if (state.step < steps().length - 1) goStep(state.step + 1, 1); else finishWizard();
     }
-    if (act === 'skipall') { a.fixed = []; a.customFixed = []; finishWizard(); }
+    if (act === 'skipall') { a.fixed = []; a.customFixed = []; a.trimPaint = false; a.crown = false; finishWizard(); }
   });
   function rerenderStep() {
     const id = steps()[state.step];
@@ -389,8 +606,13 @@
     if (a.bulbs !== 'unsure' && settings.askBulbs && E.SPACES[a.space].kind === 'interior') lightBits.push(E.BULBS[a.bulbs].replace(/ \(.*/, '') + ' bulbs');
     out.push([idx('light'), lightBits.join(' · ')]);
     out.push([idx('look'), a.styles.length ? a.styles.map(s => E.STYLES[s].label).join(' + ') : 'Any style']);
-    out.push([idx('color'), (a.families.length ? a.families.map(f => E.FAMILY_CHOICES[f]).join(', ') : 'Any color') + (a.depth !== 'any' ? ` · ${E.DEPTHS[a.depth]}` : '')]);
-    if (idx('room') >= 0 && (a.fixed.length || (a.customFixed || []).length)) out.push([idx('room'), a.fixed.map(f => E.FIXED[f]).concat((a.customFixed || []).map(x => x.label)).join(', ')]);
+    const wt = E.WHITE_TYPES[(E.SPACES[a.space] || {}).surface];
+    if (wt) out.push([idx('color'), a.whiteType ? wt[a.whiteType] : 'Popular whites']);
+    else out.push([idx('color'), (a.families.length ? a.families.map(f => E.FAMILY_CHOICES[f]).join(', ') : 'Any color') + (a.depth !== 'any' ? ` · ${E.DEPTHS[a.depth]}` : '')]);
+    const staying = a.fixed.map(f => E.FIXED[f]).concat((a.customFixed || []).map(x => x.label));
+    if (a.trimPaint) staying.push('Painting trim too');
+    if (a.crown) staying.push('Crown molding');
+    if (idx('room') >= 0 && staying.length) out.push([idx('room'), staying.join(', ')]);
     return out;
   }
   function flagsFor(r) {
@@ -436,7 +658,7 @@
       <div class="results-head">
         <p class="eyebrow">${R.results.length} options · picked from ${fmt(R.poolSize)} colors</p>
         <h1>${esc(resultTitle(a))}</h1>
-        <div class="summary">${summaryChips(a).filter(x => x[0] >= 0).map(([i, label]) => `<button type="button" data-edit="${i}" title="Change this answer">${esc(label)}</button>`).join('')}</div>
+        <div class="summary">${summaryChips(a).filter(x => x[0] >= 0).map(([i, label]) => `<button type="button" data-edit="${i}" aria-label="Change: ${esc(label)}">${esc(label)}</button>`).join('')}</div>
       </div>
       <div class="results-tools">
         ${settings.lightPreview ? lightBar(state.gridLight, 'grid') : '<span></span>'}
@@ -481,7 +703,10 @@
     if (t.dataset.act === 'settings') { openSettings(); return; }
   });
   function startOver() {
-    if (typeof updateWaiting !== 'undefined' && updateWaiting) { applyUpdate(); return; } state.answers = clone(E.DEFAULT_ANSWERS); state.results = null; state.step = 0; if (state.view !== 'find') route('find'); else renderWizard(-1); }
+    if (typeof updateWaiting !== 'undefined' && updateWaiting) { applyUpdate(); return; }
+    state.answers = clone(E.DEFAULT_ANSWERS); state.results = null; state.step = 0; state.ftype = {}; state.customOpen = false;
+    if (state.view !== 'find') route('find'); else renderWizard(-1);
+  }
 
   // shared clicks: open chip, star, light preview
   document.addEventListener('click', e => {
@@ -954,19 +1179,21 @@
       <div class="lookup-head">
         <h1>Look up any color</h1>
         <p class="muted">Type a name or code from any brand, or pick a color value. Open a color to see its closest match in every brand.</p>
-        <label class="searchbox">
+        <div class="searchbox">
           <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12.2 12.2L16 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          <span class="sr-only">Search colors</span>
-          <input type="search" id="lookupInput" placeholder="Agreeable Gray, SW 7029, OC-17, #D1CBC1" value="${esc(state.query)}" autocomplete="off" spellcheck="false">
-          <input type="color" id="lookupColor" value="#d1cbc1" aria-label="Pick a color value to match">
-        </label>
+          <input type="search" id="lookupInput" aria-label="Search colors" placeholder="Agreeable Gray, SW 7029, OC-17, #D1CBC1" value="${esc(state.query)}" autocomplete="off" spellcheck="false">
+          <button type="button" class="search-clear" data-clear="lookupInput" aria-label="Clear search" ${state.query ? '' : 'hidden'}><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3L3 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+          ${colorHtml('lookupColor', state.lookupHex || 'D1CBC1', 'Match a color value')}
+        </div>
         <p class="lookup-hint">Searching ${fmt(enabledCount())} colors across ${Object.values(brandsEnabled()).filter(Boolean).length} brands. Brand words work too: “behr swiss coffee”.</p>
       </div>
       <div id="lookupResults"></div>`;
     const input = $('#lookupInput');
     let timer;
-    input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => { state.query = input.value; showLookupResults(); }, 90); });
-    $('#lookupColor').addEventListener('input', e => { input.value = e.target.value.toUpperCase(); state.query = input.value; showLookupResults(); });
+    const clearBtn = $('[data-clear="lookupInput"]');
+    input.addEventListener('input', () => { clearBtn.hidden = !input.value; clearTimeout(timer); timer = setTimeout(() => { state.query = input.value; showLookupResults(); }, 90); });
+    clearBtn.addEventListener('click', () => { input.value = ''; state.query = ''; clearBtn.hidden = true; showLookupResults(); input.focus(); });
+    COLORS.lookupColor.onChange = hex => { state.lookupHex = hex; input.value = '#' + hex; state.query = input.value; clearBtn.hidden = false; clearTimeout(timer); timer = setTimeout(showLookupResults, 60); };
     showLookupResults();
     if (window.matchMedia('(pointer: fine)').matches) input.focus({ preventScroll: true });
   }
@@ -1091,7 +1318,7 @@
     const rows = colors.map(c => ({ c, d: C.describe(c.hex, c.lrv), pc: E.prosCons(c, answers, { inStoreSamples: settings.inStoreSamples }, colors) }));
     const cell = (k, f) => `<div class="cmp-k">${k}</div>${rows.map(r => `<div class="cmp-v">${f(r)}</div>`).join('')}`;
     const html = `
-      <p class="muted">For ${esc(sp.label.toLowerCase())}${answers.facing && !['unsure', 'none'].includes(answers.facing) ? `, ${esc(answers.facing)} light` : ''}. Scroll sideways to see every color.</p>
+      <p class="muted">For ${esc(sp.label.toLowerCase())}${answers.facing && !['unsure', 'none'].includes(answers.facing) ? `, ${esc(answers.facing)} light` : ''}. ${matchMedia('(pointer: coarse)').matches ? 'Swipe' : 'Scroll'} sideways to see every color.</p>
       <div class="cmp-wrap"><div class="cmp" style="--n:${rows.length}">
         <div class="cmp-k"></div>${rows.map(r => `<button type="button" class="cmp-head" data-open="${esc(r.c.id)}"><span class="cmp-sw" data-hex="${r.c.hex}" style="background-color:${paint(r.c.hex)}"></span><b>${esc(r.c.name)}</b><span class="mono">${esc(E.codeLabel(r.c))}</span><span class="muted">${esc(brandName(r.c.brand))}</span></button>`).join('')}
         ${cell('LRV', r => `<span class="mono">${r.c.lrv}</span> · ${esc(r.d.depth)}`)}
@@ -1156,7 +1383,7 @@
       <div class="sheet-body">
         <div class="set-group"><h3>Store</h3><div class="set-card">
           <div class="set-row"><div class="set-text"><b>Store brand</b><span>Shown first and used for top picks</span></div>
-            <select id="setStoreBrand" aria-label="Store brand"><option value="">None, mix brands</option>${brandList().map(b => `<option value="${esc(b.id)}" ${settings.storeBrand === b.id ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></div>
+            ${selectHtml('setStoreBrand', [['', 'None, mix brands']].concat(brandList().map(b => [b.id, b.name])), settings.storeBrand, 'Store brand')}</div>
           ${sw('storeOnly', settings.storeOnly, 'Only recommend the store brand', 'Other brands still appear as matches')}
           <div class="set-row"><div class="set-text"><b>Colors per search</b></div>${seg('resultCount', { 3: '3', 6: '6', 9: '9', 12: '12' }, String(settings.resultCount), 'Colors per search')}</div>
         </div></div>
@@ -1219,11 +1446,11 @@
         <div class="set-group"><div class="set-card"><div class="set-mini"><button type="button" class="btn small ghost" data-act="reset-all">Reset all settings</button></div></div></div>
         <p class="muted" style="font-size:12px">${fmt(E.getIndex().colors.length)} colors loaded from ${brandList().length} brands. Settings, shortlist and calibration are saved on this device only.</p>
       </div>`;
-    $('#setStoreBrand', el).addEventListener('change', e => {
-      settings.storeBrand = e.target.value;
+    SELECTS.setStoreBrand.onChange = v => {
+      settings.storeBrand = v;
       if (settings.storeBrand) settings.brands[settings.storeBrand] = true;
       saveSettings(); renderSettings(); afterSettingsChange();
-    });
+    };
     $('#csvInput', el).addEventListener('change', importCsv);
   }
   function openSettings() {
@@ -1324,7 +1551,7 @@
   }
   function closeCal() { $('#calModal').hidden = true; }
   function calSlider(key, label, min, max, left, right) {
-    return `<div class="slider"><label for="cal-${key}">${label}<span id="calv-${key}">${calDraft[key] > 0 ? '+' : ''}${calDraft[key]}</span></label><input type="range" id="cal-${key}" min="${min}" max="${max}" step="1" value="${calDraft[key]}" data-cal="${key}"><div class="ends"><span>${left}</span><span>${right}</span></div></div>`;
+    return `<div class="slider"><label for="cal-${key}">${label}<span id="calv-${key}">${calDraft[key] > 0 ? '+' : ''}${calDraft[key]}</span></label><input type="range" class="cg-range" id="cal-${key}" min="${min}" max="${max}" step="1" value="${calDraft[key]}" data-cal="${key}" style="--fill:${((calDraft[key] - min) / (max - min) * 100).toFixed(1)}%"><div class="ends"><span>${left}</span><span>${right}</span></div></div>`;
   }
   function renderCal() {
     const el = $('#calModal');
@@ -1347,7 +1574,7 @@
     if (calStep === 2) body = `
       <h2 id="calTitle" style="font-size:22px">Match a real chip</h2>
       <p class="muted">Grab any chip from the display, find it here, and hold it next to the screen.</p>
-      <label class="searchbox"><span class="sr-only">Find the chip</span><input type="search" id="calSearch" placeholder="Name or code of the chip in your hand" autocomplete="off"></label>
+      <div class="searchbox"><input type="search" id="calSearch" aria-label="Find the chip" placeholder="Name or code of the chip in your hand" autocomplete="off"></div>
       <div class="list" id="calHits"></div>
       <div class="cal-panels"><div class="cal-panel" id="calChip"><span id="calChipName">${esc(calRef ? calRef.name + ' · ' + E.codeLabel(calRef) : '')}</span></div><div class="cal-panel" id="calChipOff"><span>Original screen</span></div></div>
       ${calSlider('vividness', 'Vividness', -50, 50, 'Screen looks too strong', 'Screen looks too dull')}
@@ -1387,7 +1614,7 @@
   $('#calModal').addEventListener('input', e => {
     const k = e.target.dataset.cal; if (!k) return;
     calDraft[k] = +e.target.value;
-    $$(`[data-cal="${k}"]`).forEach(i => { if (i !== e.target) i.value = calDraft[k]; });
+    $$(`[data-cal="${k}"]`).forEach(i => { if (i !== e.target) i.value = calDraft[k]; i.style.setProperty('--fill', ((calDraft[k] - +i.min) / (+i.max - +i.min) * 100).toFixed(1) + '%'); });
     const v = $('#calv-' + k); if (v) v.textContent = (calDraft[k] > 0 ? '+' : '') + calDraft[k];
     paintCal();
   });
