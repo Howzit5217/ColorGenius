@@ -34,7 +34,7 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   Ceilings and trim replace question 4 with one quick choice:
   - **Ceilings:** crisp white, soft warm white, a light tint of the walls, or something bold.
   - **Trim:** crisp white, soft warm white, match the walls, or black.
-- **Recommendations** from about 31,000 colors. Results are spread out so you don't get six versions of the same beige. Each comes with reasons it fits and its LRV (light reflectance value).
+- **Recommendations** from about 33,000 colors across 16 brands. Results are spread out so you don't get six versions of the same beige. Each comes with reasons it fits and its LRV (light reflectance value).
 - **Warnings** written in plain language. They cover:
   - Colors that will read too dark or too light in that light.
   - North light turning cool grays icy.
@@ -86,6 +86,8 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 | Dutch Boy | 1,340 | Brand | Sherwin-Williams color service |
 | Dunn-Edwards | 2,275 | Brand | dunnedwards.com |
 | Diamond Vogel | 1,324 | Calculated | diamondvogel.com |
+| Clark+Kensington | 1,390 | Calculated | Ace Hardware color data |
+| Magnolia Home | 165 | Calculated | Ace Hardware color data |
 | KILZ | 827 | Calculated | Older public list |
 | Vista Paint | 2,785 | Calculated | Older public list |
 | Resene | 2,041 | Calculated | Resene official swatch file |

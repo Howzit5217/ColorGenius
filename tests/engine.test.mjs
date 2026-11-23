@@ -77,11 +77,22 @@ test('every brand file is well formed', () => {
   }
 });
 test('all US national brands are loaded with full palettes', () => {
-  const min = { sw: 1700, bm: 3500, behr: 4000, valspar: 1500, ppg: 3000, glidden: 3000, hgsw: 850, dutchboy: 1200, de: 2000, dv: 1200 };
+  const min = { sw: 1700, bm: 3500, behr: 4000, valspar: 1500, ppg: 3000, glidden: 3000, hgsw: 850, dutchboy: 1200, de: 2000, dv: 1200, ck: 1300, magnolia: 150 };
   for (const [id, n] of Object.entries(min)) assert.ok((E.getIndex().byBrand[id] || []).length >= n, `${id} has ${(E.getIndex().byBrand[id] || []).length}`);
 });
 
 // ---------------- search ----------------
+test('Clark+Kensington and Magnolia Home are built in and searchable', () => {
+  assert.equal(E.search('13C-1')[0].color.name, 'Colonial Linen');
+  assert.equal(E.search('clark+kensington colonial linen')[0].color.brand, 'ck');
+  assert.equal(E.search('magnolia shiplap')[0].color.brand, 'magnolia');
+  assert.equal(E.search('MAG001')[0].color.name, 'Ella Rose');
+  const brands = window.CG_BRANDS.filter(b => b.id === 'ck' || b.id === 'magnolia');
+  assert.ok(brands.length === 2 && brands.every(b => b.group === 'us'), 'both are on by default with the US brands');
+  assert.ok(E.recommendLines('magnolia', E.search('magnolia shiplap')[0].color, { space: 'living' }, {}).best);
+  const m = E.matchesFor(E.search('white dove')[0].color);
+  assert.ok(m.some(x => x.color.brand === 'ck') && m.some(x => x.color.brand === 'magnolia'), 'they appear as matches');
+});
 test('search by code, name, brand word and color value', () => {
   assert.equal(E.search('SW 7029')[0].color.name, 'Agreeable Gray');
   assert.equal(E.search('7029')[0].color.code, '7029');

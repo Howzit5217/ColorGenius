@@ -717,6 +717,14 @@
       pl('gl-premium-ext', 'Glidden Premium Exterior', 'exterior', 1, ['value'], 'Affordable exterior protection.'),
       pl('gl-onecoat-ext', 'Glidden One Coat Exterior', 'exterior', 2, ['onecoat'], 'One-coat exterior in most colors.'),
     ],
+    ck: [
+      pl('ck-int', 'Clark+Kensington Interior Paint+Primer', 'interior', 2, ['washable', 'onecoat', 'popular'], 'Ace’s own paint-and-primer for interior walls.'),
+      pl('ck-ext', 'Clark+Kensington Exterior Paint+Primer', 'exterior', 2, ['popular'], 'Ace’s own paint-and-primer for siding and trim.'),
+    ],
+    magnolia: [
+      pl('mag-int', 'Magnolia Home Interior Paint', 'interior', 3, ['premium', 'washable', 'rich'], 'Magnolia Home’s premium interior paint, made by KILZ.'),
+      pl('mag-ext', 'Magnolia Home Exterior Paint', 'exterior', 3, ['premium', 'rich'], 'Magnolia Home’s exterior paint, made by KILZ.'),
+    ],
     de: [
       pl('de-spartawall', 'Spartawall', 'interior', 2, ['washable'], 'Durable, low-odor interior.'),
       pl('de-suprema', 'Suprema', 'interior', 3, ['premium', 'washable', 'rich'], 'Dunn-Edwards’ premium interior.'),
@@ -1016,7 +1024,7 @@
     let nq = normalize(q);
     // strip a leading brand word or prefix ("sw 7029", "bm oc 17", "behr swiss coffee")
     let brandHint = null;
-    const hints = { sw: 'sw', sherwin: 'sw', 'sherwin williams': 'sw', bm: 'bm', benjamin: 'bm', 'benjamin moore': 'bm', behr: 'behr', valspar: 'valspar', glidden: 'glidden', ppg: 'ppg', pittsburgh: 'ppg', hgsw: 'hgsw', hgtv: 'hgsw', 'dutch boy': 'dutchboy', dunn: 'de', 'dunn edwards': 'de', de: 'de', 'diamond vogel': 'dv', kilz: 'kilz', vista: 'vista', resene: 'resene', farrow: 'fb', 'farrow ball': 'fb', 'f b': 'fb' };
+    const hints = { sw: 'sw', sherwin: 'sw', 'sherwin williams': 'sw', bm: 'bm', benjamin: 'bm', 'benjamin moore': 'bm', behr: 'behr', valspar: 'valspar', glidden: 'glidden', ppg: 'ppg', pittsburgh: 'ppg', hgsw: 'hgsw', hgtv: 'hgsw', 'dutch boy': 'dutchboy', dunn: 'de', 'dunn edwards': 'de', de: 'de', 'diamond vogel': 'dv', clark: 'ck', 'clark kensington': 'ck', 'clark and kensington': 'ck', ck: 'ck', 'c k': 'ck', magnolia: 'magnolia', 'magnolia home': 'magnolia', kilz: 'kilz', vista: 'vista', resene: 'resene', farrow: 'fb', 'farrow ball': 'fb', 'f b': 'fb' };
     for (const k of Object.keys(hints).sort((x, y) => y.length - x.length)) {
       if (nq === k || nq.startsWith(k + ' ')) { brandHint = hints[k]; nq = nq.slice(k.length).trim(); break; }
     }

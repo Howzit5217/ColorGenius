@@ -131,6 +131,32 @@ window.CG_BRANDS = [
   "active": 1324
  },
  {
+  "id": "ck",
+  "name": "Clark+Kensington",
+  "prefix": "",
+  "region": "US (Ace Hardware)",
+  "group": "us",
+  "source": "Ace Hardware color data",
+  "date": "2026-11-23",
+  "lrv": "calculated",
+  "mixNote": "Sold at Ace Hardware.",
+  "count": 1390,
+  "active": 1390
+ },
+ {
+  "id": "magnolia",
+  "name": "Magnolia Home",
+  "prefix": "",
+  "region": "US",
+  "group": "us",
+  "source": "Ace Hardware color data (Magnolia Home by KILZ)",
+  "date": "2026-11-23",
+  "lrv": "calculated",
+  "mixNote": "Magnolia Home by Joanna Gaines, made by KILZ.",
+  "count": 165,
+  "active": 165
+ },
+ {
   "id": "kilz",
   "name": "KILZ",
   "prefix": "",
