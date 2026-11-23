@@ -4,6 +4,8 @@ A paint color finder for the paint counter. Answer a few quick questions about t
 
 It runs in any browser and installs on Android and iPhone as an app with its own home-screen icon. Once loaded, it works offline.
 
+**Live site:** https://howzit5217.github.io/ColorGenius/ (open it on a phone and tap **Get the app**)
+
 ## What it does
 
 - **Five quick questions**
