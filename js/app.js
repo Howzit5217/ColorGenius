@@ -150,12 +150,54 @@
   }
   const STEP_LABEL = { mode: 'Mode', now: 'Now', feel: 'Feel', around: 'Around', finish: 'Finish', duel: 'Choose', job: 'Paint or Stain', space: 'Space', light: 'Light', look: 'Style', color: 'Color', room: 'Room', target: 'What', wood: 'Wood', slook: 'Look' };
 
+  // what each choice covers (sub) and what the picks will take into account (about)
   const SPACE_SUB = {
-    living: 'Main gathering space', bedroom: 'Rest and sleep', kitchen: 'Needs a cleanable finish', bathroom: 'Moisture, small windows', dining: 'Often seen at night',
-    office: 'Focus and video calls', kids: 'Fun but washable', nursery: 'Soft and calm', entry: 'High traffic, first look', basement: 'Little daylight',
-    stairs: 'Tall walls, busy', laundry: 'Moisture and wear', sunroom: 'Light on several sides', garage: 'Tough, often dim',
-    accent: 'One feature wall', ceiling: 'Overhead', trim: 'Baseboards, casing, doors', cabinets: 'Kitchen or bath', furniture: 'Dressers, tables, chairs',
-    ext_body: 'Main siding color', ext_trim: 'Fascia, windows, corners', front_door: 'The pop of color',
+    living: 'Family room, den or great room', bedroom: 'Primary or guest bedroom', kitchen: 'Walls around cabinets and counters', bathroom: 'Full bath with a shower or tub',
+    powder: 'Half bath, no shower', dining: 'Formal or everyday dining', office: 'Home office or study', kids: 'Kids’ bedroom or playroom', nursery: 'A baby’s room',
+    entry: 'Foyer, hallway or entry', stairs: 'Stairwell and landing', laundry: 'Laundry room or mudroom', closet: 'Walk-in, reach-in or pantry', sunroom: 'Windows on several sides',
+    basement: 'Finished basement or rec room', attic: 'Room under the roof', media: 'Theater, TV or game room', garage: 'Garage or workshop walls',
+    accent: 'One feature wall', ceiling: 'Any ceiling indoors', trim: 'Baseboards, casing and crown', doors: 'Panel or flat doors', cabinets: 'Kitchen or bath cabinets',
+    builtins: 'Bookcases, shelves, window seats', wainscot: 'Beadboard, board & batten, paneling', fireplace: 'Brick or stone surround', furniture: 'Dressers, tables, chairs',
+    floor_paint: 'Concrete, basement or old wood floor',
+    ext_body: 'Main siding color', ext_trim: 'Fascia, windows and corners', front_door: 'The pop of color', shutters: 'Window shutters',
+    garage_door: 'Steel, wood or fiberglass', porch_floor: 'Porch, steps or patio', shed: 'Shed, barn or outbuilding',
+  };
+  const SPACE_ABOUT = {
+    living: 'Matte or Eggshell. Picks are matched to your floors and furniture.',
+    bedroom: 'Matte or Eggshell. Calm, softer colors rank higher.',
+    kitchen: 'Scrubbable Satin or Eggshell that works with your counters and cabinets.',
+    bathroom: 'Moisture-resistant Satin that works with your vanity and tile.',
+    powder: 'No shower steam, so bold and dark colors work well here.',
+    dining: 'Often seen at night, so picks are checked under warm bulbs.',
+    office: 'Balanced colors that look good behind you on video calls.',
+    kids: 'Washable Eggshell or Satin. Fun colors that don’t get too loud.',
+    nursery: 'Soft, calm colors in a washable finish.',
+    entry: 'Takes bumps and scuffs, so you’ll get a scrubbable finish.',
+    stairs: 'Tall, hard-to-reach walls, so picks favor colors that last.',
+    laundry: 'Moisture and wear, so Satin or Semi-Gloss.',
+    closet: 'Usually lit by one bulb, so lighter colors help you see.',
+    sunroom: 'Strong sun washes colors out. Picks account for it.',
+    basement: 'Little daylight, so picks lean lighter and warmer.',
+    attic: 'Sloped ceilings and small windows. Lighter colors keep it open.',
+    media: 'Deeper colors cut glare on the screen.',
+    garage: 'A tough, scrubbable finish. Most garages have cool LED light.',
+    accent: 'A bolder color that goes with the other walls.',
+    ceiling: 'Flat ceiling paint that hides flaws. Usually a white.',
+    trim: 'Hard Semi-Gloss or Satin enamel that wipes clean.',
+    doors: 'Hard enamel. Doors can match the trim or go bold.',
+    cabinets: 'Cabinet enamel. Good prep and primer matter most.',
+    builtins: 'Hard enamel that stands up to books and decor.',
+    wainscot: 'Wipeable enamel on the lower wall, picked to go with the walls above.',
+    fireplace: 'Needs a masonry primer. Never paint inside the firebox.',
+    furniture: 'Hard enamel. Sand and prime first.',
+    floor_paint: 'Needs porch & floor paint, not wall paint.',
+    ext_body: 'Exterior paint. Colors look lighter in full sun.',
+    ext_trim: 'Frames the house. Picks contrast with the siding.',
+    front_door: 'Glossy exterior paint. Bold colors welcome.',
+    shutters: 'An accent color that stands out from the siding.',
+    garage_door: 'Usually matches the siding or trim so it blends in.',
+    porch_floor: 'Needs porch & floor paint. Mid-tones hide dirt.',
+    shed: 'Exterior paint. Often matches or complements the house.',
   };
   const STYLE_SUB = {
     modern: 'Crisp, clean, low contrast', cozy: 'Soft, warm, welcoming', coastal: 'Airy whites, sea blues', farmhouse: 'Warm whites, greige, sage', traditional: 'Classic, rich, layered',
@@ -197,18 +239,18 @@
     return `linear-gradient(180deg, rgba(255,255,255,.12), rgba(0,0,0,.12)), ${c}`;
   }
   const LIGHT_NOTE = {
-    north: 'Cool, even, indirect light all day. Colors look cooler and a little darker, so warm undertones help.',
-    south: 'Bright, warm light most of the day. Colors look lighter and warmer; cool and deeper colors hold up well.',
-    east: 'Warm and bright in the morning, cooler and flatter in the afternoon.',
-    west: 'Soft and cool in the morning, strong warm orange light in the evening.',
-    unsure: 'No problem. The picks will stay balanced for any light.',
-    none: 'Only bulbs light this room, so the bulb type matters most.',
+    north: 'Cool, even light all day. Colors look cooler and a bit darker.',
+    south: 'Bright, warm light most of the day. Colors look lighter and warmer.',
+    east: 'Warm and bright in the morning, cooler later.',
+    west: 'Cool in the morning, warm orange light in the evening.',
+    unsure: 'No problem. The picks will suit any light.',
+    none: 'Only bulbs light this room, so the bulbs matter most.',
   };
   const LIGHT_NOTE_SHORT = {
     north: 'North: cool, even light all day.', south: 'South: bright, warm light most of the day.',
     east: 'East: warm and bright in the morning.', west: 'West: strong warm light in the evening.',
   };
-  const LIGHT_NOTE_MIX = 'Windows on more than one side make the room brighter, and each wall reads a little differently.';
+  const LIGHT_NOTE_MIX = 'More sides, more light. Each wall looks a little different.';
   const GLOW = { north: 'rgba(150,180,230,.55)', south: 'rgba(255,214,140,.6)', east: 'rgba(255,232,180,.6)', west: 'rgba(255,170,110,.6)' };
 
   const check = '<span class="tick" aria-hidden="true"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M2.5 6.2l2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
@@ -385,7 +427,10 @@
         <div class="progress" style="--steps:${list.length}">
           ${list.map((s, i) => `<button type="button" class="progress-step ${i < state.step ? 'done' : ''} ${i === state.step ? 'current' : ''}" data-goto="${i}" ${i > state.step ? 'disabled' : ''}><span class="bar"></span><span class="lbl">${i + 1}. ${s === 'room' && (E.SPACES[state.answers.space] || {}).kind === 'exterior' ? 'House' : STEP_LABEL[s]}</span></button>`).join('')}
         </div>
-        <div class="step-stage"><div class="step" id="stepBody">${stepHtml(id)}</div></div>
+        <div class="wiz-grid">
+          <div class="step-stage"><div class="step" id="stepBody">${stepHtml(id)}</div></div>
+          <aside class="wiz-side" id="wizSide" aria-label="Your answers">${sideHtml()}</aside>
+        </div>
       </div>`;
     // the bottom bar is one permanent element: only its labels change, so it never jumps between questions
     updateWizardNav(true, { first: state.step === 0, last, optional, duel: id === 'duel' });
@@ -402,13 +447,13 @@
     const a = state.answers;
     const sp = E.SPACES[a.space] || E.SPACES.living;
     if (id === 'space') {
-      const groups = [['Rooms', ['living', 'bedroom', 'kitchen', 'bathroom', 'dining', 'office', 'kids', 'nursery', 'entry', 'stairs', 'laundry', 'sunroom', 'basement', 'garage']], ['Surfaces & Furniture', ['accent', 'ceiling', 'trim', 'cabinets', 'furniture']], ['Outside', ['ext_body', 'ext_trim', 'front_door']]];
-      const sizeQ = sp.kind === 'interior' && !['ceiling', 'trim', 'cabinets'].includes(sp.surface);
+      const groups = [['Rooms', ['living', 'bedroom', 'kitchen', 'bathroom', 'powder', 'dining', 'office', 'kids', 'nursery', 'entry', 'stairs', 'laundry', 'closet', 'sunroom', 'basement', 'attic', 'media', 'garage']], ['Walls, Trim & Woodwork', ['accent', 'ceiling', 'trim', 'doors', 'wainscot', 'fireplace']], ['Cabinets, Furniture & Floors', ['cabinets', 'builtins', 'furniture', 'floor_paint']], ['Outside', ['ext_body', 'ext_trim', 'front_door', 'shutters', 'garage_door', 'porch_floor', 'shed']]];
+      const sizeQ = sp.kind === 'interior' && !sp.surface;
       return `
         <div class="step-head">${qLabel('space')}<h1>What’s being painted?</h1></div>
         ${groups.map(([g, ids]) => `<div class="group"><p class="section-title">${g}</p><div class="options">${ids.map(k => optBtn(`data-space="${k}"`, a.space === k, `<span class="opt-title">${esc(E.SPACES[k].label)}</span><span class="opt-sub">${esc(SPACE_SUB[k])}</span>`)).join('')}</div></div>`).join('')}
         ${sizeQ ? `<div class="group"><p class="group-label">How big is the room?</p>${seg('size', { small: 'Small', medium: 'Medium', large: 'Large or Open Plan' }, a.size, 'Room size')}</div>` : ''}
-        ${a.space === 'ext_body' ? `<div class="group"><p class="group-label">What is the siding? <span class="hint">Vinyl limits how dark it can go</span></p>${seg('siding', E.SIDING, a.siding, 'Siding')}</div>` : ''}`;
+        ${a.space === 'ext_body' ? `<div class="group"><p class="group-label">What is the siding? <span class="hint">Vinyl can’t go very dark</span></p>${seg('siding', E.SIDING, a.siding, 'Siding')}</div>` : ''}`;
     }
     if (id === 'light') {
       const ext = sp.kind === 'exterior';
@@ -419,7 +464,7 @@
       const glows = fs.map(d => `<span class="glow" style="background: linear-gradient(${ang[d]}, ${GLOW[d]}, transparent 62%)"></span>`).join('');
       const note = fs.length ? fs.map(d => LIGHT_NOTE_SHORT[d]).join(' ') + (fs.length > 1 ? ' ' + LIGHT_NOTE_MIX : '') : LIGHT_NOTE[a.facing === 'none' ? 'none' : 'unsure'];
       return `
-        <div class="step-head">${qLabel('light')}<h1>${ext ? 'Which way does this side of the house face?' : 'Which way do the windows face?'}</h1><p>${ext ? 'Sun exposure changes how light or dark an exterior color reads.' : 'Tap every side that has windows. Corner rooms often have two.'}</p></div>
+        <div class="step-head">${qLabel('light')}<h1>${ext ? 'Which way does this side of the house face?' : 'Which way do the windows face?'}</h1><p>${ext ? 'Sun makes colors look lighter.' : 'Tap every side with windows.'}</p></div>
         <div class="light-grid">
           <div>
             <div class="compass">
@@ -452,7 +497,7 @@
       if (wt) {
         const sample = { crisp: ['F4F5F3', 'EEF0EF', 'E6E9E9'], warm: ['F4EFE4', 'EFE7D6', 'E9DFCB'], tint: ['E4E7E0', 'E9E1D9', 'DDE3E6'], bold: ['2F4A66', '6E8F7A', 'B5653F'], match: ['D6CCBC', 'C2C4C3', '9DAEA9'], dark: ['2B2C2E', '2F3B4C', '3E3A35'] };
         return `
-        <div class="step-head">${qLabel('color')}<h1>What kind of ${sp.surface === 'ceiling' ? 'ceiling' : 'trim'} color?</h1><p>One tap. Skip to get the most popular whites.</p></div>
+        <div class="step-head">${qLabel('color')}<h1>What kind of ${sp.surface === 'ceiling' ? 'ceiling' : sp.door ? 'door' : 'trim'} color?</h1><p>Or skip for the most popular whites.</p></div>
         <div class="options wide">
           ${Object.entries(wt).map(([k, v]) => optBtn(`data-white="${k}"`, a.whiteType === k, `<span class="opt-title">${esc(v)}</span><span class="chips">${sample[k].map(h => `<span style="background:#${h}"></span>`).join('')}</span>`)).join('')}
         </div>`;
@@ -534,6 +579,7 @@
     state.gridLight = 'none'; renderResults(true); toTop();
   }
 
+  $('#view-find').addEventListener('click', () => { if (!state.results) setTimeout(updateSide, 0); });
   $('#view-find').addEventListener('click', e => {
     const t = e.target.closest('button'); if (!t) return;
     const a = state.answers;
@@ -650,14 +696,36 @@
     if (id === 'look') fillStylePalettes();
     if (id === 'slook') fillLookSamples();
     paintWoods(body, 'none');
+    updateSide();
     window.scrollTo(0, y);
   }
+  // the side panel: what the current pick means, and the answers so far (each one jumps back to its question)
+  function sideHtml() {
+    const a = state.answers, list = steps(), cur = state.step, id = list[cur];
+    const stain = a.job === 'stain';
+    let about = '';
+    if (stain && list.indexOf('target') >= 0 && cur >= list.indexOf('target')) {
+      const job = S.JOBS[a.target];
+      if (job && JOB_ABOUT[a.target]) about = `<div class="side-card about"><p class="eyebrow">${job.kind === 'exterior' ? 'Outside' : 'Inside'}</p><b>${esc(job.label)}</b><span>${esc(JOB_ABOUT[a.target])}</span></div>`;
+    } else if (!stain && list.indexOf('space') >= 0 && cur >= list.indexOf('space')) {
+      const sp = E.SPACES[a.space];
+      if (sp && SPACE_ABOUT[a.space]) about = `<div class="side-card about"><p class="eyebrow">${sp.kind === 'exterior' ? 'Outside' : 'Inside'}</p><b>${esc(sp.label)}</b><span>${esc(SPACE_ABOUT[a.space])}</span></div>`;
+    }
+    const vals = {};
+    if (list.includes('job')) vals[list.indexOf('job')] = stain ? 'Staining' : 'Painting';
+    vals[list.indexOf('mode')] = (MODES[a.mode || 'basic'] || MODES.basic).label + ' Mode';
+    const more = stain ? stainSummary({ answers: a, wood: S.woodFor(a) }) : summaryChips(a);
+    for (const [i, label] of more) if (i >= 0 && vals[i] == null) vals[i] = label;
+    const rows = list.map((sid, i) => i < cur && vals[i] ? `<button type="button" class="side-row" data-goto="${i}"><span>${esc(STEP_LABEL[sid])}</span><b>${esc(vals[i])}</b></button>` : '').join('');
+    return about + (rows ? `<div class="side-card answers"><p class="eyebrow">Your Answers</p>${rows}</div>` : '');
+  }
+  function updateSide() { const el = $('#wizSide'); if (el) el.innerHTML = sideHtml(); }
   function toggleIn(arr, v) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
 
   // ================================================================
   // RESULTS
   // ================================================================
-  const PHRASE = { living: 'a living room', bedroom: 'a bedroom', kitchen: 'a kitchen', bathroom: 'a bathroom', dining: 'a dining room', office: 'a home office', kids: 'a kids’ room', nursery: 'a nursery', entry: 'an entry or hallway', stairs: 'a stairway', laundry: 'a laundry room or mudroom', sunroom: 'a sunroom', garage: 'a garage', basement: 'a basement', accent: 'an accent wall', ceiling: 'a ceiling', trim: 'trim and doors', cabinets: 'cabinets', furniture: 'furniture', ext_body: 'house siding', ext_trim: 'exterior trim', front_door: 'a front door' };
+  const PHRASE = { living: 'a living room', bedroom: 'a bedroom', kitchen: 'a kitchen', bathroom: 'a bathroom', dining: 'a dining room', office: 'a home office', kids: 'a kids’ room', nursery: 'a nursery', entry: 'an entry or hallway', stairs: 'a stairway', laundry: 'a laundry room or mudroom', sunroom: 'a sunroom', garage: 'a garage', basement: 'a basement', accent: 'an accent wall', ceiling: 'a ceiling', trim: 'trim and doors', cabinets: 'cabinets', furniture: 'furniture', ext_body: 'house siding', ext_trim: 'exterior trim', front_door: 'a front door', powder: 'a powder room', closet: 'a closet or pantry', attic: 'an attic or bonus room', media: 'a media or game room', doors: 'interior doors', builtins: 'built-ins and shelves', wainscot: 'wainscoting or paneling', fireplace: 'a brick fireplace', floor_paint: 'a painted floor', shutters: 'shutters', garage_door: 'a garage door', porch_floor: 'a porch floor', shed: 'a shed or barn' };
   function resultTitle(a) {
     let p = PHRASE[a.space] || 'this space';
     const sp = E.SPACES[a.space] || {};
@@ -710,7 +778,7 @@
           ${extra.role ? `<span class="chip-role">${esc(extra.role)}</span>` : ''}
           <span class="chip-name">${esc(c.name)}</span>
           <span class="chip-meta"><span class="brand">${esc(brandName(c.brand))}</span><span class="mono">${esc(E.codeLabel(c))}</span></span>
-          ${settings.showLrv ? `<span class="lrv"><span>LRV</span><span class="lrv-track"><i style="left:${lrvPos}%"></i></span><span class="mono">${c.lrv}${c.flags & E.F.LRV_EST ? '*' : ''}</span></span>` : ''}
+          ${settings.showLrv ? `<span class="lrv" title="Light Reflectance Value: 0 is black, 100 is white"><span>LRV</span><span class="lrv-track"><i style="left:${lrvPos}%"></i></span><span class="mono">${c.lrv}${c.flags & E.F.LRV_EST ? '*' : ''}</span></span>` : ''}
         </div>
       </button>
       <button type="button" class="star" data-star="${esc(c.id)}" aria-pressed="${starred}" aria-label="${starred ? 'Remove from' : 'Add to'} shortlist">${starSvg}</button>
@@ -745,7 +813,7 @@
     const R = state.results;
     const a = R.answers;
     if (!R.results.length) {
-      host.innerHTML = `<div class="empty"><h1>No Colors to Show</h1><p>All brands may be turned off, or the store-brand-only setting has no brand selected.</p><div style="display:flex;gap:8px"><button type="button" class="btn primary" data-act="settings">Open settings</button><button type="button" class="btn" data-act="edit">Edit Answers</button></div></div>`;
+      host.innerHTML = `<div class="empty"><h1>No Colors to Show</h1><p>Turn on more brands in Settings.</p><div style="display:flex;gap:8px"><button type="button" class="btn primary" data-act="settings">Open settings</button><button type="button" class="btn" data-act="edit">Edit Answers</button></div></div>`;
       return;
     }
     const st = steps();
@@ -850,12 +918,12 @@
     return 'Not listed by brand';
   }
   function sampleNote(c) {
-    if (!settings.inStoreSamples) return '<div class="sample-note"><div>Order a sample pot or peel-and-stick sample. Check it on two walls at different times of day.</div></div>';
+    if (!settings.inStoreSamples) return '<div class="sample-note"><div>Get a sample and check it on two walls at different times of day.</div></div>';
     const loc = (c.flags & E.F.RACK) && c.extra && ['sw', 'valspar', 'hgsw'].includes(c.brand) ? c.extra : '';
-    if (loc) return `<div class="sample-note"><span class="loc">${esc(loc)}</span><div>Pull the chip from the display at this strip location. Hold it flat against the wall in the room’s own light, not under store lights.</div></div>`;
-    if (c.flags & E.F.RACK) return '<div class="sample-note"><span class="loc">Rack</span><div>This color is on the in-store chip rack. Hold the chip flat against the wall in the room’s own light.</div></div>';
-    if (['sw', 'valspar', 'hgsw', 'behr'].includes(c.brand)) return '<div class="sample-note"><div>Not on the standard chip display. Mix a sample size, or order a sample, and check it in the room’s own light.</div></div>';
-    return `<div class="sample-note"><div>Look for it in the ${esc(brandName(c.brand))} chip display or fan deck. If it isn’t there, mix a sample size and check it in the room’s own light.</div></div>`;
+    if (loc) return `<div class="sample-note"><span class="loc">${esc(loc)}</span><div>Find the chip at this spot on the display. Check it in the room’s own light.</div></div>`;
+    if (c.flags & E.F.RACK) return '<div class="sample-note"><span class="loc">Rack</span><div>On the in-store chip rack. Check it in the room’s own light.</div></div>';
+    if (['sw', 'valspar', 'hgsw', 'behr'].includes(c.brand)) return '<div class="sample-note"><div>Not on the chip display. Mix a sample and check it in the room’s own light.</div></div>';
+    return `<div class="sample-note"><div>Look in the ${esc(brandName(c.brand))} chip display or fan deck, or mix a sample.</div></div>`;
   }
   function detailHtml(c) {
     const b = E.getIndex().brandById[c.brand] || {};
@@ -879,7 +947,7 @@
       </div>
       <div class="sheet-body">
         <div class="room" id="roomScene" data-scene="${kind}" data-roles="${esc(JSON.stringify(roles))}" data-light-locked="1">
-          ${sceneSvg(kind, { label: sceneLabel, siding: answers.siding, furniture: sceneFurniture(answers.space), windows: windowSlots(answers, kind === 'kitchen' ? 'kitchen' : sceneFurniture(answers.space)), floorType: floorTypeOf(answers) })}
+          ${sceneSvg(kind, Object.assign({ label: sceneLabel, siding: answers.siding, furniture: sceneFurniture(answers.space), windows: windowSlots(answers, kind === 'kitchen' ? 'kitchen' : sceneFurniture(answers.space)), floorType: floorTypeOf(answers) }, sceneExtras(answers.space)))}
           <span class="light-label" id="roomLabel"></span>
         </div>
         ${settings.lightPreview ? lightBar(state.roomLight, 'room') : ''}
@@ -890,6 +958,7 @@
         <div class="detail-actions">
           <button type="button" class="btn small" data-copy="${esc(`${c.name} — ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button>
           <button type="button" class="btn small" data-star="${esc(c.id)}" data-star-text="${esc(c.id)}">${starred ? 'Remove from Saved' : 'Save Color'}</button>
+          <button type="button" class="btn small primary" data-sess-add="${esc(c.id)}">${session.items.some(x => x.ref === c.id) ? 'Added to Session' : 'Add to Session'}</button>
         </div>
         ${res && res.reasons.length ? `<div class="block"><h4>Why It Fits</h4><ul class="reasons">${res.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
         ${warnings.length ? `<div class="block"><h4>Things to Know</h4>${warnings.map((w, i) => `<div class="warn ${w.level === 'heads-up' ? 'headsup' : w.level}" style="--i:${i}"><b>${esc(w.title)}</b><span>${esc(w.text)}</span></div>`).join('')}</div>` : ''}
@@ -899,7 +968,7 @@
         ${pairs.length ? `<div class="block"><h4>Goes Well With</h4><div class="pairs">${pairs.map(p => `<button type="button" class="pair" data-open="${esc(p.color.id)}"><span class="p-sw" data-hex="${p.color.hex}" style="background-color:${paint(p.color.hex)}"></span><span class="p-text"><span class="p-role">${esc(p.role)}</span><span class="p-name">${esc(p.color.name)}</span><span class="p-code mono">${esc(E.codeLabel(p.color))}</span></span></button>`).join('')}</div></div>` : ''}
         <div class="block"><h4>Details</h4>
         <div class="facts">
-          <div class="fact"><span class="k">Lightness (LRV)</span><span class="v mono">${c.lrv}${c.flags & E.F.LRV_EST ? ' (calculated)' : ''}</span></div>
+          <div class="fact"><span class="k">Light Reflectance (LRV)</span><span class="v mono">${c.lrv}${c.flags & E.F.LRV_EST ? ' (calculated)' : ''}</span></div>
           <div class="fact"><span class="k">Depth</span><span class="v">${esc(d.depth)}</span></div>
           <div class="fact"><span class="k">Family</span><span class="v">${esc(d.familyName)}</span></div>
           <div class="fact"><span class="k">Undertone</span><span class="v">${esc(d.undertone === 'neutral' ? 'None (true neutral)' : d.undertone[0].toUpperCase() + d.undertone.slice(1))}</span></div>
@@ -911,7 +980,7 @@
         <p class="muted" style="font-size:13.5px">${esc(d.summary)}.${b.mixNote ? ' ' + esc(b.mixNote) : ''}</p>
         ${sampleNote(c)}
         </div>
-        ${settings.showMatches ? `<div class="block"><h4>Same Color in Other Brands</h4>${matches.length ? `<div class="list">${matches.map((m, i) => matchRow(m, i)).join('')}</div><p class="muted" style="font-size:12.5px">Matched by measured color difference (ΔE 2000). Under 2 is hard to tell apart on the wall; always compare chips before mixing a substitute.</p>` : '<p class="muted">Turn on more brands in settings to see matches.</p>'}</div>` : ''}
+        ${settings.showMatches ? `<div class="block"><h4>Same Color in Other Brands</h4>${matches.length ? `<div class="list">${matches.map((m, i) => matchRow(m, i)).join('')}</div><p class="muted" style="font-size:12.5px">Closest by measured color difference. Under 2 is hard to tell apart. Compare chips before swapping.</p>` : '<p class="muted">Turn on more brands in settings to see matches.</p>'}</div>` : ''}
         <p class="muted" style="font-size:12px">Source: ${esc(b.source || 'brand data')}${b.date ? `, collected ${esc(b.date)}` : ''}. Screen colors are the brand’s digital values; confirm with a physical chip.</p>
       </div>`;
   }
@@ -920,8 +989,7 @@
     return `<div class="block"><h4>Primer</h4>
       <div class="primer"><b>${esc(pr.title)}</b><span>${esc(pr.why)} Plan on ${pr.coats} coats of paint.</span>
       ${pr.products.length ? `<ul class="reasons buy">${pr.products.map(x => `<li><b>${esc(x.name)}</b> ${esc(x.why)}</li>`).join('')}</ul>` : ''}
-      ${pr.tips.map(t => `<p class="muted" style="font-size:13px;margin:0">${esc(t)}</p>`).join('')}
-      ${!(answers.nowKind || answers.nowHex || answers.surface) ? '<p class="muted" style="font-size:12.5px;margin:0">For a primer matched to the wall, answer “What’s on it now?” in Advanced mode.</p>' : ''}</div></div>`;
+      ${pr.tips.map(t => `<p class="muted" style="font-size:13px;margin:0">${esc(t)}</p>`).join('')}</div></div>`;
   }
   function matchRow(m, i) {
     const c = m.color;
@@ -938,16 +1006,25 @@
     if (space === 'cabinets' || space === 'kitchen') return 'kitchen';
     return 'room';
   }
+  // extra pieces some jobs need in the preview
+  function sceneExtras(space) {
+    const o = { shutters: space === 'shutters', garage: space === 'garage_door', porch: space === 'porch_floor', wainscot: space === 'wainscot' };
+    if (space === 'shed') o.siding = 'board';
+    return o;
+  }
   // what stands against the back wall
   function sceneFurniture(space) {
     if (space === 'bedroom' || space === 'nursery' || space === 'kids') return 'bed';
-    if (space === 'bathroom') return 'vanity';
+    if (space === 'bathroom' || space === 'powder') return 'vanity';
     if (space === 'office') return 'desk';
     if (space === 'dining') return 'dining';
     if (space === 'entry' || space === 'stairs') return 'console';
     if (space === 'laundry') return 'laundry';
     if (space === 'garage') return 'garage';
-    if (space === 'furniture') return 'dresser';
+    if (space === 'furniture' || space === 'builtins') return 'dresser';
+    if (space === 'powder') return 'vanity';
+    if (space === 'closet') return 'console';
+    if (space === 'fireplace') return 'fireplace';
     return 'sofa';
   }
   function scenePalette(c, answers, pairs) {
@@ -961,10 +1038,14 @@
     if (space === 'accent') Object.assign(p, { side: c.lrv > 80 ? 'D9D3C8' : 'ECE8E0', art: white, art2: acc });
     if (space === 'ceiling') Object.assign(p, { ceil: c.hex, wall: soft, side: soft, art2: soft });
     if (space === 'trim') Object.assign(p, { trim: c.hex, door: c.hex, wall: soft, side: soft, ceil: 'F2F1EC', art2: soft });
-    if (space === 'furniture') Object.assign(p, { cab: c.hex, wall: c.lrv > 75 ? 'D7D1C6' : 'EEEBE4', side: c.lrv > 75 ? 'D7D1C6' : 'EEEBE4' });
+    if (space === 'doors') Object.assign(p, { door: c.hex, wall: soft, side: soft, art2: soft });
+    if (space === 'wainscot') Object.assign(p, { wain: c.hex, wall: soft, side: soft, art2: soft });
+    if (space === 'fireplace') Object.assign(p, { fire: c.hex, wall: soft, side: soft, art2: soft });
+    if (space === 'floor_paint') Object.assign(p, { floor: c.hex, wall: soft, side: soft, art2: soft });
+    if (space === 'furniture' || space === 'builtins') Object.assign(p, { cab: c.hex, wall: c.lrv > 75 ? 'D7D1C6' : 'EEEBE4', side: c.lrv > 75 ? 'D7D1C6' : 'EEEBE4' });
     if (space === 'cabinets') Object.assign(p, { cab: c.hex, wall: c.lrv > 75 ? 'D7D1C6' : 'EEEBE4', side: c.lrv > 75 ? 'D7D1C6' : 'EEEBE4', counter: 'ECEAE5', tile: 'F6F5F1', hood: 'B9BDBF' });
     if (space === 'kitchen') Object.assign(p, { cab: c.lrv > 82 ? '3F4A52' : white, counter: 'ECEAE5', tile: 'F6F5F1', hood: 'B9BDBF' });
-    if (space === 'bathroom') Object.assign(p, { floor: 'CFCBC4', vanity: c.lrv > 82 ? '5B6770' : white, counter: 'ECEAE5' });
+    if (space === 'bathroom' || space === 'powder') Object.assign(p, { floor: 'CFCBC4', vanity: c.lrv > 82 ? '5B6770' : white, counter: 'ECEAE5' });
     p.duvet = 'F1F0EC'; p.wood = 'A27B55';
     p.rug = c.lrv > 62 ? 'B8AD9C' : 'DDD5C7'; p.curtain = 'EEEAE2';
     if (!p.cab) p.cab = white;
@@ -982,7 +1063,11 @@
       if (space === 'front_door') Object.assign(p, { xdoor: c.hex, body: c.lrv > 55 ? '6B6F72' : 'D9D5CC', xtrim: 'F2F1EC' });
       if (space === 'ext_body') Object.assign(p, { body: c.hex, xtrim: c.lrv > 80 ? '2E3134' : white, xdoor: acc });
       if (space === 'ext_trim') Object.assign(p, { xtrim: c.hex, body: c.lrv > 55 ? '6B6F72' : 'DCD7CE', xdoor: acc });
-      const stone = first('stone'); if (stone) p.step = stone.hex; // stone or brick shows on the front steps
+      if (space === 'shed') Object.assign(p, { body: c.hex, xtrim: c.lrv > 80 ? '2E3134' : white, xdoor: c.hex });
+      if (space === 'shutters') Object.assign(p, { shut: c.hex, body: c.lrv > 55 ? '6B6F72' : 'D9D5CC', xtrim: 'F2F1EC', xdoor: c.hex });
+      if (space === 'garage_door') Object.assign(p, { gdoor: c.hex, body: Math.abs(c.lrv - 60) < 18 ? 'B9B4AA' : 'D9D5CC', xtrim: 'F2F1EC' });
+      if (space === 'porch_floor') Object.assign(p, { step: c.hex });
+      const stone = first('stone'); if (stone && space !== 'porch_floor') p.step = stone.hex; // stone or brick shows on the front steps
     }
     const rf = first('roof'); if (rf) p.roof = rf.hex;
     return p;
@@ -1010,7 +1095,7 @@
     if (f && /tile|travertine/.test(f.id + f.label.toLowerCase())) return 'tile';
     if (f && /concrete/.test(f.id)) return 'concrete';
     if (f) return 'wood';
-    return { bathroom: 'tile', laundry: 'tile', garage: 'concrete' }[answers.space] || 'wood';
+    return { bathroom: 'tile', powder: 'tile', laundry: 'tile', garage: 'concrete', floor_paint: 'concrete' }[answers.space] || 'wood';
   }
   const WIN = {
     left: { frame: '60.5,110 176,130 176,292 60.5,318', glass: '67.5,118.3 168.8,137.5 168.8,283.7 67.5,309.3', mull: [[118.1, 127.9, 118.1, 296.5], [67.5, 213.8, 168.8, 210.6]], sill: '56,318 180,292 182,299 56,327', sun: '118,402 236,372 352,404 236,446' },
@@ -1035,6 +1120,26 @@
       <polygon class="r-trim" points="${w.sill}"/>`;
   }
   // the room shell: walls, ceiling, windows, floor (planks, tile joints, carpet or concrete) and baseboards
+  // beadboard on the lower third of every wall, with a cap rail (painted, or stained wood boards with tex)
+  function wainscotBand(tex) {
+    const fill = tex ? 'fill="url(#ptWain)"' : 'class="r-wain"';
+    const left = '0,307 225,259 225,354 0,480', right = '665,259 800,307 800,480 665,354';
+    const beads = [];
+    for (let x = 239; x < 665; x += 14) beads.push(`<line x1="${x}" y1="262" x2="${x}" y2="354"/>`);
+    for (let i = 1; i < 14; i++) {
+      const t = i / 14;
+      const xl = 225 * (1 - Math.pow(1 - t, 1.6)), xr = 800 - (800 - 665) * (1 - Math.pow(1 - t, 1.6));
+      beads.push(`<line x1="${xl.toFixed(1)}" y1="${(307 - 48 * xl / 225 + 3).toFixed(1)}" x2="${xl.toFixed(1)}" y2="${(480 - 126 * xl / 225).toFixed(1)}"/>`);
+      beads.push(`<line x1="${xr.toFixed(1)}" y1="${(259 + 48 * (xr - 665) / 135 + 3).toFixed(1)}" x2="${xr.toFixed(1)}" y2="${(354 + 126 * (xr - 665) / 135).toFixed(1)}"/>`);
+    }
+    return `
+      <polygon ${fill} points="${left}"/><polygon points="${left}" fill="url(#rgLeft)"/>
+      <polygon ${fill} points="${right}"/><polygon points="${right}" fill="url(#rgRight)"/>
+      <rect ${fill} x="225" y="259" width="440" height="95"/><rect x="225" y="259" width="440" height="95" fill="url(#rgBackY)"/>
+      <g stroke="#000" stroke-opacity=".13" stroke-width="1.2">${beads.join('')}</g>
+      <polygon ${fill} points="0,301 225,256 225,262 0,310"/><polygon ${fill} points="665,256 800,301 800,310 665,262"/><rect ${fill} x="225" y="256" width="440" height="6"/>
+      <g fill="#000" opacity=".16"><polygon points="0,310 225,262 225,265 0,314"/><polygon points="665,262 800,310 800,314 665,265"/><rect x="225" y="262" width="440" height="3"/></g>`;
+  }
   function interiorShell(o) {
     o = o || {};
     const slots = o.windows || [];
@@ -1074,6 +1179,7 @@
       <rect x="225" y="90" width="440" height="264" fill="url(#rgBackY)"/>
       ${has('left') ? '<rect x="225" y="90" width="440" height="264" fill="url(#rgWinGlow)"/>' : ''}
       ${has('right') ? '<rect x="225" y="90" width="440" height="264" fill="url(#rgWinGlowR)"/>' : ''}
+      ${o.wainscot ? wainscotBand(o.wainscotTex) : ''}
       ${o.crown ? CROWN : ''}
       ${has('left') ? sideWindow('left', has('left').dir) + (o.curtains ? CURTAINS.left : '') : ''}
       ${has('right') ? sideWindow('right', has('right').dir) + (o.curtains ? CURTAINS.right : '') : ''}
@@ -1144,12 +1250,13 @@
       pattern('ptStone', { t: 'stone', role: 'counter', w: 440, h: 60 }, 440, 60, 226, 258),
       opts.trimTex ? pattern('ptTrim', Object.assign({}, opts.trimTex, { t: 'boards', w: 440, h: 40, cm: 0.5, board: 30 }), 440, 40, 0, 339) : '',
       opts.trimTex ? pattern('ptTrimV', Object.assign({}, opts.trimTex, { t: 'boards', w: 120, h: 340, cm: 0.6, board: 40, vertical: true }), 120, 340, 670, 110) : '',
+      opts.wainscotTex ? pattern('ptWain', Object.assign({}, opts.wainscotTex, { t: 'boards', w: 400, h: 120, cm: 0.5, board: 9, vertical: true, seed: 6 }), 400, 120, 0, 256) : '',
       opts.cabTex ? pattern('ptCabBox', Object.assign({}, opts.cabTex, { t: 'boards', w: 440, h: 260, cm: 0.35, board: 18, vertical: true }), 440, 260, 226, 96) : '',
     ].join('');
     const defs = `<defs>${DEFS_COMMON}${INTERIOR_DEFS}${texDefs}${furniture === 'vanity' || furniture === 'console' ? '<linearGradient id="rgMirror" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e9eef1"/><stop offset=".5" stop-color="#c9d2d7"/><stop offset="1" stop-color="#dfe5e8"/></linearGradient>' : ''}</defs>`;
     const backX = { bed: 412, desk: 300, dining: 400 }[furniture] || 402; // where the back-wall window sits
     const homey = ['sofa', 'bed', 'dining', 'desk'].includes(furniture);
-    const shell = interiorShell({ windows: slots, door: furniture !== 'kitchen', floorType: opts.floorType, backX, floorTex, trimTex: opts.trimTex, crown: opts.crown, curtains: homey });
+    const shell = interiorShell({ windows: slots, door: furniture !== 'kitchen', floorType: opts.floorType, backX, floorTex, trimTex: opts.trimTex, crown: opts.crown, curtains: homey, wainscot: opts.wainscot, wainscotTex: opts.wainscotTex });
     const night = '<rect class="r-night" x="0" y="0" width="800" height="480" fill="url(#rgNight)"/>';
     const art = (x, y, w, h) => `
       <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="#000" opacity=".12" filter="url(#rfShadow)" transform="translate(3 5)"/>
@@ -1242,6 +1349,26 @@
       <rect class="r-wood" x="300" y="370" width="356" height="8" rx="2"/>
       <rect x="318" y="378" width="8" height="34" fill="#3a3632"/><rect x="630" y="378" width="8" height="34" fill="#3a3632"/>
       <ellipse cx="478" cy="350" rx="34" ry="6" fill="#e8e2d6"/><ellipse cx="478" cy="346" rx="16" ry="10" fill="#6f8a5a"/>`;
+    else if (furniture === 'fireplace') {
+      const mortar = [];
+      for (let y = 193, r = 0; y < 354; y += 11, r++) {
+        mortar.push(`<line x1="345" y1="${y}" x2="545" y2="${y}"/>`);
+        for (let x = 345 + (r % 2 ? 0 : 12); x < 545; x += 24) mortar.push(`<line x1="${x}" y1="${y - 11}" x2="${x}" y2="${y}"/>`);
+      }
+      body = `${artOrWindow(390, 98, 110, 64)}
+      <rect x="341" y="186" width="208" height="170" fill="#000" opacity=".16" filter="url(#rfShadow)" transform="translate(0 4)"/>
+      <rect class="r-fire" x="345" y="182" width="200" height="172"/>
+      <g stroke="#000" stroke-opacity=".16" stroke-width="1.2">${mortar.join('')}</g>
+      <rect x="345" y="182" width="200" height="172" fill="url(#rgBackX)" opacity=".5"/>
+      <path d="M393 354 V292 Q445 254 497 292 V354 Z" fill="#1b1816"/>
+      <path d="M401 354 V296 Q445 264 489 296 V354 Z" fill="#000" opacity=".35"/>
+      <circle class="r-lamp-glow" cx="445" cy="336" r="60" fill="url(#rgLamp)"/>
+      <ellipse cx="430" cy="346" rx="24" ry="6" fill="#5b3a26"/><ellipse cx="460" cy="343" rx="22" ry="5.5" fill="#6b4630"/>
+      <rect class="r-wood" x="330" y="172" width="230" height="12" rx="2"/>
+      <rect x="330" y="183" width="230" height="4" fill="#000" opacity=".16"/>
+      <polygon points="335,354 555,354 572,372 318,372" fill="#8d8a85"/><polygon points="318,372 572,372 572,377 318,377" fill="#000" opacity=".22"/>
+      <rect x="352" y="160" width="20" height="12" rx="2" fill="#b48a63"/><ellipse cx="516" cy="160" rx="14" ry="12" fill="#5e7a4c"/><rect x="510" y="160" width="12" height="12" rx="2" fill="#d9d3c8"/>`;
+    }
     else if (furniture === 'console') body = `
       <circle cx="476" cy="190" r="56" fill="#000" opacity=".12" filter="url(#rfShadow)"/>
       <circle class="r-frame" cx="474" cy="186" r="56"/><circle cx="474" cy="186" r="49" fill="url(#rgMirror)"/>
@@ -1263,7 +1390,7 @@
       ${[350, 482].map(x => `<rect x="${x}" y="250" width="124" height="118" rx="6" fill="#eef0f1"/><rect x="${x}" y="250" width="124" height="18" rx="5" fill="#dfe3e6"/><circle cx="${x + 62}" cy="314" r="36" fill="#cfd6db"/><circle cx="${x + 62}" cy="314" r="27" fill="#5f6b74"/><circle cx="${x + 62}" cy="314" r="27" fill="url(#rgMirror)" opacity=".35"/><rect x="${x + 12}" y="255" width="30" height="7" rx="2" fill="#b9c1c7"/>`).join('')}`;
     else if (furniture === 'dresser') body = `${artOrWindow(400, 116, 150, 96)}
       <ellipse cx="476" cy="372" rx="150" ry="10" fill="#000" opacity=".24" filter="url(#rfShadow)"/>
-      <rect class="r-cab" x="360" y="246" width="232" height="118" rx="3"/>
+      <rect ${opts.cabWood ? 'fill="url(#ptWood)"' : 'class="r-cab"'} x="360" y="246" width="232" height="118" rx="3"/>
       <rect x="360" y="246" width="232" height="118" rx="3" fill="url(#rgBackY)"/>
       <rect class="r-woodtex" fill="url(#ptWood)" x="354" y="238" width="244" height="10" rx="2"/>
       <g fill="none" stroke="#000" stroke-opacity=".18" stroke-width="1.5">${[254, 290, 326].map(y => `<rect x="368" y="${y}" width="216" height="32" rx="2"/>`).join('')}<line x1="476" y1="254" x2="476" y2="286"/></g>
@@ -1312,6 +1439,39 @@
   }
 
   // Front of a house, straight on. Siding texture follows the siding answer.
+  // a sectional garage door where the right window would be (painted, or stained wood with tex)
+  function garageDoor(tex) {
+    const x = 494, y = 262, w = 162, h = 148;
+    const panels = [];
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) panels.push(`<rect x="${x + 8 + c * 37}" y="${y + 8 + r * 35}" width="31" height="27" rx="1"/>`);
+    return `
+      <rect class="r-xtrim" x="${x - 9}" y="${y - 9}" width="${w + 18}" height="${h + 9}" rx="1"/>
+      <rect class="r-gdoor" x="${x}" y="${y}" width="${w}" height="${h}"/>
+      ${tex ? `<image data-tex="${esc(JSON.stringify(Object.assign({}, tex, { t: 'boards', w, h, cm: 1.7, board: 16, seed: 5 })))}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="none"/>` : ''}
+      <g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.4">${panels.join('')}</g>
+      <g stroke="#000" stroke-opacity=".22" stroke-width="1.4">${[1, 2, 3].map(r => `<line x1="${x}" y1="${y + r * 37}" x2="${x + w}" y2="${y + r * 37}"/>`).join('')}</g>
+      <rect x="${x}" y="${y}" width="${w}" height="14" fill="#000" opacity=".10"/>`;
+  }
+  // a painted porch floor with steps, in front of the door
+  function porchSvg() {
+    const boards = Array.from({ length: 13 }, (_, i) => `<line x1="${(262 + i * 23).toFixed(1)}" y1="394" x2="${(248 + i * 25.33).toFixed(1)}" y2="410"/>`).join('');
+    return `
+      <polygon class="r-step" points="262,394 538,394 552,410 248,410"/>
+      <g stroke="#000" stroke-opacity=".12" stroke-width="1">${boards}</g>
+      <rect class="r-step" x="248" y="410" width="304" height="10"/><rect x="248" y="410" width="304" height="10" fill="#000" opacity=".2"/>
+      <rect class="r-step" x="330" y="420" width="140" height="8"/><rect x="330" y="426" width="140" height="2" fill="#000" opacity=".18"/>
+      <rect class="r-step" x="318" y="428" width="164" height="8"/><rect x="318" y="434" width="164" height="2" fill="#000" opacity=".18"/>`;
+  }
+  // louvered shutters either side of a window
+  function shutterPair(x, tex) {
+    const one = sx => `
+      <rect class="r-shut" x="${sx}" y="211" width="30" height="128" rx="1"/>
+      ${tex ? `<image data-tex="${esc(JSON.stringify(Object.assign({}, tex, { t: 'boards', w: 30, h: 128, cm: 1.3, board: 10, vertical: true, seed: sx })))}" x="${sx}" y="211" width="30" height="128" preserveAspectRatio="none"/>` : ''}
+      <g stroke="#000" stroke-opacity=".20" stroke-width="1.2">${Array.from({ length: 14 }, (_, i) => `<line x1="${sx + 4}" y1="${219 + i * 8.4}" x2="${sx + 26}" y2="${219 + i * 8.4}"/>`).join('')}</g>
+      <rect x="${sx}" y="211" width="30" height="128" rx="1" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="2"/>
+      <rect x="${sx + 30}" y="213" width="3" height="126" fill="#000" opacity=".12"/>`;
+    return one(x - 44) + one(x + 124);
+  }
   function houseSvg(opts) {
     const siding = opts.siding || 'wood';
     let texture = '';
@@ -1380,8 +1540,9 @@
       <rect x="120" y="192" width="560" height="22" fill="url(#rgEave)"/>
       <!-- gable vent -->
       <polygon class="r-xtrim" points="400,96 430,134 370,134"/><polygon points="400,104 422,130 378,130" fill="#000" opacity=".35"/>
-      <!-- windows -->
-      ${win(176)}${win(514)}
+      <!-- windows, or a garage door in place of the right one -->
+      ${win(176)}${opts.garage ? garageDoor(opts.garageTex) : win(514)}
+      ${opts.shutters ? shutterPair(176, opts.shutterTex) + (opts.garage ? '' : shutterPair(514, opts.shutterTex)) : ''}
       <!-- door -->
       <rect class="r-xtrim" x="344" y="236" width="112" height="176" rx="1"/>
       <rect class="r-xdoor" x="356" y="248" width="88" height="160"/>
@@ -1390,17 +1551,19 @@
       <g fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="1"><rect x="367" y="263" width="27" height="56" rx="1"/><rect x="406" y="263" width="27" height="56" rx="1"/></g>
       <circle cx="434" cy="330" r="4" fill="#c4a24c"/><circle cx="434" cy="330" r="4" fill="none" stroke="#000" stroke-opacity=".25"/>
       <rect x="356" y="248" width="88" height="160" fill="#000" opacity=".06"/>
-      <!-- porch light -->
+      ${opts.shutters && !opts.garage ? '' : `<!-- porch light -->
       <circle class="r-lamp-glow" cx="474" cy="282" r="90" fill="url(#rgLamp)"/>
-      <rect x="466" y="268" width="16" height="26" rx="3" fill="#2b2b2b"/><rect class="r-shade" x="469" y="272" width="10" height="18" rx="2"/>
+      <rect x="466" y="268" width="16" height="26" rx="3" fill="#2b2b2b"/><rect class="r-shade" x="469" y="272" width="10" height="18" rx="2"/>`}
       <!-- steps and walk -->
+      ${opts.garage ? '<polygon class="r-walk" points="494,410 656,410 740,480 430,480"/>' : ''}
       <rect class="r-step" x="330" y="408" width="140" height="12"/><rect class="r-step" x="316" y="420" width="168" height="12"/>
       <rect x="316" y="430" width="168" height="3" fill="#000" opacity=".12"/>
       <polygon class="r-walk" points="340,433 460,433 520,480 280,480"/>
       <!-- shrubs -->
-      <ellipse cx="236" cy="410" rx="72" ry="10" fill="#000" opacity=".25" filter="url(#rfShadow)"/><ellipse cx="572" cy="410" rx="72" ry="10" fill="#000" opacity=".25" filter="url(#rfShadow)"/>
-      <ellipse class="r-shrub" cx="200" cy="396" rx="42" ry="26"/><ellipse class="r-shrub" cx="262" cy="400" rx="36" ry="22"/><ellipse class="r-shrub" cx="540" cy="398" rx="38" ry="24"/><ellipse class="r-shrub" cx="602" cy="396" rx="42" ry="26"/>
-      <ellipse cx="208" cy="388" rx="26" ry="12" fill="#fff" opacity=".06"/><ellipse cx="596" cy="388" rx="26" ry="12" fill="#fff" opacity=".06"/>
+      <ellipse cx="236" cy="410" rx="72" ry="10" fill="#000" opacity=".25" filter="url(#rfShadow)"/>${opts.garage ? '' : '<ellipse cx="572" cy="410" rx="72" ry="10" fill="#000" opacity=".25" filter="url(#rfShadow)"/>'}
+      <ellipse class="r-shrub" cx="200" cy="396" rx="42" ry="26"/><ellipse class="r-shrub" cx="262" cy="400" rx="36" ry="22"/>${opts.garage ? '' : '<ellipse class="r-shrub" cx="540" cy="398" rx="38" ry="24"/><ellipse class="r-shrub" cx="602" cy="396" rx="42" ry="26"/>'}
+      <ellipse cx="208" cy="388" rx="26" ry="12" fill="#fff" opacity=".06"/>${opts.garage ? '' : '<ellipse cx="596" cy="388" rx="26" ry="12" fill="#fff" opacity=".06"/>'}
+      ${opts.porch ? porchSvg() : ''}
       <rect class="r-night" x="0" y="0" width="800" height="480" fill="url(#rgNight)"/>`;
   }
 
@@ -1408,7 +1571,7 @@
     none: ['#cfe1f3', '#eef4f8'], daylight: ['#bcd6ef', '#eaf2f8'], north: ['#b7c7d8', '#dfe7ee'], sun: ['#9cc6ef', '#fff2d9'],
     golden: ['#f2a65a', '#ffd9a0'], warm: ['#141b26', '#2c3647'], soft: ['#141b26', '#2c3647'], cool: ['#141b26', '#2c3647'], dim: ['#8e979f', '#b9c0c5'],
   };
-  const FIXED_FILL = { rug: 'CFC6B8', curtain: 'ECE7DD', counter: 'ECEAE5', cab: 'F2F1EC', body: 'CFC8BC', xtrim: 'F2F1EC', glass: '33404B', lawn: '6E8A4F', tree: '5D7649', shrub: '4E6A3B', roof: '45484C', floor: 'A9784B', frame: '2B2926', sofa: '8A857E', 'sofa-d': '77726B', 'sofa-l': '9A958E', shade: 'ECE6DA', duvet: 'F1F0EC', wood: 'A27B55' };
+  const FIXED_FILL = { wain: 'F2F1EC', fire: 'A65A44', shut: '2F3B4C', gdoor: 'F2F1EC', rug: 'CFC6B8', curtain: 'ECE7DD', counter: 'ECEAE5', cab: 'F2F1EC', body: 'CFC8BC', xtrim: 'F2F1EC', glass: '33404B', lawn: '6E8A4F', tree: '5D7649', shrub: '4E6A3B', roof: '45484C', floor: 'A9784B', frame: '2B2926', sofa: '8A857E', 'sofa-d': '77726B', 'sofa-l': '9A958E', shade: 'ECE6DA', duvet: 'F1F0EC', wood: 'A27B55' };
   function updateRoomScene() {
     const room = $('#roomScene'); if (!room) return;
     const id = state.roomLight;
@@ -1494,6 +1657,142 @@
   });
 
   // ================================================================
+  // SESSION: everything picked for one customer, in one list, with printable reports
+  // ================================================================
+  // An item is plain text (area, brand, color, code, finish, product...) so the list and the printouts never
+  // depend on the color data being loaded. The session lives on this device until "New Session" clears it.
+  let session = store.get('session', { name: '', items: [] });
+  if (!session || !Array.isArray(session.items)) session = { name: '', items: [] };
+  const saveSession = () => store.set('session', session);
+  const sessionTitle = () => (session.name || '').trim() || 'New Session';
+  const sessEl = () => $('#sessionModal');
+  function updateSessionBtn(bump) {
+    const n = session.items.length;
+    const cnt = $('#sessionCount'), lbl = $('#sessionLabel');
+    if (cnt) { cnt.textContent = n; cnt.hidden = !n; if (bump) { cnt.classList.remove('bump'); void cnt.offsetWidth; cnt.classList.add('bump'); } }
+    if (lbl) lbl.textContent = sessionTitle();
+    $$('[data-sess-add]').forEach(b => { const on = session.items.some(x => x.ref === b.dataset.sessAdd); b.textContent = on ? 'Added to Session' : 'Add to Session'; });
+  }
+  const sheenName = id => (E.SHEENS.find(s => s.id === id) || {}).name || '';
+  // a paint color, with what this search knows about the job
+  function paintItem(c) {
+    const res = state.results && state.results.kind !== 'stain' && state.results.results.concat(state.results.finalists || []).some(r => (r.color || {}).id === c.id);
+    const a = res ? state.results.answers : null;
+    const sp = a ? E.SPACES[a.space] : null;
+    const item = { kind: 'paint', ref: c.id, area: sp ? sp.label : '', brand: brandName(c.brand), name: c.name, code: E.codeLabel(c), hex: c.hex, lrv: String(c.lrv), finish: sp ? sheenName(sp.sheens[0]) : '', product: '', primer: '', loc: '' };
+    item.loc = (c.flags & E.F.RACK) && c.extra && ['sw', 'valspar', 'hgsw'].includes(c.brand) ? c.extra : (c.flags & E.F.RACK) ? 'Rack' : '';
+    const lb = lineBrandFor(c);
+    if (lb) { const r = E.recommendLines(lb, c, a || { space: 'living' }, { lines: settings.lines }); if (r.best) item.product = lineLabel(lb, r.best.line); }
+    if (a) { const pr = E.primerFor(a, c, engineSettings()); if (pr.need) item.primer = pr.products[0] ? pr.products[0].name : pr.title.replace(/^An? /, ''); }
+    return item;
+  }
+  // a stain, on the wood and job it was picked for
+  function stainItem(R, r) {
+    const job = S.JOBS[R.answers.target] || S.JOBS.floors;
+    const prods = S.productsFor(R.answers, stainSettings(), [r]);
+    return { kind: 'stain', ref: r.id, area: `${job.label}, ${spLabel(R.wood)}`, brand: sBrand(r), name: r.name, code: sCode(r) === S.TYPES[r.type] ? '' : sCode(r), hex: r.hex, lrv: '', finish: S.TYPES[r.type] || '', product: (prods[0] || {}).name || '', primer: '', loc: '' };
+  }
+  // an exact color value from Look Up, with its closest paint
+  function customItem(hex) {
+    const best = E.closestByBrand(hex, { brands: brandsEnabled() })[0];
+    return { kind: 'custom', ref: '#' + hex, area: '', brand: 'Custom', name: best ? `Closest: ${brandName(best.color.brand)} ${best.color.name} ${E.codeLabel(best.color)}` : 'Exact color', code: '#' + hex, hex, lrv: String(C.lrvFromHex(hex)), finish: '', product: '', primer: '', loc: '' };
+  }
+  function addToSession(item) {
+    if (!item) return;
+    const at = session.items.findIndex(x => x.ref === item.ref && x.area === item.area);
+    if (at >= 0) { toast(`Already in ${sessionTitle()}`); return; }
+    session.items.push(Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }, item));
+    saveSession(); updateSessionBtn(true);
+    toast(`Added ${item.name.replace(/^Closest: .*/, item.code)} to ${sessionTitle()}`);
+  }
+  const sessLine = x => [x.brand !== 'Custom' ? x.brand : '', x.name, x.code, x.finish].filter(Boolean).join(' · ');
+  function sessionHtml() {
+    const items = session.items;
+    return `<div class="modal-card sess-card" role="document">
+      <div class="modal-head"><h2 id="sessionTitle">${esc(sessionTitle())}</h2><button type="button" class="icon-btn" data-sess="close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button></div>
+      <label class="sess-name"><span>Customer or Project</span><input type="text" class="cg-input" id="sessName" value="${esc(session.name || '')}" placeholder="New Session" maxlength="60" autocomplete="off"></label>
+      ${items.length ? `<ol class="sess-list">${items.map((x, i) => `<li class="sess-item" data-id="${esc(x.id)}">
+        <span class="sess-n">${i + 1}</span>
+        <span class="sess-sw" style="background-color:${paint(x.hex)}" aria-hidden="true"></span>
+        <span class="sess-main"><input type="text" class="sess-area" data-sess-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><span class="sess-what">${esc(sessLine(x))}</span></span>
+        <button type="button" class="icon-btn sess-del" data-sess-del="${esc(x.id)}" aria-label="Remove ${esc(x.name)}"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      </li>`).join('')}</ol>`
+        : '<div class="sess-empty"><b>Nothing added yet</b><span>Open any color or stain and tap Add to Session.</span></div>'}
+      <div class="sess-actions">
+        <button type="button" class="btn primary" data-sess="add"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Add</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-sess="print-home" ${items.length ? '' : 'disabled'}>Print Take-Home</button>
+        <button type="button" class="btn" data-sess="print-store" ${items.length ? '' : 'disabled'}>Print for Store</button>
+        <button type="button" class="btn ghost" data-sess="new">New Session</button>
+      </div>
+    </div>`;
+  }
+  function openSession() {
+    const el = sessEl();
+    el.innerHTML = sessionHtml();
+    el.hidden = false;
+    const name = $('#sessName', el);
+    name.addEventListener('input', () => { session.name = name.value; saveSession(); $('#sessionTitle', el).textContent = sessionTitle(); updateSessionBtn(); });
+    $$('[data-sess-area]', el).forEach(inp => inp.addEventListener('input', () => { const x = session.items.find(i => i.id === inp.dataset.sessArea); if (x) { x.area = inp.value; saveSession(); } }));
+    $('[data-sess="close"]', el).focus({ preventScroll: true });
+  }
+  function closeSession() { sessEl().hidden = true; }
+  function newSession() {
+    if (session.items.length && !window.confirm(`Clear ${sessionTitle()} and start a new session?`)) return;
+    session = { name: '', items: [] }; saveSession(); updateSessionBtn(); openSession();
+  }
+  // ---- printing: black and white, letters and numbers only, one line per item ----
+  function printReport(kind) {
+    const staff = kind === 'store';
+    const chain = settings.chain && CHAINS[settings.chain] && !CHAINS[settings.chain].other ? CHAINS[settings.chain].label.replace(/ Store$/, '') : '';
+    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    const cols = staff
+      ? [['#', 'n'], ['Area', 'area'], ['Brand', 'brand'], ['Color', 'name'], ['Code', 'code'], ['Hex', 'hex'], ['LRV', 'lrv'], ['Find It', 'loc'], ['Finish', 'finish'], ['Product', 'product'], ['Primer', 'primer']]
+      : [['#', 'n'], ['Area', 'area'], ['Brand', 'brand'], ['Color', 'name'], ['Code', 'code'], ['Finish', 'finish'], ['Product', 'product']];
+    const cell = (x, k, i) => k === 'n' ? String(i + 1) : k === 'hex' ? (x.hex ? '#' + x.hex.toUpperCase() : '') : k === 'brand' && x.brand === 'Custom' ? 'Custom' : (x[k] || '');
+    const rows = session.items.map((x, i) => `<tr>${cols.map(([, k]) => `<td class="c-${k}">${esc(cell(x, k, i))}</td>`).join('')}</tr>`).join('');
+    const area = $('#printArea');
+    area.className = staff ? 'print-store' : 'print-home';
+    area.innerHTML = `
+      <div class="pr-head"><b>${esc(sessionTitle())}</b><span class="pr-meta">${[staff ? 'Store Copy' : 'Paint and Stain List', chain, date].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</span></div>
+      <table><thead><tr>${cols.map(([h, k]) => `<th class="c-${k}">${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+      <p class="pr-foot">${staff ? 'Hex and LRV are screen values. Match to the chip.' : 'Colors on screens and paper differ. Check a real chip or sample before buying.'}</p>`;
+    document.documentElement.classList.add('printing-' + (staff ? 'store' : 'home'));
+    // the store copy has more columns, so it prints sideways
+    const page = document.createElement('style'); page.id = 'printPage';
+    page.textContent = `@page { size: ${staff ? 'landscape' : 'portrait'}; margin: 0.5in; }`;
+    document.head.appendChild(page);
+    const done = () => { document.documentElement.classList.remove('printing-store', 'printing-home'); page.remove(); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
+  }
+  document.addEventListener('click', e => {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.id === 'sessionBtn') { openSession(); return; }
+    if (t.dataset.sessAdd) {
+      const id = t.dataset.sessAdd;
+      if (id.startsWith('#')) addToSession(customItem(id.slice(1)));
+      else {
+        const c = E.findColor(id);
+        if (c && !(state.results && state.results.kind === 'stain' && state.results.results.concat(state.results.finalists || []).some(r => r.id === id))) addToSession(paintItem(c));
+        else { const x = stainResultFor(id); if (x) addToSession(stainItem(x.R, x.r)); }
+      }
+      updateSessionBtn();
+      return;
+    }
+    if (!t.closest('#sessionModal')) return;
+    if (t.dataset.sess === 'close') closeSession();
+    if (t.dataset.sess === 'add') { closeSession(); closeSheet($('#detailSheet')); startOver(); }
+    if (t.dataset.sess === 'new') newSession();
+    if (t.dataset.sess === 'print-home') printReport('home');
+    if (t.dataset.sess === 'print-store') printReport('store');
+    if (t.dataset.sessDel) { session.items = session.items.filter(x => x.id !== t.dataset.sessDel); saveSession(); updateSessionBtn(); openSession(); }
+  });
+  sessEl().addEventListener('click', e => { if (e.target === sessEl()) closeSession(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sessEl().hidden) { e.stopImmediatePropagation(); closeSession(); } }, true);
+  updateSessionBtn();
+
+  // ================================================================
   // LOOKUP & MATCH
   // ================================================================
   function renderLookup() {
@@ -1501,10 +1800,10 @@
     host.innerHTML = `
       <div class="lookup-head">
         <h1>Look Up Any Color</h1>
-        <p class="muted">Type a name or code from any brand, or pick a color value. Open a color to see its closest match in every brand.</p>
+        <p class="muted">Search any brand by name or code, or enter a hex or RGB value.</p>
         <div class="searchbox">
           <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12.2 12.2L16 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          <input type="search" id="lookupInput" aria-label="Search colors" placeholder="Agreeable Gray, SW 7029, OC-17, #D1CBC1" value="${esc(state.query)}" autocomplete="off" spellcheck="false">
+          <input type="search" id="lookupInput" aria-label="Search colors" placeholder="Agreeable Gray, SW 7029, #D1CBC1, 209 203 193" value="${esc(state.query)}" autocomplete="off" spellcheck="false">
           <button type="button" class="search-clear" data-clear="lookupInput" aria-label="Clear search" ${state.query ? '' : 'hidden'}><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3L3 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
           ${colorHtml('lookupColor', state.lookupHex || 'D1CBC1', 'Match a color value')}
         </div>
@@ -1520,6 +1819,33 @@
     showLookupResults();
     if (window.matchMedia('(pointer: fine)').matches) input.focus({ preventScroll: true });
   }
+  // The exact value of a typed color or a paint: hex, RGB and LRV, ready to copy or add to the session
+  function exactCardHtml(hex, c) {
+    const rgb = C.hexToRgb(hex).map(v => Math.round(v));
+    const lrv = c ? c.lrv : C.lrvFromHex(hex);
+    const ref = c ? c.id : '#' + hex;
+    return `<div class="exact">
+      <span class="exact-sw" data-hex="${hex}" style="background-color:${paint(hex)}"></span>
+      <div class="exact-info">
+        <p class="eyebrow">${c ? `${esc(brandName(c.brand))} · ${esc(E.codeLabel(c))}` : 'Exact Color'}</p>
+        <h2>${c ? esc(c.name) : '#' + hex}</h2>
+        <div class="exact-vals">
+          <button type="button" class="exact-val" data-copy="#${hex}" aria-label="Copy hex #${hex}"><span>Hex</span><b class="mono">#${hex}</b></button>
+          <button type="button" class="exact-val" data-copy="${rgb.join(', ')}" aria-label="Copy RGB ${rgb.join(', ')}"><span>RGB</span><b class="mono">${rgb.join(', ')}</b></button>
+          <div class="exact-val"><span>LRV</span><b class="mono">${lrv}</b></div>
+        </div>
+        <div class="exact-actions">${c ? `<button type="button" class="btn small" data-open="${esc(c.id)}">See Details</button>` : ''}<button type="button" class="btn small primary" data-sess-add="${esc(ref)}">${session.items.some(x => x.ref === ref) ? 'Added to Session' : 'Add to Session'}</button></div>
+      </div>
+    </div>`;
+  }
+  $('#view-lookup').addEventListener('click', e => { const t = e.target.closest('button[data-copy]'); if (t) copyText(t.dataset.copy, 'Copied ' + t.dataset.copy); });
+  // closest colors: brands that are on first, then the ones turned off (folded away)
+  function nearLists(all, title) {
+    const en = brandsEnabled();
+    const on = all.filter(r => en[r.color.brand] !== false), off = all.filter(r => en[r.color.brand] === false);
+    return `<p class="section-title" style="margin:22px 0 12px">${title}</p>${on.length ? `<div class="list">${on.map((r, i) => lookupRow(r, i)).join('')}</div>` : '<p class="muted">No brands are turned on.</p>'}`
+      + (off.length ? `<details class="more-brands"><summary>Brands Turned Off (${off.length})</summary><div class="list">${off.map((r, i) => lookupRow(r, i)).join('')}</div></details>` : '');
+  }
   function showLookupResults() {
     const host = $('#lookupResults'); if (!host) return;
     const q = state.query.trim();
@@ -1530,13 +1856,35 @@
       host.innerHTML = `<p class="section-title" style="margin-bottom:12px">Best Sellers</p><div class="list">${pop.slice(0, 40).map((c, i) => lookupRow({ color: c }, i)).join('')}</div>`;
       return;
     }
-    const res = E.search(q, opts);
-    host.innerHTML = res.length ? `<p class="section-title" style="margin-bottom:12px">${res.length === 60 ? 'Top 60 results' : res.length + ' result' + (res.length > 1 ? 's' : '')}${res[0].dE != null ? ' · closest by color' : ''}</p><div class="list">${res.map((r, i) => lookupRow(r, i)).join('')}</div>`
-      : `<div class="empty"><p>No colors match “${esc(q)}”.</p><p class="muted">Check the spelling, try just the number, or paste a hex value like #D1CBC1.</p></div>`;
+    // a typed hex or RGB value: its exact numbers, then the closest color in every brand
+    const hex = E.parseColorValue(q);
+    if (hex) {
+      // keep the color button in the search box showing the typed value
+      state.lookupHex = hex; if (COLORS.lookupColor) COLORS.lookupColor.hex = hex;
+      const pick = $('#lookupColor'); if (pick) { $('.cg-color-sw', pick).style.background = '#' + hex; $('.cg-color-hex', pick).textContent = '#' + hex; }
+      const all = E.closestByBrand(hex, { showDiscontinued: settings.showDiscontinued, collections: settings.collections });
+      host.innerHTML = exactCardHtml(hex) + nearLists(all, 'Closest in Each Brand');
+      return;
+    }
+    // a customer may bring a color from a brand the store doesn't carry: look there too before giving up
+    let res = E.search(q, opts);
+    if (!res.length) res = E.search(q, Object.assign({}, opts, { brands: null }));
+    if (!res.length) { host.innerHTML = `<div class="empty"><p>No colors match “${esc(q)}”.</p><p class="muted">Try just the number, or a hex value like #D1CBC1.</p></div>`; return; }
+    // a paint found by its exact name or code: its numbers and its closest match in the other brands
+    const top = res[0].color, norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const nq = norm(q);
+    const exact = nq && (norm(top.name) === nq || norm(E.codeLabel(top)) === nq || norm(top.code) === nq || norm(brandName(top.brand) + top.name) === nq || norm(brandName(top.brand) + top.code) === nq);
+    if (exact) {
+      const all = E.matchesFor(top, { showDiscontinued: settings.showDiscontinued, collections: settings.collections });
+      host.innerHTML = exactCardHtml(top.hex, top) + nearLists(all, 'Closest in Other Brands')
+        + (res.length > 1 ? `<p class="section-title" style="margin:22px 0 12px">Other Names Like This</p><div class="list">${res.slice(1).map((r, i) => lookupRow(r, i)).join('')}</div>` : '');
+      return;
+    }
+    host.innerHTML = `<p class="section-title" style="margin-bottom:12px">${res.length === 60 ? 'Top 60 results' : res.length + ' result' + (res.length > 1 ? 's' : '')}</p><div class="list">${res.map((r, i) => lookupRow(r, i)).join('')}</div>`;
   }
   function lookupRow(r, i) {
     const c = r.color;
-    return `<button type="button" class="row" data-open="${esc(c.id)}" style="--i:${Math.min(i, 20)}"><span class="sw" data-hex="${c.hex}" style="background-color:${paint(c.hex)}"></span><span class="row-main"><span class="row-name">${esc(c.name)}</span><span class="row-sub">${esc(brandName(c.brand))} · <span class="mono">${esc(E.codeLabel(c))}</span>${c.flags & E.F.DISC ? ' · discontinued' : ''}</span></span><span class="row-end">${r.dE != null ? `<span class="badge ${r.dE < 2.5 ? 'good' : ''}">${esc(C.matchLabel(r.dE))}</span><span class="mono">ΔE ${r.dE}</span>` : `<span class="mono">LRV ${c.lrv}</span>`}</span></button>`;
+    return `<button type="button" class="row" data-open="${esc(c.id)}" style="--i:${Math.min(i, 20)}"><span class="sw" data-hex="${c.hex}" style="background-color:${paint(c.hex)}"></span><span class="row-main"><span class="row-name">${esc(c.name)}</span><span class="row-sub">${esc(brandName(c.brand))} · <span class="mono">${esc(E.codeLabel(c))}</span> · <span class="mono">#${c.hex}</span>${c.flags & E.F.DISC ? ' · discontinued' : ''}</span></span><span class="row-end">${r.dE != null ? `<span class="badge ${r.dE < 2.5 ? 'good' : ''}">${esc(C.matchLabel(r.dE))}</span><span class="mono">ΔE ${r.dE}</span>` : `<span class="mono">LRV ${c.lrv}</span>`}</span></button>`;
   }
 
   // ================================================================
@@ -1599,9 +1947,9 @@
   }
   function paintLineHtml(c, answers) {
     const brand = lineBrandFor(c);
-    if (!brand) return `<div class="block"><h4>Paint to Use</h4><div class="sample-note"><div>Paint lines for ${esc(brandName(c.brand))} aren’t listed. Set a store brand in settings to see which of your paints to mix this color in.</div></div></div>`;
+    if (!brand) return `<div class="block"><h4>Paint to Use</h4><div class="sample-note"><div>No paint lines listed for ${esc(brandName(c.brand))}. Set a store brand in Settings to see which paint to mix it in.</div></div></div>`;
     const r = E.recommendLines(brand, c, answers, { lines: settings.lines });
-    if (!r.best) return `<div class="block"><h4>Paint to Use</h4><div class="sample-note"><div>All ${esc(brandName(brand))} lines for this job are switched off in settings.</div></div></div>`;
+    if (!r.best) return `<div class="block"><h4>Paint to Use</h4><div class="sample-note"><div>${(E.SPACES[answers.space] || {}).surface === 'floor' ? 'Use a porch &amp; floor paint here. Wall paint wears through where people walk.' : `All ${esc(brandName(brand))} lines for this job are switched off in settings.`}</div></div></div>`;
     const b = r.best.line;
     const others = r.byTier.filter(x => x.line.id !== b.id);
     return `<div class="block"><h4>Paint to Use</h4>
@@ -1612,7 +1960,7 @@
         ${brand !== c.brand ? `<p class="muted" style="font-size:13px">Mix ${esc(c.name)} (${esc(brandName(c.brand))} ${esc(E.codeLabel(c))}) in this paint with a color match.</p>` : ''}
       </div>
       ${others.length ? `<div class="line-alts">${others.map(x => `<span class="line-alt"><span class="tier t${x.line.tier}">${esc(E.TIERS[x.line.tier])}</span>${esc(x.line.name)}</span>`).join('')}</div>` : ''}
-      <p class="muted" style="font-size:12px">Lines and features change; confirm with the current product guide. Turn off lines the store doesn’t carry in settings.</p></div>`;
+      <p class="muted" style="font-size:12px">Lines change, so check the current product guide.</p></div>`;
   }
   function prosConsHtml(c, answers, others) {
     const pc = E.prosCons(c, answers, { inStoreSamples: settings.inStoreSamples }, others);
@@ -1644,7 +1992,7 @@
       <p class="muted">For ${esc(sp.label.toLowerCase())}${answers.facing && !['unsure', 'none'].includes(answers.facing) ? `, ${esc(answers.facing)} light` : ''}. ${matchMedia('(pointer: coarse)').matches ? 'Swipe' : 'Scroll'} sideways to see every color.</p>
       <div class="cmp-wrap"><div class="cmp" style="--n:${rows.length}">
         <div class="cmp-k"></div>${rows.map(r => `<button type="button" class="cmp-head" data-open="${esc(r.c.id)}"><span class="cmp-sw" data-hex="${r.c.hex}" style="background-color:${paint(r.c.hex)}"></span><b>${esc(r.c.name)}</b><span class="mono">${esc(E.codeLabel(r.c))}</span><span class="muted">${esc(brandName(r.c.brand))}</span></button>`).join('')}
-        ${cell('LRV', r => `<span class="mono">${r.c.lrv}</span> · ${esc(r.d.depth)}`)}
+        ${cell('Light Reflectance', r => `<span class="mono">${r.c.lrv}</span> · ${esc(r.d.depth)}`)}
         ${cell('Family', r => esc(r.d.familyName))}
         ${cell('Undertone', r => esc(r.d.undertone === 'neutral' ? 'None' : r.d.undertone[0].toUpperCase() + r.d.undertone.slice(1)))}
         ${cell('Compared', r => r.pc.compared.length ? esc(r.pc.compared.join(', ')) : '<span class="muted">In the middle</span>')}
@@ -1749,7 +2097,7 @@
             <div><span class="k">Color depth</span><span class="v mono">${s.depth}-bit</span></div>
             <div><span class="k">Pixel ratio</span><span class="v mono">${s.dpr}×</span></div>
           </div>
-          <div class="set-note">Browsers can detect the screen’s color range but not its brightness, color profile or night-light setting. Calibrating adjusts every swatch to this screen.</div>
+          <div class="set-note">Calibrating adjusts every swatch to match this screen.</div>
           ${sw('calEnabled', settings.cal.enabled, 'Use my calibration', settings.cal.enabled ? `Warmth ${settings.cal.warmth}, brightness ${settings.cal.brightness}, vividness ${settings.cal.vividness}` : 'Not calibrated yet')}
           <div class="set-mini"><button type="button" class="btn small primary" data-act="calibrate">Calibrate This Screen</button>${settings.cal.warmth || settings.cal.brightness || settings.cal.vividness ? '<button type="button" class="btn small ghost" data-act="reset-cal">Reset</button>' : ''}</div>
         </div></div>
@@ -1775,7 +2123,7 @@
           ${Object.keys(E.PAINT_LINES).filter(id => E.getIndex().brandById[id] && (en[id] || id === settings.storeBrand)).sort((x, y) => (y === settings.storeBrand) - (x === settings.storeBrand)).map(id => {
             const lines = E.PAINT_LINES[id]; const on = lines.filter(l => settings.lines[l.id] !== false).length;
             return `<details class="set-card line-group" ${id === settings.storeBrand ? 'open' : ''}><summary><span>${esc(brandName(id))}</span><span class="muted">${on} of ${lines.length} on</span></summary>
-              ${lines.map(l => `<div class="set-row"><div class="set-text"><b id="lbl-l-${esc(l.id)}">${esc(l.name)}</b><span>${esc(E.TIERS[l.tier])} · ${l.use === 'interior' ? 'Interior' : 'Exterior'} · ${esc(l.note)}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.lines[l.id] !== false}" aria-labelledby="lbl-l-${esc(l.id)}" data-line="${esc(l.id)}"></button></div>`).join('')}
+              ${lines.map(l => `<div class="set-row"><div class="set-text"><b id="lbl-l-${esc(l.id)}">${esc(l.name)}</b><span>${esc(E.TIERS[l.tier])} · ${l.use === 'interior' ? 'Interior' : l.use === 'both' ? 'Floors' : 'Exterior'} · ${esc(l.note)}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.lines[l.id] !== false}" aria-labelledby="lbl-l-${esc(l.id)}" data-line="${esc(l.id)}"></button></div>`).join('')}
             </details>`; }).join('')}
         </div>
 
@@ -2132,7 +2480,7 @@
       body = `
         ${obStep('store')}
         <h1 id="obTitle">${home ? 'Where will you shop?' : kiosk ? 'Which store is this kiosk in?' : 'Where do you work?'}</h1>
-        <p class="muted">This turns on the brands that store usually carries. You can change any of them on the next screen.</p>
+        <p class="muted">We’ll turn on the brands that store carries. You can change them next.</p>
         <div class="chain-opts">${Object.entries(CHAINS).map(([k, ch]) => `<button type="button" class="chain-opt" data-ob-chain="${k}" aria-pressed="${ob.chain === k}">${check}<b>${esc(ch.label)}</b><span>${ch.other ? 'Pick the brands yourself' : esc(chainBrandNames(ch))}</span></button>`).join('')}</div>
         <div class="group mgroup">
           <p class="group-label">${home ? 'What are you working on?' : 'What does the store help with?'} <span class="hint">turn off what you don’t need</span></p>
@@ -2153,7 +2501,7 @@
       body = `
         ${obStep('brands')}
         <h1 id="obTitle">${home ? 'Which brands would you buy?' : 'Which brands does the store carry?'}</h1>
-        <p class="muted">${ch && !ch.other ? `Set for ${esc(ch.label)}. Brands that are off still show here, so you can turn on anything else the store has.` : 'Picks only come from the brands that are on. Colors from other brands can still be matched into them.'}</p>
+        <p class="muted">${ch && !ch.other ? `Set for ${esc(ch.label)}. Turn on anything else the store has.` : 'Picks come only from brands that are on.'}</p>
         <label class="searchbox ob-find"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input type="search" id="obFind" placeholder="Find a brand" autocomplete="off" aria-label="Find a brand" value="${esc(ob.find)}"></label>
         ${ob.jobs.paint ? `<section class="ob-section" aria-labelledby="obPaintH">
           <div class="ob-section-head"><h2 id="obPaintH">Paint Brands</h2><span class="ob-count">${paintOn} of ${brandList().length} on</span><span class="spacer"></span><button type="button" class="link-btn" data-ob="all-us">US National</button><button type="button" class="link-btn" data-ob="none">Clear</button></div>
@@ -2176,13 +2524,13 @@
       body = `
         ${obStep('carry')}
         <h1 id="obTitle">${home ? 'Anything to leave out?' : 'What does your store carry?'}</h1>
-        <p class="muted">${home ? 'Everything is on. Turn off any collection you don’t want picks from.' : 'Everything is on. Tap to turn off any color collection or paint line you don’t have, and picks will skip it.'}</p>
+        <p class="muted">${home ? 'Everything is on. Turn off any collection you don’t want picks from.' : 'Everything is on. Tap to turn off anything you don’t carry.'}</p>
         ${bs.map(b => {
           const colls = E.collectionsFor(b.id); const lines = home ? [] : (E.PAINT_LINES[b.id] || []);
           return `<div class="ob-carry">
             <div class="ob-carry-head">${brandSwatch(b.id)}<b>${esc(b.name)}</b></div>
             ${colls.length > 1 ? `<p class="group-label">Color Collections</p><div class="mchips">${colls.map(x => `<button type="button" class="mchip" data-ob-coll="${esc(b.id + ':' + x.id)}" aria-pressed="${ob.collections[b.id + ':' + x.id] !== false}" title="${esc(x.note)}">${esc(x.short)}<span class="mchip-n">${fmt(x.count)}</span></button>`).join('')}</div>` : ''}
-            ${lines.length > 1 ? `<p class="group-label">Paint Lines</p><div class="mchips">${lines.map(l => `<button type="button" class="mchip" data-ob-line="${esc(l.id)}" aria-pressed="${ob.lines[l.id] !== false}">${esc(l.name)}${l.use === 'exterior' ? '<span class="mchip-n">Exterior</span>' : ''}</button>`).join('')}</div>` : ''}
+            ${lines.length > 1 ? `<p class="group-label">Paint Lines</p><div class="mchips">${lines.map(l => `<button type="button" class="mchip" data-ob-line="${esc(l.id)}" aria-pressed="${ob.lines[l.id] !== false}">${esc(l.name)}${l.use === 'exterior' ? '<span class="mchip-n">Exterior</span>' : l.use === 'both' ? '<span class="mchip-n">Floors</span>' : ''}</button>`).join('')}</div>` : ''}
           </div>`; }).join('')}
         <p class="muted" style="font-size:13px">Change these any time in Settings → Brands &amp; collections.</p>`;
       skip = 'Skip';
@@ -2198,7 +2546,7 @@
         ${obSlider('warmth', 'Warmth', -100, 100, 'Panel looks too yellow', 'Panel looks too blue')}
         ${obSlider('brightness', 'Brightness', -50, 20, 'Panel glows brighter', 'Panel looks dimmer')}
         <ul class="reasons"><li>Turn off Night Light, True Tone or any blue-light filter first.</li><li>Use your normal screen brightness.</li><li>${home ? 'Do this where you’ll be looking at colors.' : 'Do this under the store’s lights, where colors get picked.'}</li></ul>
-        <p class="muted" style="font-size:13px">You can match a real paint chip too, later in Settings → Calibrate this screen.</p>`;
+        <p class="muted" style="font-size:13px">You can fine-tune with a real chip later in Settings.</p>`;
       skip = 'Skip';
     }
     if (id === 'done') {
@@ -2367,14 +2715,14 @@
     const inSafari = isIOS && !/CriOS|FxiOS|EdgiOS/i.test(ua);
     let steps, lead;
     if (st === 'ios') {
-      lead = 'Add ColorGenius to the home screen. It opens full screen like any other app and works without a connection once it has loaded.';
+      lead = 'Add ColorGenius to the home screen. It opens full screen and works offline.';
       steps = [
         [shareIcon, inSafari ? 'Tap the Share button in Safari’s toolbar.' : 'Tap the Share button next to the address bar.'],
         [plusIcon, 'Scroll down and tap <b>Add to Home Screen</b>.'],
         ['<img src="icons/icon-192.png" width="26" height="26" alt="" style="border-radius:6px">', 'Tap <b>Add</b>. Open ColorGenius from its new icon.'],
       ];
     } else if (st === 'android' || st === 'manual') {
-      lead = 'Install ColorGenius so it opens full screen from its own icon and works without a connection.';
+      lead = 'Install ColorGenius to open it full screen and use it offline.';
       steps = [
         [dotsIcon, 'Open the browser menu (the three dots).'],
         [plusIcon, 'Tap <b>Install app</b> or <b>Add to Home screen</b>.'],
@@ -2523,8 +2871,31 @@
   function findAny(id) { return E.findColor(id) || S.find(id) || null; }
   const stainSettings = () => ({ resultCount: settings.resultCount, brands: brandsEnabled(), collections: settings.collections, storeBrand: settings.storeBrand, stainBrands: settings.stainBrands });
   const qLabel = id => `<p class="eyebrow">Question ${steps().indexOf(id) + 1}</p>`;
-  const woodUse = t => (t === 'front_door' ? 'door' : t);
+  const woodUse = t => (S.JOBS[t] && S.JOBS[t].use) || t;
 
+  const JOB_ABOUT = {
+    floors: 'Gets walked on, so it needs 2–3 coats of floor polyurethane over the stain.',
+    stairs: 'Treads take heavy wear. Match the floor, or go darker on rails.',
+    cabinets: 'Maple and birch can blotch, so a conditioner or gel stain helps.',
+    furniture: 'Any look works. Pine and maple need a wood conditioner first.',
+    tabletop: 'Needs a tough topcoat. Use a food-safe oil where food is cut.',
+    trim: 'Usually pine or poplar, which can blotch. Gel stain helps.',
+    doors: 'Gel stain is easiest on doors: it won’t run on panels.',
+    paneling: 'Big areas show blotching, so test a board first.',
+    builtins: 'Match the trim or floor so they feel built in.',
+    deck: 'Takes sun and foot traffic. Semi-transparent wears best.',
+    fence: 'Semi-transparent or solid. Solid lasts longest.',
+    siding: 'Solid stain lasts longest. Cedar can bleed through light colors.',
+    outdoor: 'Use a stain made for exterior wood, and recoat yearly.',
+    pergola: 'Hard to reach once built, so a longer-lasting stain pays off.',
+    front_door: 'Faces sun and rain. Use a stain made for exterior doors.',
+    garage_door: 'Big and sunny. Recoat every couple of years to stop graying.',
+    shutters: 'Often a solid color that contrasts with the siding.',
+    shed: 'Solid stain covers mixed or patched wood best.',
+    log: 'Logs soak up a lot of stain. Plan on two coats.',
+    playset: 'Kids touch it, so pick a low-odor, water-based stain.',
+    dock: 'Wet and walked on. Semi-transparent wears without peeling.',
+  };
   function stainStepHtml(id) {
     const a = state.answers;
     if (id === 'job') {
@@ -2555,7 +2926,7 @@
       const tile = k => `<button type="button" class="wood-opt" data-wood-pick="${k}" aria-pressed="${cur === k}">${check}<span class="wood-art">${woodCv({ sp: k, w: 330, h: 150, cm: 0.2, seed: 3, sheen: 0.3 })}</span><span class="opt-title">${esc(spLabel(k))}</span><span class="opt-sub">${esc(WD.SPECIES[k].note.split('. ')[0].replace(/\.$/, ''))}</span></button>`;
       const cond = Object.fromEntries(Object.entries(S.CONDITION).filter(([k]) => k !== 'new_pt' || job.kind === 'exterior'));
       return `
-        <div class="step-head">${qLabel('wood')}<h1>What kind of wood?</h1><p>Each wood takes stain differently. Not sure? ${esc(spLabel(job.wood))} is the usual one for ${esc(job.label.toLowerCase())}.</p></div>
+        <div class="step-head">${qLabel('wood')}<h1>What kind of wood?</h1><p>Not sure? ${esc(spLabel(job.wood))} is the usual pick.</p></div>
         <div class="group"><p class="section-title">Usual for ${esc(job.label.toLowerCase())}</p><div class="wood-opts">${fit.map(tile).join('')}</div></div>
         <details class="more-woods"${rest.includes(cur) ? ' open' : ''}><summary>Other Woods</summary><div class="wood-opts">${rest.map(tile).join('')}</div></details>
         <div class="group"><p class="group-label">What shape is it in?</p>${seg('condition', cond, a.condition, 'Condition')}</div>`;
@@ -2568,7 +2939,7 @@
     }
     if (id === 'finish') {
       return `
-        <div class="step-head">${qLabel('finish')}<h1>How should it finish?</h1><p>Optional. These choose the topcoat and fine-tune the picks.</p></div>
+        <div class="step-head">${qLabel('finish')}<h1>How should it finish?</h1><p>Optional. Sets the topcoat.</p></div>
         <div class="group"><p class="group-label">How shiny?</p>${seg('sheen', Object.assign({ '': 'Not Sure' }, S.SHEENS), a.sheen || '', 'Sheen')}</div>
         <div class="group"><p class="group-label">How even should the color be?</p>${seg('evenness', { '': 'Not Sure', even: 'Even Color', natural: 'Natural Variation' }, a.evenness || '', 'Evenness')}</div>
         ${(S.JOBS[a.target] || {}).traffic ? `<div class="group"><p class="group-label">Pets or kids?</p>${seg('pets', { no: 'No', yes: 'Yes' }, a.pets ? 'yes' : 'no', 'Pets or kids')}</div>` : ''}`;
@@ -2576,7 +2947,7 @@
     if (id === 'slook') {
       const sp = S.woodFor(a);
       return `
-        <div class="step-head">${qLabel('slook')}<h1>What look?</h1><p>Pick up to two. Each sample is a real stain shown on ${esc(spLabel(sp).toLowerCase())}.</p></div>
+        <div class="step-head">${qLabel('slook')}<h1>What look?</h1><p>Pick up to two. Shown on ${esc(spLabel(sp).toLowerCase())}.</p></div>
         <div class="look-opts">${Object.entries(S.LOOKS).map(([k, L]) => `<button type="button" class="look-opt" data-slook="${k}" aria-pressed="${a.looks.includes(k)}">${check}<span class="look-art">${woodCv({ sp, w: 360, h: 120, cm: 0.24, seed: 5, look: k, sheen: 0.35 })}</span><span class="opt-title">${esc(L.label)}</span><span class="opt-sub" data-look-name="${k}">${esc(L.sub)}</span></button>`).join('')}</div>
         <div class="group"><p class="group-label">How much grain should show? <span class="hint">${S.JOBS[a.target].kind === 'exterior' ? 'Solid stain lasts longest on siding and fences' : 'Most interior stain shows the grain'}</span></p>${seg('grain', S.GRAIN, a.grain, 'Grain')}</div>`;
     }
@@ -2636,16 +3007,16 @@
   // ================================================================
   const DUEL_SIZE = 4;
   const MODES = {
-    basic: { label: 'Basic', time: 'About 1 minute', sub: 'A few quick questions and a handful of colors to pick from.' },
-    advanced: { label: 'Advanced', time: 'About 3 minutes', sub: 'More specific questions, so the picks fit even better.' },
-    perfect: { label: 'Perfect', time: 'About 4 minutes', sub: 'The advanced questions plus a few quick “which do you like better?” rounds. You get the one best color.' },
+    basic: { label: 'Basic', time: 'About 1 minute', sub: 'A few quick questions and a handful of picks.' },
+    advanced: { label: 'Advanced', time: 'About 3 minutes', sub: 'More questions for a closer fit.' },
+    perfect: { label: 'Perfect', time: 'About 4 minutes', sub: 'Advanced, plus a few “this or that” rounds. You get one best color.' },
   };
   const swatchChip = (attrs, pressed, hex, label) => `<button type="button" class="mchip" ${attrs} aria-pressed="${pressed}"><span class="msw" style="background:#${hex}"></span>${esc(label)}</button>`;
   function moreStepHtml(id) {
     const a = state.answers, sp = E.SPACES[a.space] || E.SPACES.living;
     if (id === 'mode') {
       return `
-        <div class="step-head">${qLabel('mode')}<h1>Basic, Advanced or Perfect?</h1><p>Pick how many questions to answer. You can change this any time.</p></div>
+        <div class="step-head">${qLabel('mode')}<h1>Basic, Advanced or Perfect?</h1><p>More questions, closer picks.</p></div>
         <div class="mode-cards">${Object.entries(MODES).map(([k, m]) => `<button type="button" class="mode-card" data-mode="${k}" aria-pressed="${(a.mode || 'basic') === k}">${check}<span class="mode-time">${esc(m.time)}</span><span class="opt-title">${esc(m.label)}</span><span class="opt-sub">${esc(m.sub)}</span></button>`).join('')}</div>`;
     }
     if (id === 'now') {
@@ -2653,7 +3024,7 @@
       const wood = ['bare_wood', 'stained_wood', 'paneling'].includes(a.surface) || sp.kind === 'exterior';
       const issues = Object.entries(E.ISSUES).filter(([k]) => k !== 'knots' || wood);
       return `
-        <div class="step-head">${qLabel('now')}<h1>What’s on it now?</h1><p>This decides the primer and how many coats you’ll need.</p></div>
+        <div class="step-head">${qLabel('now')}<h1>What’s on it now?</h1><p>For the right primer and number of coats.</p></div>
         <div class="group mgroup"><p class="group-label">The color on it now</p><div class="mchips">
           ${Object.entries(E.NOW_COLORS).map(([k, v]) => k === 'none' ? `<button type="button" class="mchip" data-now="none" aria-pressed="${a.nowKind === 'none'}"><span class="msw flag-sw" aria-hidden="true"><svg viewBox="0 0 20 20" width="14" height="14"><path d="M5 10h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>${esc(v)}</button>` : swatchChip(`data-now="${k}"`, a.nowKind === k && !a.nowHex, E.NOW_HEX[k], v)).join('')}
         </div><div class="now-pick"><span class="muted">Or match it exactly:</span>${colorHtml('nowColor', a.nowHex || 'B9AE9C', 'The color on it now')}${a.nowHex ? '<button type="button" class="link-btn" data-now-clear>Clear</button>' : ''}</div></div>
@@ -2662,7 +3033,7 @@
     }
     if (id === 'feel') {
       return `
-        <div class="step-head">${qLabel('feel')}<h1>How should it feel?</h1><p>Optional. Each answer fine-tunes the picks.</p></div>
+        <div class="step-head">${qLabel('feel')}<h1>How should it feel?</h1><p>Optional.</p></div>
         <div class="options wide">${Object.entries(E.MOODS).map(([k, v]) => optBtn(`data-feel="${k}"`, a.feel === k, `<span class="opt-title">${esc(v)}</span>`)).join('')}</div>
         <div class="group"><p class="group-label">Warm or cool?</p>${seg('undertone', Object.assign({ '': 'No Preference' }, E.UNDERTONES), a.undertone || '', 'Undertone')}</div>
         <div class="group mgroup"><p class="group-label">Any colors to stay away from? <span class="hint">pick any</span></p><div class="mchips">${Object.entries(E.FAMILY_CHOICES).map(([k, v]) => `<button type="button" class="mchip mchip-flag" data-avoid="${k}" aria-pressed="${(a.avoid || []).includes(k)}">${esc(v)}</button>`).join('')}</div></div>`;
@@ -2738,7 +3109,7 @@
   // ---- results ----
   function stainTitle(R) {
     const job = S.JOBS[R.answers.target] || S.JOBS.floors;
-    const what = { floors: 'floors', stairs: 'stairs', cabinets: 'cabinets', furniture: 'furniture', tabletop: 'tabletop', trim: 'trim and doors', deck: 'deck', fence: 'fence', siding: 'siding', outdoor: 'outdoor furniture', pergola: 'pergola', front_door: 'front door' }[R.answers.target] || job.label.toLowerCase();
+    const what = { floors: 'floors', stairs: 'stairs', cabinets: 'cabinets', furniture: 'furniture', tabletop: 'tabletop', trim: 'trim and doors', deck: 'deck', fence: 'fence', siding: 'siding', outdoor: 'outdoor furniture', pergola: 'pergola', doors: 'interior doors', paneling: 'paneling', builtins: 'built-ins', garage_door: 'garage door', shutters: 'shutters', shed: 'shed', log: 'log home', playset: 'playset', dock: 'dock', front_door: 'front door' }[R.answers.target] || job.label.toLowerCase();
     return `Stains for ${spLabel(R.wood).toLowerCase()} ${what}`;
   }
   function stainSummary(R) {
@@ -2784,7 +3155,7 @@
         ${settings.lightPreview ? lightBar(state.gridLight, 'grid') : '<span></span>'}
         <div class="tool-btns"><button type="button" class="btn small" data-act="stain-compare">Compare</button><button type="button" class="btn small hide-sm" data-act="edit">Edit Answers</button><button type="button" class="btn small primary" data-act="restart">Start Over</button></div>
       </div>
-      ${R.guide ? `<div class="warn headsup" style="margin-bottom:16px"><b>Tone guides for outdoor stain</b><span>These are Minwax tones, shown on your wood, to pick the look. Then choose the closest color on the store’s exterior stain chip card (see What to buy below).</span></div>` : ''}
+      ${R.guide ? `<div class="warn headsup" style="margin-bottom:16px"><b>Tone guides for outdoor stain</b><span>Minwax tones on your wood, to pick a look. Then match it on the store’s exterior stain card.</span></div>` : ''}
       <div class="grid${R.perfect ? ' grid-one' : ''}" id="resultGrid">${R.results.map((r, i) => stainCard(r, i, R)).join('')}</div>
       ${R.perfect ? perfectWhy(R) : ''}
       <section class="tips-panel" aria-labelledby="tipsTitle"><h2 id="tipsTitle" class="tips-title">What to Buy</h2>
@@ -2859,6 +3230,7 @@
         <div class="detail-actions">
           <button type="button" class="btn small" data-copy="${esc(`${r.name} — ${sBrand(r)} ${sCode(r)}`)}">Copy Name &amp; Code</button>
           <button type="button" class="btn small" data-star="${esc(r.id)}" data-star-text="${esc(r.id)}">${starred ? 'Remove from Saved' : 'Save Color'}</button>
+          <button type="button" class="btn small primary" data-sess-add="${esc(r.id)}">${session.items.some(x => x.ref === r.id) ? 'Added to Session' : 'Add to Session'}</button>
         </div>
         <div class="facts">
           <div class="fact"><span class="k">Look</span><span class="v">${esc(r.look ? S.LOOKS[r.look].label : '—')}</span></div>
@@ -2912,8 +3284,8 @@
 
   // Paint colors that go with a stain: from the paint brands that are on, light enough to stand apart from the wood,
   // and leaning the same way (warm with warm woods, cooler with grays). Tapping one paints the scene's walls.
-  const PAINT_SPACE = { floors: 'living', stairs: 'entry', cabinets: 'kitchen', furniture: 'living', tabletop: 'kitchen', trim: 'living', deck: 'ext_body', fence: 'ext_body', siding: 'ext_trim', outdoor: 'ext_body', pergola: 'ext_body', front_door: 'ext_body' };
-  const PAINT_ROLE = { floor: ['wall', 'side'], cabinets: ['wall', 'side'], furniture: ['wall', 'side'], trim: ['wall', 'side'], deck: ['body'], siding: ['xtrim'], door: ['body'] };
+  const PAINT_SPACE = { floors: 'living', stairs: 'entry', cabinets: 'kitchen', furniture: 'living', tabletop: 'kitchen', trim: 'living', doors: 'living', paneling: 'living', builtins: 'living', deck: 'ext_body', fence: 'ext_body', siding: 'ext_trim', outdoor: 'ext_body', pergola: 'ext_body', front_door: 'ext_body', garage_door: 'ext_body', shutters: 'ext_body', shed: 'ext_trim', log: 'ext_trim', playset: 'ext_body', dock: 'ext_body' };
+  const PAINT_ROLE = { floor: ['wall', 'side'], cabinets: ['wall', 'side'], furniture: ['wall', 'side'], trim: ['wall', 'side'], paneling: ['wall', 'side'], builtins: ['wall', 'side'], deck: ['body'], siding: ['xtrim'], door: ['body'], garage: ['body'], shutters: ['body'] };
   function stainPaints(R, r) {
     if (!jobOn('paint') && !Object.values(brandsEnabled()).some(Boolean)) return [];
     const lab = C.hexToLab(r.predicted), warm = C.temperature(C.labToLch(lab)[1], C.labToLch(lab)[2], lab[0]) === 'warm';
@@ -2960,6 +3332,10 @@
     if (scene === 'fence') return open + fenceSvg(tex) + '</svg>';
     if (scene === 'siding') return open + houseSvg({ siding: 'wood', sidingTex: tex }) + '</svg>';
     if (scene === 'door') return open + houseSvg({ siding: 'fiber', doorTex: tex }) + '</svg>';
+    if (scene === 'garage') return open + houseSvg({ siding: 'fiber', garage: true, garageTex: tex }) + '</svg>';
+    if (scene === 'shutters') return open + houseSvg({ siding: 'fiber', shutters: true, shutterTex: tex }) + '</svg>';
+    if (scene === 'paneling') return sceneSvg('room', { label, furniture: 'sofa', windows: [{ slot: 'left', dir: 'south' }], wainscot: true, wainscotTex: tex });
+    if (scene === 'builtins') return sceneSvg('room', { label, furniture: 'dresser', cabWood: true, windows: [{ slot: 'left', dir: 'south' }], woodTex: wood });
     return sceneSvg('room', { label, furniture: 'sofa', floorTex: Object.assign({ t: 'floor', kind: 'wood' }, tex) });
   }
   // A deck behind the house, seen from the yard: deck boards in perspective, railings, and chairs or a pergola.
@@ -3066,6 +3442,7 @@
     closeSheet($('#detailSheet')); closeSheet($('#settingsSheet')); closeInfo();
     $('#present').hidden = true; $('#calModal').hidden = true; $('#installModal').hidden = true;
     shortlist = []; saveShortlist(); updateShortCount();
+    session = { name: '', items: [] }; saveSession(); updateSessionBtn(); closeSession();
     state.detailStack = []; state.query = '';
     startOver();
     window.scrollTo(0, 0);

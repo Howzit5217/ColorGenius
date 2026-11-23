@@ -4,7 +4,7 @@ A paint and stain color finder for the paint counter. Answer a few quick questio
 
 It runs in any browser and installs on Android and iPhone as an app with its own home-screen icon. Once loaded, it works offline.
 
-**Live site:** https://howzit5217.github.io/ColorGenius/ (open it on a phone and tap **Get the app**)
+**Live site:** https://howzit5217.github.io/ColorGenius/ (open it on a phone and tap **Get the App**)
 
 ## What it does
 
@@ -65,8 +65,10 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 
 - **Staining** takes three quick questions and shows every pick on real-looking wood, bare and stained:
   1. **What's being stained:**
-     - Inside: floors, stairs, cabinets, furniture, tabletops or butcher block, trim and doors.
-     - Outside: decks, fences, siding and shakes, outdoor furniture, pergolas, front doors.
+     - Inside: floors, stairs, cabinets, furniture, tabletops or butcher block, trim and doors, interior doors, paneling and wood ceilings, shelves and built-ins.
+     - Outside: decks, fences, siding and shakes, outdoor furniture, pergolas, front doors, wood garage doors, shutters, sheds and barns, log homes, playsets, docks.
+
+     Each choice has a one-line note on what that job needs (for example "Gets walked on, so it needs 2–3 coats of floor polyurethane").
   2. **What wood:** each wood is drawn with its own grain, knots, pores and color. There are 15 woods:
      - Red oak, white oak, pine, maple, birch, cherry, walnut, hickory, ash, poplar.
      - Douglas fir, cedar, redwood, pressure-treated pine, mahogany.
@@ -77,7 +79,7 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   Each stain is judged by how it will look on that wood. A stain's swatch is how it looks on red oak. Maple, which resists stain, comes out lighter; walnut barely changes; open pores and knots soak up more. Results show each stain on a board, bare on one side and stained on the other.
 
   The detail shows:
-  - A scene for the job: a living room floor, a kitchen of stained cabinets with real frame-and-panel doors, a dining table, trim and doors, a deck with railings, a fence, cedar siding, or a wood front door.
+  - A scene for the job: a living room floor, a kitchen of stained cabinets with real frame-and-panel doors, a dining table, trim and doors, beadboard paneling, a built-in, a deck with railings, a fence, cedar siding, a wood front door, a wood garage door or wood shutters.
   - A board you drag across to compare. The left side can be bare wood or any other stain from the results.
   - **With Paint Colors:** the stain under four wall colors that suit it. Tap one to see it on the walls in the scene.
   - **Compare** on the results page shows every stain side by side on the same wood.
@@ -109,7 +111,13 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   - The wood and stone textures are adapted from the Flowchart Producer house builder's texture recipes.
 
 - **The painting questions** (Basic mode)
-  1. What's being painted: a room (including stairways, laundry rooms, sunrooms and garages), a surface or furniture (dressers, tables, chairs), or an exterior.
+  1. What's being painted, in four groups:
+     - **Rooms:** living room, bedroom, kitchen, bathroom, powder room, dining room, home office, kids' room, nursery, hallway, stairway, laundry or mudroom, closet or pantry, sunroom, basement, attic or bonus room, media or game room, garage.
+     - **Walls, trim & woodwork:** accent wall, ceiling, trim, interior doors, wainscoting and paneling, brick fireplace.
+     - **Cabinets, furniture & floors:** cabinets, built-ins and shelves, furniture, concrete or wood floors.
+     - **Outside:** siding, exterior trim, front door, shutters, garage door, porch floor and steps, shed or barn.
+
+     Each choice has a short note on what it covers and what the picks will take into account (finish, moisture, wear, light).
   2. Which way the windows face, using a compass picker, plus how much daylight and what bulbs. Tap every side that has windows: corner rooms often have two. Each side changes the advice, for example a north wall reading cooler in an otherwise sunny room, or opposite windows making walls look different.
   3. Style, with up to two picks shown as real color previews.
   4. Color families and how light or dark.
@@ -128,7 +136,7 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   Ceilings and trim replace question 4 with one quick choice:
   - **Ceilings:** crisp white, soft warm white, a light tint of the walls, or something bold.
   - **Trim:** crisp white, soft warm white, match the walls, or black.
-- **Recommendations** from about 34,700 colors across 19 brands. Results are spread out so you don't get six versions of the same beige. Each comes with reasons it fits and its LRV (light reflectance value).
+- **Recommendations** from about 34,700 colors across 19 brands. Results are spread out so you don't get six versions of the same beige. Each comes with reasons it fits and its LRV (Light Reflectance Value: how much light the color bounces back, from 0 for black to 100 for pure white).
 - **Warnings** written in plain language. They cover:
   - Colors that will read too dark or too light in that light.
   - North light turning cool grays icy.
@@ -141,12 +149,13 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   - Dark colors on vinyl siding.
   - Fading outdoors.
   - Coverage and primer needs.
-- **Paint to use**: suggests the right product line for the job. For example, Benjamin Moore Aura Bath & Spa for a bathroom, Advance for cabinets or Scuff-X for a kids' room. Each suggestion comes with Good / Better / Best options. Lines are listed for Benjamin Moore, Sherwin-Williams, Behr, Valspar, HGTV Home, Dutch Boy, PPG, Glidden and Dunn-Edwards. Every line can be switched off in settings to match what the store carries. With a store brand set, colors from any brand are matched into the store's own paint.
+- **Paint to use**: suggests the right product line for the job. Floors and porches get a porch & floor paint (Sherwin-Williams Porch & Floor Enamel, Benjamin Moore Floor & Patio, Behr Porch & Patio, Valspar Porch, Floor & Patio, Glidden Porch & Floor), never wall paint. For example, Benjamin Moore Aura Bath & Spa for a bathroom, Advance for cabinets or Scuff-X for a kids' room. Each suggestion comes with Good / Better / Best options. Lines are listed for Benjamin Moore, Sherwin-Williams, Behr, Valspar, HGTV Home, Dutch Boy, PPG, Glidden and Dunn-Edwards. Every line can be switched off in settings to match what the store carries. With a store brand set, colors from any brand are matched into the store's own paint.
 - **Color details**:
   - A preview that matches the job:
     - A room with a sofa, bed, bathroom vanity, desk, dining table, entry console, washer and dryer, or garage workbench.
     - A kitchen, for kitchen walls or cabinets.
-    - The front of a house, for siding, exterior trim or a front door, with lap, shingle, board & batten, brick or stucco siding.
+    - The front of a house, for siding, exterior trim or a front door, with lap, shingle, board & batten, brick or stucco siding. Shutters, a garage door and a porch with steps are drawn when they are the job.
+    - Wainscoting on the lower walls, a brick fireplace with a mantel, built-in shelves, interior doors and painted floors.
     - One window for each side that has windows (left wall, back wall, right wall), each casting its own patch of sun for that direction and time of day. Rooms with no windows show none. The floor shows as wood, carpet, tile or concrete.
   - Advantages and disadvantages for each color, a side-by-side compare, and a sheen comparison (Flat to Gloss) shown on the color itself.
   - A light switcher: daylight, north light, afternoon sun, golden hour, warm, soft white and daylight bulbs, and a dim corner.
@@ -154,6 +163,14 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   - Pairings for trim, lighter and deeper versions, and an accent.
   - The closest color in every other brand, with a measured color difference (ΔE 2000).
 - **Look up & match**: find any color by name, code or color value (for example `SW 7029`, `OC-17`, `behr swiss coffee`, `#D1CBC1`).
+  - Type a hex code (`#D1CBC1`, `D1CBC1`, `#DCB`), an RGB value (`209 203 193`, `209,203,193`, `rgb(209, 203, 193)`) or an exact paint name or code, and the page shows its exact hex, RGB and LRV, each tap-to-copy.
+  - Below that is the closest color in every brand that's on, with the measured difference. Brands that are turned off are listed underneath, folded away, so a customer's color from another store can still be matched into what this store carries.
+- **Sessions**: everything picked for one customer in one list.
+  - Tap **Add to Session** on any paint, stain or exact color. The session button in the top bar shows **New Session** (or the customer's name) and a count.
+  - The session popup has a name field, one row per item with an editable "where it goes", and **+ Add**, which starts the next search for the same customer.
+  - **Print Take-Home** and **Print for Store** print a plain black-and-white list, text only, one line per item. The take-home copy has the area, brand, color, code, finish and product; the store copy adds the hex, LRV, chip location and primer, and prints sideways.
+  - **New Session** clears the list. Kiosks clear it automatically when they start over.
+- **Full-width layout**: pages fill the screen on computers. The questions get a side panel with a short note on the current pick and your answers so far (tap one to go back to it).
 - **Saved colors**: star colors to compare them, show them full screen, or copy the list.
 - **Settings**:
   - Who's using it: store staff, homeowner or kiosk.
@@ -225,7 +242,7 @@ Then open http://localhost:5173. Other devices on the same network can use the c
 
 ## Install it on a phone
 
-The site must be online at an `https://` address. GitHub Pages works and is free. Open that address on the phone, then tap **Get the app** (the download icon in the top bar, or Settings → Phone app):
+The site must be online at an `https://` address. GitHub Pages works and is free. Open that address on the phone, then tap **Get the App** (the download icon in the top bar, or Settings → Phone app):
 
 - **Android**: the install prompt opens. Tap **Install**.
 - **iPhone / iPad**: follow the steps shown. Tap Share, then **Add to Home Screen**, then Add.
@@ -240,7 +257,7 @@ The installed app opens full screen without browser bars and works offline. On i
 npm test
 ```
 
-The tests check the color math against published reference values. They also check that every brand file is complete and valid, and that search, recommendations, warnings, cross-brand matches, the CSV import and the offline file list all work.
+The tests check the color math against published reference values. They also check that every brand file is complete and valid, and that search (including hex and RGB values), recommendations for every job, warnings, cross-brand matches, the CSV import and the offline file list all work.
 
 ## Updating the colors
 

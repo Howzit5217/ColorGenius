@@ -52,14 +52,27 @@
     sunroom: { label: 'Sunroom', kind: 'interior', sheens: ['matte', 'eggshell'], sunny: true },
     garage: { label: 'Garage', kind: 'interior', sheens: ['eggshell', 'satin'], sheenNote: 'scrubbable', busy: true, dimByNature: true },
     basement: { label: 'Basement', kind: 'interior', sheens: ['eggshell', 'satin'], dimByNature: true },
+    powder: { label: 'Powder Room', kind: 'interior', sheens: ['eggshell', 'satin'], sheenNote: 'wipeable' },
+    closet: { label: 'Closet or Pantry', kind: 'interior', sheens: ['eggshell', 'satin'], sheenNote: 'wipeable', dimByNature: true },
+    attic: { label: 'Attic or Bonus Room', kind: 'interior', sheens: ['matte', 'eggshell'] },
+    media: { label: 'Media or Game Room', kind: 'interior', sheens: ['matte', 'eggshell'], sheenNote: 'low glare' },
     accent: { label: 'Accent Wall', kind: 'interior', sheens: ['matte', 'eggshell'], sheenNote: 'match the room', accent: true },
     ceiling: { label: 'Ceiling', kind: 'interior', sheens: ['flat'], sheenNote: 'hides flaws overhead', surface: 'ceiling' },
     trim: { label: 'Trim & Doors', kind: 'interior', sheens: ['semigloss', 'satin'], sheenNote: 'enamel', surface: 'trim' },
+    doors: { label: 'Interior Doors', kind: 'interior', sheens: ['semigloss', 'satin'], sheenNote: 'enamel', surface: 'trim', door: true },
     cabinets: { label: 'Cabinets', kind: 'interior', sheens: ['satin', 'semigloss'], sheenNote: 'cabinet enamel', surface: 'cabinets' },
+    builtins: { label: 'Built-Ins & Shelves', kind: 'interior', sheens: ['satin', 'semigloss'], sheenNote: 'cabinet enamel', surface: 'cabinets' },
+    wainscot: { label: 'Wainscoting & Paneling', kind: 'interior', sheens: ['satin', 'semigloss'], sheenNote: 'wipeable enamel', surface: 'paneling', enamel: true },
+    fireplace: { label: 'Brick Fireplace', kind: 'interior', sheens: ['flat', 'eggshell'], sheenNote: 'over a masonry primer', surface: 'masonry', accent: true },
     furniture: { label: 'Furniture', kind: 'interior', sheens: ['satin', 'semigloss'], sheenNote: 'hard-wearing enamel', surface: 'furniture', busy: true },
+    floor_paint: { label: 'Concrete or Wood Floor', kind: 'interior', sheens: ['satin'], sheenNote: 'porch & floor paint', surface: 'floor', busy: true },
     ext_body: { label: 'House Siding', kind: 'exterior', sheens: ['flat', 'satin'], sheenNote: 'exterior paint', surface: 'body' },
     ext_trim: { label: 'Exterior Trim', kind: 'exterior', sheens: ['satin', 'semigloss'], sheenNote: 'exterior paint', surface: 'trim' },
     front_door: { label: 'Front Door', kind: 'exterior', sheens: ['semigloss', 'gloss'], sheenNote: 'exterior paint', surface: 'door', accent: true },
+    shutters: { label: 'Shutters', kind: 'exterior', sheens: ['satin', 'semigloss'], sheenNote: 'exterior paint', surface: 'shutters', accent: true },
+    garage_door: { label: 'Garage Door', kind: 'exterior', sheens: ['satin'], sheenNote: 'exterior paint', surface: 'gdoor' },
+    porch_floor: { label: 'Porch Floor & Steps', kind: 'exterior', sheens: ['satin'], sheenNote: 'porch & floor paint', surface: 'floor' },
+    shed: { label: 'Shed or Barn', kind: 'exterior', sheens: ['flat', 'satin'], sheenNote: 'exterior paint', surface: 'shed' },
   };
   for (const sp of Object.values(SPACES)) sp.sheen = sheenText(sp.sheens, sp.sheenNote);
 
@@ -232,9 +245,22 @@
     trim: ['walls', 'floor', 'trimFlags'],
     cabinets: ['counters', 'floorHard', 'fixtures', 'walls'],
     furniture: ['floor', 'walls'],
+    powder: ['vanity', 'counters', 'floorHard', 'fixtures', 'trim'],
+    closet: ['floor', 'trim'],
+    attic: ['floor', 'trim', 'furniture'],
+    media: ['floor', 'trim', 'furniture'],
+    doors: ['walls', 'floor', 'trimFlags'],
+    builtins: ['walls', 'floor'],
+    wainscot: ['walls', 'floor', 'furniture'],
+    fireplace: ['walls', 'floor', 'furniture'],
+    floor_paint: ['walls', 'trimFlags'],
     ext_body: ['roof', 'masonry', 'xtrim', 'windows'],
     ext_trim: ['roof', 'siding', 'windows'],
     front_door: ['siding', 'xtrim', 'roof'],
+    shutters: ['siding', 'xtrim', 'roof'],
+    garage_door: ['siding', 'xtrim', 'roof'],
+    porch_floor: ['siding', 'xtrim', 'masonry'],
+    shed: ['roof', 'xtrim'],
   };
   const groupsFor = space => (SPACE_GROUPS[space] || SPACE_GROUPS.living).map(k => Object.assign({ key: k }, FIXED_GROUPS[k]));
   const allowedFixed = space => new Set(groupsFor(space).flatMap(g => g.ids || []));
@@ -273,6 +299,12 @@
     if (sp.surface === 'trim') return ['painted', 'bare_wood', 'stained_wood', 'mdf'];
     if (sp.surface === 'ceiling') return ['painted', 'drywall_new', 'plaster'];
     if (sp.surface === 'door') return ['painted', 'bare_wood', 'metal', 'fiberglass'];
+    if (sp.surface === 'gdoor') return ['painted', 'metal', 'bare_wood', 'fiberglass'];
+    if (sp.surface === 'shutters') return ['painted', 'bare_wood', 'vinyl', 'metal'];
+    if (sp.surface === 'masonry') return ['painted', 'masonry'];
+    if (sp.surface === 'floor') return ['painted', 'masonry', 'bare_wood'];
+    if (sp.surface === 'paneling') return ['painted', 'bare_wood', 'stained_wood', 'mdf'];
+    if (sp.surface === 'shed') return ['painted', 'bare_wood', 'metal'];
     if (sp.kind === 'exterior') return sp.surface === 'body' ? ['painted', 'bare_wood', 'vinyl', 'masonry'] : ['painted', 'bare_wood', 'metal'];
     return ['painted', 'drywall_new', 'plaster', 'paneling', 'masonry'];
   }
@@ -316,12 +348,12 @@
       const nowC = C.labToLch(C.hexToLab(now))[1];
       if (!need && (change > 35 || (nowC > 40 && color.L > 60))) need = 'hide';
     }
-    if (color && (color.lrv < 15 || (color.C > 45 && color.L < 60))) tips.push('Deep and bright colors cover best over a gray-tinted primer. Ask the counter to tint the primer to the right gray.');
-    else if (need && need !== 'metal' && need !== 'masonry') tips.push('Have the primer tinted toward the new color so it covers in fewer coats.');
-    if (issues.includes('mildew')) tips.push('Clean mildew with a mildew cleaner and let it dry before priming, or it will grow back through the paint.');
-    if (issues.includes('glossy') || issues.includes('oil') || surf === 'laminate' || surf === 'stained_wood') tips.push('Scuff-sand glossy surfaces and wipe off the dust first. Primer sticks far better to a dull surface.');
-    if (issues.includes('oil')) tips.push('Not sure if it’s oil-based? Rub a spot with rubbing alcohol: latex paint comes off on the rag, oil-based paint doesn’t.');
-    if (surf === 'vinyl') tips.push('Vinyl in good shape usually needs no primer, just a vinyl-safe paint color. Clean it well first.');
+    if (color && (color.lrv < 15 || (color.C > 45 && color.L < 60))) tips.push('Have the primer tinted gray for a deep or bright color.');
+    else if (need && need !== 'metal' && need !== 'masonry') tips.push('Have the primer tinted toward the new color to save a coat.');
+    if (issues.includes('mildew')) tips.push('Kill mildew with a cleaner and let it dry before priming.');
+    if (issues.includes('glossy') || issues.includes('oil') || surf === 'laminate' || surf === 'stained_wood') tips.push('Scuff-sand shiny surfaces first so the primer sticks.');
+    if (issues.includes('oil')) tips.push('To check for oil paint, rub with rubbing alcohol: latex comes off, oil doesn’t.');
+    if (surf === 'vinyl') tips.push('Vinyl in good shape needs no primer. Clean it and use a vinyl-safe color.');
     // coats
     let coats = 2;
     if (!need && change > 35) coats = 3;
@@ -334,7 +366,7 @@
     const products = picks.slice(0, 3).map(([brand, name, why]) => ({ brand, name, why }));
     const TITLES = { stain: 'A stain-blocking primer', bond: 'A bonding primer', drywall: 'A drywall primer', hide: 'A high-hiding primer', wood: 'A wood primer', tannin: 'An oil-based wood primer', masonry: 'A masonry primer', metal: 'A metal primer' };
     const why = { stain: 'Stains bleed through paint unless they’re sealed first.', bond: 'Paint won’t stick well to shiny or slick surfaces on its own.', drywall: 'New drywall soaks up paint unevenly until it’s sealed.', hide: 'The color is changing a lot, so a primer saves a coat or two.', wood: 'Bare wood soaks up paint and can raise the grain.', tannin: 'Wood like cedar, redwood and knotty pine bleeds tan stains through paint.', masonry: 'Masonry is rough and alkaline, so it needs its own primer.', metal: 'Bare metal rusts under paint without a metal primer.' };
-    return { need, title: need ? TITLES[need] : 'No primer needed', why: need ? why[need] : (a.surface || now ? 'Paint and primer in one is enough here. Spot-prime any patches first.' : 'Most walls in good shape don’t need primer. Spot-prime patches, and prime if the color is changing a lot.'), products, tips, coats };
+    return { need, title: need ? TITLES[need] : 'No primer needed', why: need ? why[need] : (a.surface || now ? 'Paint and primer in one is enough here. Spot-prime any patches first.' : 'Walls in good shape don’t need primer. Spot-prime patches.'), products, tips, coats };
   }
 
   // ---------------- collections inside a brand ----------------
@@ -496,7 +528,9 @@
     // surface rules
     if (sp.surface === 'ceiling' && depth !== 'deep' && depth !== 'mid') { lo = 78; hi = 95; ideal = 88; }
     if (sp.surface === 'trim' && depth === 'any') { lo = 72; hi = 94; ideal = 85; }
-    if (sp.surface === 'door' && depth === 'any') { lo = 3; hi = 45; ideal = 16; }
+    if ((sp.surface === 'door' || sp.surface === 'shutters') && depth === 'any') { lo = 3; hi = 45; ideal = 16; }
+    if (sp.surface === 'floor' && depth === 'any') { lo = 22; hi = 62; ideal = 40; }
+    if (sp.surface === 'gdoor' && depth === 'any') { lo = 20; hi = 88; ideal = 70; }
     if (sp.surface === 'body' && depth === 'any') { lo = 18; hi = 80; ideal = 52; }
     if (sp.accent && depth === 'any' && !(a.styles || []).length) { lo = 6; hi = 55; ideal = 28; }
     // light and size nudges (dim rooms read darker, so steer a little lighter)
@@ -672,39 +706,39 @@
       const whiteSurface = e.L >= 88 && e.C < 6;
       const creamSurface = e.L >= 88 && e.C >= 6 && e.C < 14 && e.temp === 'warm';
       if (neutralWall) {
-        if (strongWarm && isCoolUT(c) && c.C > 2.5) { out.score -= e.C >= 14 ? 0.12 : 0.08; warn(e.C >= 14 ? 'caution' : 'heads-up', `Clashes with the ${name}`, `Cool, blue-leaning neutrals fight with warm materials like the ${name} and make them look more orange or yellow.`); }
+        if (strongWarm && isCoolUT(c) && c.C > 2.5) { out.score -= e.C >= 14 ? 0.12 : 0.08; warn(e.C >= 14 ? 'caution' : 'heads-up', `Clashes with the ${name}`, `Cool neutrals make warm materials like the ${name} look more orange.`); }
         else if (strongWarm && c.temp === 'warm') { out.score += 0.05; out.reasons.push(`Warm undertone works with the ${name}`); }
-        if (orangeWood && isYellowUT(c) && c.C > 9) { out.score -= 0.07; warn('heads-up', `Too much yellow with the ${name}`, `A yellow-leaning beige next to the ${name} can make the whole room read orange. A greige or a softer white balances it.`); }
-        if (reddish && c.ut === 'pink' && c.C > 3) { out.score -= 0.1; warn('heads-up', `Pink shows next to the ${name}`, `Red tones in the ${name} pull the pink out of this color. Hold the chip against it to check.`); }
-        if (coolGray && isYellowUT(c) && c.C > 6) { out.score -= 0.08; warn('heads-up', `Yellow next to the ${name}`, `Yellow-leaning neutrals next to the cool ${name} can make both look off. A balanced or cooler neutral is safer.`); }
+        if (orangeWood && isYellowUT(c) && c.C > 9) { out.score -= 0.07; warn('heads-up', `Too much yellow with the ${name}`, `Together they can make the room look orange. A greige balances it.`); }
+        if (reddish && c.ut === 'pink' && c.C > 3) { out.score -= 0.1; warn('heads-up', `Pink shows next to the ${name}`, `The red in the ${name} brings out this color’s pink.`); }
+        if (coolGray && isYellowUT(c) && c.C > 6) { out.score -= 0.08; warn('heads-up', `Yellow next to the ${name}`, `A yellow-leaning neutral can look off next to it. A cooler neutral is safer.`); }
         else if (coolGray && (c.temp === 'cool' || c.ut === 'neutral')) { out.score += 0.04; out.reasons.push(`Cool balance works with the ${name}`); }
       }
       // whites side by side (bright trim or quartz next to a creamy white, or cream trim next to a stark white)
       if ((whiteSurface || creamSurface) && (c.fam === 'white' || (c.L > 86 && c.C < 12))) {
         const d = C.deltaE2000(c.lab, e.lab);
         if (d >= 1.5 && d < 7) {
-          if (c.lab[2] - e.lab[2] > 3) { out.score -= 0.06; warn('heads-up', `Creamy next to the ${name}`, `Next to the ${name}, this white can look dingy or yellow. Either match the whites or choose a clearly different color.`); }
-          else if (e.lab[2] - c.lab[2] > 3) { out.score -= 0.05; warn('heads-up', `Stark next to the ${name}`, `Next to the warmer ${name}, this cleaner white can look stark or bluish and make the trim look yellowed. Match the whites or pick a warmer one.`); }
+          if (c.lab[2] - e.lab[2] > 3) { out.score -= 0.06; warn('heads-up', `Creamy next to the ${name}`, `This white can look dingy beside it. Match the whites or pick a clearly different one.`); }
+          else if (e.lab[2] - c.lab[2] > 3) { out.score -= 0.05; warn('heads-up', `Stark next to the ${name}`, `This white can look bluish beside it and make it look yellowed. Match the whites or go warmer.`); }
         }
       }
       // painting trim or a ceiling against walls that are staying: keep the white in the walls' temperature family
       if (whiteJob && e.kind === 'wall' && c.fam === 'white') {
-        if (e.temp === 'warm' && isCoolUT(c) && c.C > 2) { out.score -= 0.07; warn('heads-up', `Cool white against the ${name}`, `A blue-leaning white next to warm walls can look stark. A white with a little warmth ties in better.`); }
-        else if (e.temp !== 'warm' && isYellowUT(c) && c.C > 5) { out.score -= 0.07; warn('heads-up', `Creamy white against the ${name}`, `A yellow-leaning white next to cooler walls can look dingy. A cleaner white sits better.`); }
+        if (e.temp === 'warm' && isCoolUT(c) && c.C > 2) { out.score -= 0.07; warn('heads-up', `Cool white against the ${name}`, `Can look stark next to warm walls. A slightly warmer white ties in.`); }
+        else if (e.temp !== 'warm' && isYellowUT(c) && c.C > 5) { out.score -= 0.07; warn('heads-up', `Creamy white against the ${name}`, `Can look dingy next to cooler walls. A cleaner white sits better.`); }
         else { out.score += 0.04; out.reasons.push(`White suits the ${name}`); }
       }
       // a front door has to stand out from the siding
-      if (sp.surface === 'door' && e.kind === 'siding') {
-        if (Math.abs(c.L - e.L) < 12 && (hueDiff(c.h, e.h) < 50 || c.C < 12)) { out.score -= 0.1; warn('heads-up', `Won’t stand out from the ${name}`, `The door is close in lightness to the ${name}, so it won’t pop from the street. Go much darker, lighter or more colorful.`); }
+      if ((sp.surface === 'door' || sp.surface === 'shutters') && e.kind === 'siding') {
+        if (Math.abs(c.L - e.L) < 12 && (hueDiff(c.h, e.h) < 50 || c.C < 12)) { out.score -= 0.1; warn('heads-up', `Won’t stand out from the ${name}`, `Too close to the siding to stand out. Go darker, lighter or more colorful.`); }
         else if (Math.abs(c.L - e.L) >= 25 || c.C > 30) { out.score += 0.05; out.reasons.push(`Stands out against the ${name}`); }
       }
       if (c.C >= 10 && e.C >= 18 && hueDiff(c.h, e.h) >= 120) { out.score += 0.05; out.reasons.push(`Complements the ${name}`); }
       if (Math.abs(c.L - e.L) < 7 && ['floor', 'carpet', 'counter', 'cabinet', 'roof', 'stone', 'trim', 'siding'].includes(e.kind) && c.C < 25 && e.C < 25 && hueDiff(c.h, e.h) < 40)
-        warn('tip', `Blends with the ${name}`, `This is close in lightness and tone to the ${name}, so the two will read as one surface. Fine for a calm look; go lighter or darker for definition.`);
+        warn('tip', `Blends with the ${name}`, `The two will look like one surface. Go lighter or darker for contrast.`);
       if (c.lrv < 15 && e.L < 32 && ['furniture', 'cabinet', 'floor', 'carpet', 'counter', 'trim'].includes(e.kind))
-        warn('tip', `Dark on dark with the ${name}`, `A deep color next to the ${name} has little contrast. Add lighter accents or good lighting so the space doesn’t feel heavy.`);
+        warn('tip', `Dark on dark with the ${name}`, `Little contrast here. Add lighter accents so it doesn’t feel heavy.`);
       if (e.kind === 'carpet' && c.lrv >= 75 && e.L < 60)
-        warn('tip', `Carpet darkens the lower wall`, `The ${name} reflects its own color onto the bottom of the walls, so a very light wall can look a touch warmer and darker near the floor.`);
+        warn('tip', `Carpet darkens the lower wall`, `It reflects onto the lower wall, so a light color looks a bit darker near the floor.`);
     }
     out.score = Math.max(-0.3, Math.min(0.15, out.score));
     out.reasons = out.reasons.filter((x, i, arr) => arr.indexOf(x) === i);
@@ -716,10 +750,10 @@
   function coverageWarnings(c, a, add) {
     const now = nowHexOf(a); if (!now) return;
     const nl = C.hexToLab(now), dL = c.L - nl[0], nowC = C.labToLch(nl)[1];
-    if (dL > 35) add('heads-up', 'Going much lighter', 'Covering a darker color takes a primer and two coats, or three coats without primer.');
+    if (dL > 35) add('heads-up', 'Going much lighter', 'Prime and use two coats, or three coats without primer.');
     else if (dL < -35) add('tip', 'Going much darker', 'A gray-tinted primer helps a deep color cover in two coats.');
     if (nowC > 40 && c.L > 60) add('heads-up', 'Bright color underneath', 'Reds, oranges and yellows show through light paint. Prime first.');
-    if (a.nowKind === 'none' && (SPACES[a.space] || {}).kind === 'interior') add('tip', 'Prime new surfaces', 'Unpainted drywall or wood needs a primer first so the paint looks even.');
+    if (a.nowKind === 'none' && (SPACES[a.space] || {}).kind === 'interior') add('tip', 'Prime new surfaces', 'Bare drywall or wood needs primer so the paint looks even.');
   }
   function warningsFor(c, a) {
     a = Object.assign({}, DEFAULT_ANSWERS, a || {});
@@ -728,24 +762,24 @@
     const ext = sp.kind === 'exterior';
     const wall = !sp.surface || sp.accent;
 
-    if (c.flags & F.DISC) add('caution', 'Discontinued color', 'This color is no longer in the brand’s current palette. Many stores can still mix it from the formula, so check before promising it.');
+    if (c.flags & F.DISC) add('caution', 'Discontinued color', 'No longer in the brand’s palette. Many stores can still mix it, so check first.');
 
     // depth vs light
     if (!ext) {
       if (c.lrv < 10 && (lowLight(a) || a.size === 'small') && !sp.accent && sp.surface !== 'trim' && sp.surface !== 'cabinets')
-        add('caution', 'Will read close to black', `LRV ${c.lrv} reflects very little light. In a ${noWindows(a) ? 'windowless' : lowLight(a) ? 'dim' : 'small'} room it will look darker than the chip and make the space feel smaller. Great if that cocoon feel is the goal; otherwise go one or two steps lighter.`);
+        add('caution', 'Will read close to black', `In a ${noWindows(a) ? 'windowless' : lowLight(a) ? 'dim' : 'small'} room it looks darker than the chip and makes the space feel smaller. Go a step lighter unless that’s the goal.`);
       else if (c.lrv < 20 && lowLight(a) && wall && !sp.accent)
-        add('heads-up', 'Darker in this light', 'Low or north light makes deep colors look darker and flatter than the chip. Expect it to read a step or two deeper.');
+        add('heads-up', 'Darker in this light', 'Low or north light makes deep colors look a step or two darker.');
       if (c.lrv >= 30 && c.lrv < 55 && c.neutral && lowLight(a) && (c.fam === 'gray' || c.fam === 'beige'))
-        add('heads-up', 'Mid-tone neutrals can turn muddy', 'Grays and greiges in this range can look dull or shadowy in dim light. A version one step lighter on the same strip often looks the way people expect.');
+        add('heads-up', 'Mid-tone neutrals can turn muddy', 'Grays and greiges like this can look dull in dim light. One step lighter usually looks right.');
       if (c.lrv >= 88 && brightWarmLight(a) && wall)
-        add('heads-up', 'Can glare in strong sun', `LRV ${c.lrv} bounces back almost all light. In a bright ${facingPhrase(a)} room it can feel stark or glaring by afternoon.`);
+        add('heads-up', 'Can glare in strong sun', `In a bright ${facingPhrase(a)} room it can glare by afternoon.`);
       if (sp.surface === 'ceiling' && c.lrv < 70)
-        add('heads-up', 'Ceiling will feel lower', `Ceilings under about LRV 70 visually drop the ceiling. That can feel cozy, but most ceilings sit around LRV 80–90.`);
+        add('heads-up', 'Ceiling will feel lower', `Below about LRV 70 a ceiling looks lower. Most ceilings are LRV 80–90.`);
       if (sp.kid && c.lrv < 12)
-        add('heads-up', 'Very dark for a kids’ room', 'Deep colors can feel heavy in a kids’ room. Consider it for one wall or furniture instead.');
+        add('heads-up', 'Very dark for a kids’ room', 'Can feel heavy in a kids’ room. Try it on one wall or on furniture.');
       if (a.size === 'small' && c.lrv < 25 && !sp.accent && wall && !(c.lrv < 10 && lowLight(a)))
-        add('tip', 'Small room, deep color', 'Deep colors make walls recede at night and can feel cozy, but the room will look smaller in daylight.');
+        add('tip', 'Small room, deep color', 'Cozy at night, but the room will look smaller by day.');
     }
 
     // light direction and undertone
@@ -753,72 +787,72 @@
     // north-only rooms get the cool-light cautions; a second, sunnier side softens them to a heads-up
     const north = hasDir(a, 'north'), sunnyToo = hasDir(a, 'south') || hasDir(a, 'west') || hasDir(a, 'east');
     if (!ext && north && c.neutral && coolUT && c.C > 2) {
-      if (onlyNorth(a)) add('caution', 'May look icy or dingy in north light', 'North light is cool and bluish, which strengthens cool undertones. This color can look colder, grayer or a little blue. A warmer neutral usually holds up better.');
-      else if (sunnyToo) add('heads-up', 'Cooler on the north wall', 'The other windows warm the room, but walls near the north window will still read cooler and a little bluer.');
+      if (onlyNorth(a)) add('caution', 'May look icy or dingy in north light', 'North light is cool and bluish, so this can look colder or grayer. A warmer neutral holds up better.');
+      else if (sunnyToo) add('heads-up', 'Cooler on the north wall', 'Walls near the north window will still look cooler.');
     }
     if (!ext && onlyNorth(a) && isWhiteish(c) && c.lrv < 82)
-      add('heads-up', 'Whites look grayer facing north', 'Soft whites can read as light gray in north light. To make it read as white, pick a cleaner, brighter white.');
+      add('heads-up', 'Whites look grayer facing north', 'Soft whites can look light gray here. Pick a brighter white for a true white.');
     if (!ext && brightWarmLight(a) && c.neutral && (c.ut === 'yellow' || c.ut === 'peach') && c.C > 4)
-      add('heads-up', 'Strong sun boosts yellow', 'Warm afternoon sun amplifies yellow and peach undertones. This can look noticeably creamier or more golden than the chip.');
+      add('heads-up', 'Strong sun boosts yellow', 'Afternoon sun makes this look creamier or more golden than the chip.');
     if (!ext && hasDir(a, 'west'))
-      add('tip', 'Changes through the day', 'West windows bring cool, flat light in the morning and warm orange light by evening. Check the sample around 5 pm too.');
+      add('tip', 'Changes through the day', 'Cool in the morning, warm orange by evening. Check the sample around 5 pm.');
     if (!ext && hasDir(a, 'east') && !hasDir(a, 'west'))
-      add('tip', 'Bright morning, cooler afternoon', 'East light is warm and bright early, then cooler and flatter later. Check the sample in the afternoon.');
+      add('tip', 'Bright morning, cooler afternoon', 'Warm and bright early, cooler later. Check the sample in the afternoon.');
     if (!ext && ((north && hasDir(a, 'south')) || (hasDir(a, 'east') && hasDir(a, 'west'))))
-      add('tip', 'Light differs wall to wall', 'With windows on opposite sides, the same color reads warmer on one side and cooler on the other. Tape samples on both.');
+      add('tip', 'Light differs wall to wall', 'It looks warmer on one side than the other. Test a sample on both.');
     if (!ext && facingsOf(a).length >= 3)
-      add('tip', 'Bright from several sides', 'Light from three or more sides makes colors look lighter and cleaner than the chip. A step deeper often reads as intended.');
+      add('tip', 'Bright from several sides', 'Colors look lighter than the chip. A step deeper often looks right.');
     if (!ext && noWindows(a))
-      add('heads-up', 'Bulbs decide everything here', 'With no windows, the color depends entirely on the bulbs. Test the sample under the room’s actual bulbs before committing.');
+      add('heads-up', 'Bulbs decide everything here', 'The bulbs set the color. Test the sample under the room’s own bulbs.');
 
     // undertone surprises
     if (c.neutral && c.fam !== 'black') {
       if (c.ut === 'green' && c.C >= 3 && c.C < 14)
-        add('heads-up', 'Leans green', 'This neutral has a green undertone. It can look greenish next to warm wood or in north light, and looks more khaki in warm bulbs.');
+        add('heads-up', 'Leans green', 'Can look greenish next to warm wood or in north light.');
       if (c.ut === 'pink' && c.C >= 3.5 && c.C < 16 && c.L > 50)
-        add('heads-up', 'Leans pink', 'This neutral has a pink or mauve undertone that shows up more in warm light and next to red brick or cherry wood.');
+        add('heads-up', 'Leans pink', 'Shows more in warm light and next to red brick or cherry wood.');
       if (c.ut === 'violet' && c.C >= 2.5)
-        add('heads-up', 'Leans purple', 'This gray has a violet undertone and can read lavender in some light, especially next to yellow-toned wood.');
+        add('heads-up', 'Leans purple', 'Can look lavender, especially next to yellow-toned wood.');
     }
     // floors, counters, furniture, fixtures, roof and anything custom
     for (const w of fixedEffects(c, a).warnings) add(w.level, w.title, w.text);
 
     // bulbs
     if (!ext && a.bulbs === 'warm' && (c.fam === 'blue' || (c.neutral && coolUT && c.C > 2.5)))
-      add('heads-up', 'Warm bulbs mute cool colors', 'Warm 2700K bulbs pull blues and cool grays toward gray, green or muddy. Soft white or 3500K bulbs keep them truer.');
+      add('heads-up', 'Warm bulbs mute cool colors', '2700K bulbs make blues and cool grays look muddy. 3000–3500K keeps them truer.');
     if (!ext && a.bulbs === 'daylight' && c.neutral && (c.ut === 'yellow' || c.ut === 'peach') && c.C > 5)
-      add('heads-up', 'Daylight bulbs flatten warm colors', 'Cool 5000K bulbs can make warm creams and beiges look flat or slightly gray.');
+      add('heads-up', 'Daylight bulbs flatten warm colors', '5000K bulbs can make creams and beiges look flat.');
 
     // saturation
     if (c.C > 45 && wall && !sp.accent && !ext)
-      add('heads-up', 'Gets bolder on a full wall', 'Strong colors look brighter and more intense on four walls than on a small chip. Consider one step more muted, or use it on an accent wall.');
+      add('heads-up', 'Gets bolder on a full wall', 'Looks stronger on four walls than on a chip. Go a step softer, or use it on one wall.');
     if (sp.sleep && c.C > 40 && (c.fam === 'red' || c.fam === 'orange' || c.fam === 'yellow'))
-      add('heads-up', 'Energizing for a sleep space', 'Very saturated reds, oranges and yellows feel stimulating. A softer, muted version is easier to sleep in.');
+      add('heads-up', 'Energizing for a sleep space', 'Strong reds, oranges and yellows can be hard to sleep in. A softer version helps.');
     if ((c.C > 40 && (c.fam === 'red' || c.fam === 'orange' || c.fam === 'yellow')) || c.lrv < 8)
-      add('tip', 'Coverage', 'Deep or bright colors like this usually need a gray-tinted primer and two to three coats for even color.');
+      add('tip', 'Coverage', 'Plan on a gray-tinted primer and two to three coats.');
     if (c.lrv < 15 && !ext && (sp.busy || sp.kid))
-      add('tip', 'Shows scuffs', 'Dark colors show scuffs and touch-ups more in high-traffic areas. Use a scrubbable Eggshell or Satin.');
+      add('tip', 'Shows scuffs', 'Dark colors show scuffs in busy spaces. Use a scrubbable Eggshell or Satin.');
     // space-specific notes
-    if (sp.tall && c.lrv < 30) add('tip', 'Tall stairwell walls', 'Stairwell walls are hard to reach and repaint. A deep color here is a big commitment, so test a large sample first.');
-    if (a.space === 'garage') add('tip', 'Garage lighting', 'Most garages use cool LED or fluorescent tubes, which make colors look cooler and grayer than the chip.');
-    if (sp.sunny && c.C > 30) add('heads-up', 'Strong sun fades color', 'Sunrooms get so much direct light that saturated colors fade faster. A premium line with good fade resistance helps.');
-    if (sp.sunny && c.lrv >= 88) add('heads-up', 'Glare in a sunroom', 'Very bright whites bounce a lot of light in a room this sunny. A softer white is easier on the eyes.');
+    if (sp.tall && c.lrv < 30) add('tip', 'Tall stairwell walls', 'Hard to reach and repaint. Test a big sample first.');
+    if (a.space === 'garage') add('tip', 'Garage lighting', 'Cool LED or fluorescent tubes make colors look cooler and grayer.');
+    if (sp.sunny && c.C > 30) add('heads-up', 'Strong sun fades color', 'Strong sun fades bold colors faster. A premium line helps.');
+    if (sp.sunny && c.lrv >= 88) add('heads-up', 'Glare in a sunroom', 'Very bright whites can glare here. A softer white is easier on the eyes.');
 
     // exterior
     if (ext) {
       if (sp.surface === 'body' && a.siding === 'vinyl' && c.lrv < 50)
-        add('caution', 'Risky on vinyl siding', `Dark colors absorb heat and can warp vinyl. At LRV ${c.lrv}, use the brand’s vinyl-safe formula and check the siding maker’s limit before selling it.`);
-      if (c.lrv < 15) add('heads-up', 'Heat and fading', 'Very dark exterior colors absorb heat and show fading and chalking sooner, especially on sunny sides.');
-      if (c.C > 38 && (c.fam === 'red' || c.fam === 'yellow' || c.fam === 'orange')) add('heads-up', 'Fades faster in sun', 'Saturated reds, yellows and oranges fade the fastest outdoors. A premium exterior line helps.');
-      if (c.lrv >= 85 && a.amount === 'high') add('heads-up', 'Glare in full sun', 'Bright whites on a sunny exterior can glare. A slightly softer white reads white outside without the glare.');
-      add('tip', 'Outdoor light washes color out', 'Exterior colors look lighter and less saturated in full sun than on the chip. Many pros choose one step deeper than they think.');
-      if (sp.surface === 'body' && a.siding === 'stucco') add('tip', 'Stucco texture', 'Textured stucco casts tiny shadows, so the color will look a little darker than on smooth siding.');
+        add('caution', 'Risky on vinyl siding', `Dark colors can warp vinyl. At LRV ${c.lrv}, use a vinyl-safe formula and check the siding maker’s limit.`);
+      if (c.lrv < 15) add('heads-up', 'Heat and fading', 'Very dark colors get hot and fade sooner on sunny sides.');
+      if (c.C > 38 && (c.fam === 'red' || c.fam === 'yellow' || c.fam === 'orange')) add('heads-up', 'Fades faster in sun', 'Strong reds, yellows and oranges fade fastest outdoors. A premium line helps.');
+      if (c.lrv >= 85 && a.amount === 'high') add('heads-up', 'Glare in full sun', 'Bright whites can glare in full sun. A softer white still looks white.');
+      add('tip', 'Outdoor light washes color out', 'Colors look lighter in full sun. Many pros go one step deeper.');
+      if (sp.surface === 'body' && a.siding === 'stucco') add('tip', 'Stucco texture', 'Stucco texture makes colors look a little darker.');
     }
     // shadows: light from one side leaves the window wall and far corners in shade
-    if (!ext && wall && facingsOf(a).length === 1 && !noWindows(a)) add('tip', 'Shadows shift it wall to wall', 'The wall with the window sits in its own shadow and looks a shade darker; the wall across from it looks lightest. Check the sample on both.');
-    if (!ext && wall && c.lrv < 25 && facingsOf(a).length <= 1) add('tip', 'Deep colors deepen in shadow', 'Corners and the wall around the window can look almost black with a color this deep. Keep lamps on that side.');
-    if (ext && a.amount === 'low') add('tip', 'Shade darkens it', 'Under porches, eaves and trees the color looks noticeably darker than in open sun. Look at the sample in both.');
-    if (ext && a.amount === 'high' && sp.surface === 'body') add('tip', 'Eaves cast a band of shadow', 'The strip of siding under the roof edge is always in shade, so it reads darker than the rest of the wall.');
+    if (!ext && wall && facingsOf(a).length === 1 && !noWindows(a)) add('tip', 'Shadows shift it wall to wall', 'The window wall looks a shade darker than the wall across from it. Check both.');
+    if (!ext && wall && c.lrv < 25 && facingsOf(a).length <= 1) add('tip', 'Deep colors deepen in shadow', 'Corners and the window wall can look almost black. Keep lamps on that side.');
+    if (ext && a.amount === 'low') add('tip', 'Shade darkens it', 'Under porches, eaves and trees it looks darker than in open sun.');
+    if (ext && a.amount === 'high' && sp.surface === 'body') add('tip', 'Eaves cast a band of shadow', 'Siding under the roof edge stays shaded and looks darker.');
     coverageWarnings(c, a, add);
     return W;
   }
@@ -829,18 +863,18 @@
     a = Object.assign({}, DEFAULT_ANSWERS, a || {});
     const sp = SPACES[a.space] || SPACES.living; const tips = [];
     tips.push({ title: 'Finish', text: sp.sheen + '.' });
-    if (sp.surface === 'trim') tips.push({ title: 'Baseboards, Casing & Crown', text: 'Use one color for baseboards, door and window casing, and crown so the trim reads as one. Semi-Gloss on baseboards stands up to scuffs and mopping.' });
+    if (sp.surface === 'trim') tips.push({ title: 'Baseboards, Casing & Crown', text: 'Use one color on baseboards, casing and crown. Semi-Gloss stands up to scuffs.' });
     if (a.trimPaint && sp.kind === 'interior' && !sp.surface && top) {
       const w = pairings(top, s).find(p => p.role === 'Trim & ceiling');
-      if (w) tips.push({ title: 'Trim & Baseboards', text: `Pair with ${w.color.name} (${codeLabel(w.color)}) on baseboards, casing and doors in Semi-Gloss or Satin.` });
+      if (w) tips.push({ title: 'Trim & Baseboards', text: `Pair with ${w.color.name} (${codeLabel(w.color)}) on trim and doors, in Semi-Gloss or Satin.` });
     }
-    if (a.crown) tips.push({ title: 'Crown Molding', text: 'Paint crown molding the trim color for a crisp outline, or the ceiling color to make a low ceiling feel taller.' });
-    if ((a.fixed || []).includes('trim-wood') && !a.trimPaint) tips.push({ title: 'Stained Trim', text: 'Stained wood trim is warm and orange-leaning, so the picks lean toward warm and earthy colors. Cool blue-grays are flagged.' });
-    if (s && s.inStoreSamples) tips.push({ title: 'Samples', text: 'Pull the chips from the display and tape them up on two walls, one near the window and one away from it.' });
-    else tips.push({ title: 'Samples', text: 'Get a sample pot or a peel-and-stick sample and check it on two walls at different times of day.' });
-    if (sp.wet) tips.push({ title: 'Moisture', text: 'Use a mildew-resistant kitchen and bath paint and allow full cure before showers or cooking steam.' });
+    if (a.crown) tips.push({ title: 'Crown Molding', text: 'Match the trim for a crisp line, or the ceiling to make the room feel taller.' });
+    if ((a.fixed || []).includes('trim-wood') && !a.trimPaint) tips.push({ title: 'Stained Trim', text: 'Picks lean warm to suit the wood. Cool blue-grays are flagged.' });
+    if (s && s.inStoreSamples) tips.push({ title: 'Samples', text: 'Tape chips on two walls: one near the window, one away from it.' });
+    else tips.push({ title: 'Samples', text: 'Try a sample on two walls and check it at different times of day.' });
+    if (sp.wet) tips.push({ title: 'Moisture', text: 'Use a mildew-resistant paint and let it cure before steam or showers.' });
     if (lowLight(a) && sp.kind === 'interior') tips.push({ title: 'Low Light', text: 'Colors look one to two steps darker here. When torn between two, pick the lighter one.' });
-    if (a.bulbs === 'unsure' && sp.kind === 'interior') tips.push({ title: 'Bulbs', text: 'Ask which bulbs are in the room. Warm bulbs and daylight bulbs can make the same color look very different.' });
+    if (a.bulbs === 'unsure' && sp.kind === 'interior') tips.push({ title: 'Bulbs', text: 'Ask which bulbs are in the room. Warm and daylight bulbs change colors a lot.' });
     return tips;
   }
 
@@ -855,6 +889,7 @@
       pl('bm-ben', 'ben', 'interior', 1, ['value'], 'Good everyday coverage at a lower price.'),
       pl('bm-regal', 'Regal Select', 'interior', 2, ['washable', 'popular'], 'Benjamin Moore’s best-selling interior: durable, washable and easy to apply.'),
       pl('bm-scuffx', 'Scuff-X', 'interior', 2, ['scuff', 'washable'], 'Made to resist scuffs in busy rooms and hallways.'),
+      pl('bm-floor', 'Floor & Patio Latex Enamel', 'both', 2, ['floor'], 'For porches, patios and concrete or wood floors.'),
       pl('bm-aura', 'Aura', 'interior', 3, ['premium', 'washable', 'onecoat', 'rich'], 'Top-tier color depth and durability, often in one coat.'),
       pl('bm-aura-bath', 'Aura Bath & Spa', 'interior', 3, ['bath', 'washable'], 'Matte finish made for humid bathrooms, mildew resistant.'),
       pl('bm-advance', 'Advance', 'interior', 3, ['enamel'], 'Waterborne alkyd that levels like oil for cabinets, trim and doors.'),
@@ -869,6 +904,7 @@
       pl('sw-superpaint', 'SuperPaint', 'interior', 2, ['washable', 'popular'], 'Durable, washable everyday wall paint.'),
       pl('sw-cashmere', 'Cashmere', 'interior', 2, ['smooth'], 'Very smooth, low-lap finish that’s easy to apply.'),
       pl('sw-duration', 'Duration Home', 'interior', 3, ['scuff', 'washable'], 'Scrubbable and stain resistant, great for kids’ rooms and busy areas.'),
+      pl('sw-porch', 'Porch & Floor Enamel', 'both', 2, ['floor'], 'Tough enamel for porches, decks and concrete floors.'),
       pl('sw-emerald', 'Emerald', 'interior', 3, ['premium', 'washable', 'onecoat', 'rich'], 'Sherwin-Williams’ best interior: rich color, excellent hide and washability.'),
       pl('sw-urethane', 'Emerald Urethane Trim Enamel', 'interior', 3, ['enamel'], 'Hard, smooth enamel for trim, doors and cabinets.'),
       pl('sw-eminence', 'Eminence Ceiling Paint', 'interior', 2, ['ceiling'], 'High-hide, ultra-flat ceiling paint.'),
@@ -883,6 +919,7 @@
       pl('behr-ultra', 'Behr Ultra Scuff Defense', 'interior', 2, ['scuff', 'washable'], 'Scuff-resistant and washable for busy rooms.'),
       pl('behr-marquee', 'Behr Marquee', 'interior', 3, ['premium', 'onecoat', 'washable', 'rich'], 'One-coat hide in most colors with strong stain resistance.'),
       pl('behr-dynasty', 'Behr Dynasty', 'interior', 3, ['premium', 'scuff', 'onecoat', 'washable'], 'Behr’s top interior, built to resist scuffs and stains.'),
+      pl('behr-porch', 'Behr Porch & Patio Floor Paint', 'both', 2, ['floor'], 'For wood and concrete porches, patios and floors.'),
       pl('behr-cabinet', 'Behr Premium Cabinet & Trim Enamel', 'interior', 2, ['enamel'], 'Smooth, hard enamel for cabinets, trim and doors.'),
       pl('behr-ceiling', 'Behr Premium Plus Ceiling Paint', 'interior', 1, ['ceiling'], 'Flat ceiling paint that hides flaws.'),
       pl('behr-pp-ext', 'Behr Premium Plus Exterior', 'exterior', 1, ['value'], 'Budget-friendly exterior.'),
@@ -894,6 +931,7 @@
       pl('val-ultra', 'Valspar Ultra', 'interior', 1, ['value'], 'Everyday interior with stain blocking.'),
       pl('val-signature', 'Valspar Signature', 'interior', 2, ['washable', 'popular', 'onecoat'], 'Popular paint-and-primer with good one-coat hide.'),
       pl('val-reserve', 'Valspar Reserve', 'interior', 3, ['premium', 'washable', 'rich'], 'Valspar’s premium interior for durability and rich color.'),
+      pl('val-porch', 'Valspar Porch, Floor & Patio', 'both', 2, ['floor'], 'For porches, patios and concrete floors.'),
       pl('val-cabinet', 'Valspar Cabinet Enamel', 'interior', 2, ['enamel'], 'Self-leveling enamel for cabinets and trim.'),
       pl('val-duramax', 'Valspar Duramax Exterior', 'exterior', 3, ['premium', 'rich', 'mildew'], 'Premium exterior for weather and fade resistance.'),
     ],
@@ -915,6 +953,7 @@
     glidden: [
       pl('gl-premium', 'Glidden Premium', 'interior', 1, ['value', 'washable'], 'Affordable, washable interior.'),
       pl('gl-onecoat', 'Glidden One Coat', 'interior', 2, ['onecoat'], 'Made to cover in one coat in most colors.'),
+      pl('gl-porch', 'Glidden Porch & Floor', 'both', 2, ['floor'], 'For porches, patios and floors.'),
       pl('gl-trim', 'Glidden Trim & Door', 'interior', 2, ['enamel'], 'Durable enamel for trim and doors.'),
       pl('gl-premium-ext', 'Glidden Premium Exterior', 'exterior', 1, ['value'], 'Affordable exterior protection.'),
       pl('gl-onecoat-ext', 'Glidden One Coat Exterior', 'exterior', 2, ['onecoat'], 'One-coat exterior in most colors.'),
@@ -944,13 +983,16 @@
     const lines = (PAINT_LINES[brandId] || []).filter(l => !(settings && settings.lines && settings.lines[l.id] === false));
     const sp = SPACES[a.space] || SPACES.living;
     const use = sp.kind;
-    const enamelJob = sp.surface === 'trim' || sp.surface === 'cabinets' || sp.surface === 'furniture' || (sp.surface === 'door' && use === 'interior');
+    const enamelJob = sp.surface === 'trim' || sp.surface === 'cabinets' || sp.surface === 'furniture' || sp.enamel || (sp.surface === 'door' && use === 'interior');
+    const floorJob = sp.surface === 'floor';
     const deep = color && (color.lrv < 15 || color.C > 40);
     const scored = [];
     for (const l of lines) {
-      if (l.use !== use) continue;
+      if (l.use !== use && l.use !== 'both') continue;
+      if (!floorJob && l.tags.includes('floor')) continue;
       const has = t => l.tags.includes(t);
       let s = l.tier * 0.6; const why = [];
+      if (floorJob) { if (has('floor')) { s += 6; why.push('Made for floors that get walked on'); } else s -= 6; }
       if (sp.surface === 'ceiling') { if (has('ceiling')) { s += 4; why.push('Made for ceilings'); } }
       else if (has('ceiling')) s -= 5;
       if (enamelJob) { if (has('enamel')) { s += 4; why.push('Hard enamel finish for ' + sp.label.toLowerCase()); } }
@@ -968,10 +1010,10 @@
       scored.push({ line: l, score: s, why });
     }
     scored.sort((x, y) => y.score - x.score || y.line.tier - x.line.tier);
-    const best = scored[0] || null;
+    const best = scored[0] && (!floorJob || scored[0].line.tags.includes('floor')) ? scored[0] : null;
     // one option per tier that suits the job: ceilings and enamel jobs only list lines made for them,
     // and walls never list ceiling, enamel or bath-only lines
-    const needTag = sp.surface === 'ceiling' ? 'ceiling' : enamelJob ? 'enamel' : null;
+    const needTag = floorJob ? 'floor' : sp.surface === 'ceiling' ? 'ceiling' : enamelJob ? 'enamel' : null;
     const fits = x => (needTag ? x.line.tags.includes(needTag) : x.score >= x.line.tier * 0.6 - 0.01);
     const byTier = [1, 2, 3].map(t => scored.find(x => x.line.tier === t && fits(x))).filter(Boolean);
     return { brand: brandId, best, byTier, all: scored };
@@ -1044,7 +1086,7 @@
     if ((sp.surface === 'ceiling' || sp.surface === 'trim') && fa == null && a.depth !== 'deep' && a.depth !== 'mid' && !a.tint && !a.bold && !a.matchWalls)
       fam = Math.min(fam, isWhiteish(c) ? 1 : c.neutral && c.C < 8 ? 0.45 : 0.1) + (isWhiteish(c) ? 0.2 : 0);
     // a front door is the place for color when nothing else was asked for
-    if (sp.surface === 'door' && fa == null && sa == null) fam = c.C > 25 ? 0.9 : c.C > 12 ? 0.7 : c.lrv < 10 ? 0.75 : 0.45;
+    if ((sp.surface === 'door' || sp.surface === 'shutters') && fa == null && sa == null) fam = c.C > 25 ? 0.9 : c.C > 12 ? 0.7 : c.lrv < 10 ? 0.75 : 0.45;
     if (a.tint) fam = c.fam === 'white' ? 0.3 : (c.C >= 3 && c.C <= 14 ? 0.95 : 0.4);
     if (a.bold) fam = c.C > 25 ? 1 : c.C > 15 ? 0.6 : 0.2;
     if (a.matchWalls) { const w = fixedItems(a).find(f => f.kind === 'wall'); fam = w ? Math.max(0, 1 - C.deltaE2000(c.lab, w.lab) / 14) : (c.neutral ? 0.8 : 0.3); }
@@ -1111,7 +1153,7 @@
     if (spc.surface === 'body' && a.siding === 'vinyl' && (a.depth === 'deep' || (a.families || []).includes('dark'))) {
       a.families = (a.families || []).filter(f => f !== 'dark');
       if (a.depth === 'deep') a.depth = 'mid';
-      notices.push({ level: 'caution', title: 'Dark Colors Held Back for Vinyl', text: 'Dark colors absorb heat and can warp vinyl siding, so these are the deepest safe choices. Many brands make vinyl-safe formulas for darker colors; check the brand and the siding maker’s limit before going darker.' });
+      notices.push({ level: 'caution', title: 'Dark Colors Held Back for Vinyl', text: 'Dark colors can warp vinyl, so these are the deepest safe picks. Ask for a vinyl-safe formula to go darker.' });
     }
     if (s.storeOnly && s.storeBrand && s.brands && s.brands[s.storeBrand] === false) notices.push({ level: 'heads-up', title: 'Store Brand Is Turned Off', text: 'Turn the store brand back on in settings to see its colors.' });
     // ceilings and trim answer "what kind of white" instead of color families
@@ -1123,7 +1165,7 @@
       if (w === 'bold') Object.assign(a, { families: [], depth: 'any', bold: true });
       if (w === 'dark') Object.assign(a, { families: ['dark'], depth: 'deep', darkTrim: true });
       if (w === 'match') Object.assign(a, { families: [], depth: 'any', matchWalls: true });
-      if (w === 'match' && !fixedItems(a).some(f => f.kind === 'wall')) notices.push({ level: 'heads-up', title: 'Pick the Wall Color to Match', text: 'Choose the walls staying in question 5 so the trim can match them. For now these are versatile light neutrals.' });
+      if (w === 'match' && !fixedItems(a).some(f => f.kind === 'wall')) notices.push({ level: 'heads-up', title: 'Pick the Wall Color to Match', text: 'Add the wall color under “What’s staying” so the trim can match it. For now, these are easy light neutrals.' });
     }
     const t = target(a);
     let pool = INDEX.colors.filter(c => allowedColor(c, a, s));
@@ -1197,6 +1239,22 @@
     out.sort((x, y) => x.dE - y.dE);
     return out;
   }
+  // Reads a typed color value: #D1CBC1, D1CBC1, #DCB, rgb(209, 203, 193), 209,203,193 or 209 203 193. Returns 'D1CBC1' or null.
+  function parseColorValue(q) {
+    const t = String(q || '').trim();
+    let m = t.match(/^#?([0-9a-f]{6})$/i);
+    if (m) return m[1].toUpperCase();
+    m = t.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+    if (m) return (m[1] + m[1] + m[2] + m[2] + m[3] + m[3]).toUpperCase();
+    m = t.match(/^(?:rgba?\s*\(\s*)?(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*(?:[, ]\s*[\d.]+\s*)?\)?$/i);
+    if (m && [m[1], m[2], m[3]].every(v => +v <= 255)) return C.rgbToHex([+m[1], +m[2], +m[3]]).toUpperCase();
+    return null;
+  }
+  // the closest color in every brand to an exact value
+  function closestByBrand(hex, opts) {
+    const lab = C.hexToLab(hex);
+    return matchesFor({ id: null, brand: '', lab, L: lab[0] }, Object.assign({ includeSameBrand: true }, opts || {}));
+  }
   function nearestInBrand(lab, brandId, filter, n) {
     const list = (INDEX.byBrand[brandId] || []).filter(c => !(c.flags & F.DISC) && (!filter || filter(c)));
     return list.map(c => ({ c, d: C.deltaE2000(lab, c.lab) })).sort((x, y) => x.d - y.d).slice(0, n || 1).map(x => x.c);
@@ -1226,7 +1284,7 @@
   function search(query, opts) {
     opts = opts || {};
     const q = String(query || '').trim(); if (!q) return [];
-    const hex = q.replace('#', '').match(/^[0-9a-f]{6}$/i);
+    const hex = parseColorValue(q) ? [parseColorValue(q)] : null;
     const pool = INDEX.colors.filter(c => (!opts.brands || opts.brands[c.brand] !== false) && (!(c.flags & F.DISC) || opts.showDiscontinued));
     if (hex) {
       const lab = C.hexToLab(hex[0]);
@@ -1292,7 +1350,7 @@
     return { brands, errors };
   }
 
-  const api = { F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
+  const api = { parseColorValue, closestByBrand, F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
     init, addBrand, getIndex, findColor, codeLabel, target, familyMatch, styleMatch, scoreColor, warningsFor, roomTips, recommend,
     matchesFor, pairings, search, lightForAnswers, parseCustomCsv, allowedColor, facingsOf, facingPhrase, noWindows, DIRS,
     MOODS, UNDERTONES, NOW_COLORS, NOW_HEX, SURFACES, surfacesFor, ISSUES, PRIMERS, primerFor, nowHexOf,

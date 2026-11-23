@@ -35,7 +35,11 @@
       </nav>
       <button type="button" class="btn small install-btn" id="installBtn" hidden>
         <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0l-3.2-3.2M8 10l3.2-3.2M3 13h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Get the app</span>
+        <span>Get the App</span>
+      </button>
+      <button type="button" class="btn small session-btn" id="sessionBtn" aria-label="Open the customer session">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2.5" width="10" height="11.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.8 6h4.4M5.8 8.6h4.4M5.8 11.2h2.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span class="session-label" id="sessionLabel">New Session</span><span class="count" id="sessionCount" hidden>0</span>
       </button>
       <button type="button" class="icon-btn" id="settingsBtn" aria-label="Settings">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
@@ -67,6 +71,8 @@
 <div class="modal" id="calModal" role="dialog" aria-modal="true" aria-labelledby="calTitle" hidden></div>
 <div class="modal" id="installModal" role="dialog" aria-modal="true" aria-labelledby="installTitle" hidden></div>
 <div class="modal" id="infoModal" role="dialog" aria-modal="true" aria-labelledby="infoTitle" hidden></div>
+<div class="modal" id="sessionModal" role="dialog" aria-modal="true" aria-labelledby="sessionTitle" hidden></div>
+<div id="printArea" aria-hidden="true"></div>
 <div class="onboard" id="onboard" role="dialog" aria-modal="true" aria-labelledby="obTitle" hidden></div>
 <div class="present" id="present" role="dialog" aria-modal="true" aria-label="Saved colors, full screen" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>

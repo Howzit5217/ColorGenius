@@ -19,12 +19,21 @@
     furniture: { label: 'Furniture', kind: 'interior', wood: 'pine', sub: 'Tables, dressers, chairs', scene: 'furniture' },
     tabletop: { label: 'Tabletop or Butcher Block', kind: 'interior', wood: 'maple', sub: 'Counters, desks, tables', scene: 'furniture', food: true },
     trim: { label: 'Trim & Doors', kind: 'interior', wood: 'pine', sub: 'Baseboards, casing, interior doors', scene: 'trim' },
+    doors: { label: 'Interior Doors', kind: 'interior', wood: 'pine', sub: 'Panel and slab doors', scene: 'trim', use: 'trim' },
+    paneling: { label: 'Paneling & Wood Ceilings', kind: 'interior', wood: 'pine', sub: 'Tongue and groove, beadboard, planks', scene: 'paneling', use: 'trim' },
+    builtins: { label: 'Shelves & Built-Ins', kind: 'interior', wood: 'birch', sub: 'Bookcases, shelves, window seats', scene: 'builtins', use: 'cabinets' },
     deck: { label: 'Deck', kind: 'exterior', wood: 'pt_pine', sub: 'Boards, steps, railings', scene: 'deck', traffic: true, horizontal: true },
     fence: { label: 'Fence', kind: 'exterior', wood: 'pt_pine', sub: 'Pickets and panels', scene: 'fence' },
     siding: { label: 'Siding & Shakes', kind: 'exterior', wood: 'cedar', sub: 'Cedar siding, shingles, board & batten', scene: 'siding' },
     outdoor: { label: 'Outdoor Furniture', kind: 'exterior', wood: 'cedar', sub: 'Chairs, benches, planters', scene: 'deck' },
     pergola: { label: 'Pergola or Porch', kind: 'exterior', wood: 'cedar', sub: 'Posts, beams, ceilings', scene: 'deck' },
-    front_door: { label: 'Front Door', kind: 'exterior', wood: 'fir', sub: 'Wood entry doors', scene: 'door' },
+    front_door: { label: 'Front Door', kind: 'exterior', wood: 'fir', sub: 'Wood entry doors', scene: 'door', use: 'door' },
+    garage_door: { label: 'Wood Garage Door', kind: 'exterior', wood: 'cedar', sub: 'Carriage-style and plank doors', scene: 'garage', use: 'door' },
+    shutters: { label: 'Shutters', kind: 'exterior', wood: 'cedar', sub: 'Wood window shutters', scene: 'shutters', use: 'siding' },
+    shed: { label: 'Shed or Barn', kind: 'exterior', wood: 'cedar', sub: 'Siding, doors and trim', scene: 'siding', use: 'siding' },
+    log: { label: 'Log Home', kind: 'exterior', wood: 'pine', sub: 'Log walls and timbers', scene: 'siding', use: 'log' },
+    playset: { label: 'Playset or Swing Set', kind: 'exterior', wood: 'cedar', sub: 'Posts, beams and ladders', scene: 'deck', use: 'outdoor' },
+    dock: { label: 'Dock', kind: 'exterior', wood: 'pt_pine', sub: 'Boards and posts over water', scene: 'deck', use: 'deck', traffic: true, horizontal: true },
   };
   // ---------------- the look ----------------
   // Targets are on the predicted color (on the chosen wood), in CIE LCh. L = lightness, C = colorfulness, h = hue.
@@ -189,38 +198,38 @@
     const sp = woodFor(a), S = W.SPECIES[sp];
     const p = lchOf(predicted || item.hex), bare = lchOf(W.bareHex(sp));
     const solid = a.grain === 'hide' || item.kind === 'paint';
-    if (!solid && BLOTCHY.includes(sp)) add('caution', `Can look blotchy on ${S.label.toLowerCase()}`, 'Brush on a pre-stain wood conditioner first, or use a gel stain. Both even out how the wood soaks up color.');
-    if (!solid && ['maple', 'birch'].includes(sp) && p.L < 36) add('caution', `Dark stains go uneven on ${S.label.toLowerCase()}`, 'Dense woods resist dark stain. A gel stain, two thin coats, or a tinted topcoat gets darker and more even.');
-    if (sp === 'red_oak' && p.C < 10 && p.L > 30) add('heads-up', 'Grays can turn muddy on red oak', 'Red oak’s pink undertone shows through gray stains. White oak takes gray cleaner; on red oak, test a board first.');
-    if (sp === 'cherry') add('tip', 'Cherry darkens with age', 'Cherry deepens noticeably in sunlight over the first months. Pick a stain a step lighter than the look you want.');
-    if (sp === 'walnut' && p.L > bare.L - 3 && !solid) add('heads-up', 'Stain won’t lighten walnut', 'Walnut is already dark. A clear finish or oil shows it best; lighter stains barely change it.');
+    if (!solid && BLOTCHY.includes(sp)) add('caution', `Can look blotchy on ${S.label.toLowerCase()}`, 'Use a pre-stain wood conditioner first, or a gel stain.');
+    if (!solid && ['maple', 'birch'].includes(sp) && p.L < 36) add('caution', `Dark stains go uneven on ${S.label.toLowerCase()}`, 'Dense wood resists dark stain. Use a gel stain or two thin coats.');
+    if (sp === 'red_oak' && p.C < 10 && p.L > 30) add('heads-up', 'Grays can turn muddy on red oak', 'Red oak’s pink shows through gray stains. Test a board first.');
+    if (sp === 'cherry') add('tip', 'Cherry darkens with age', 'It deepens in sunlight over the first months. Go a step lighter.');
+    if (sp === 'walnut' && p.L > bare.L - 3 && !solid) add('heads-up', 'Stain won’t lighten walnut', 'Walnut is already dark. A clear finish or oil shows it best.');
     if (a.condition === 'finished' && !solid) {
-      if (p.L > bare.L - 4) add('caution', 'You can only go darker', 'Stain can’t lighten wood that already has a finish. To go lighter, strip or sand back to bare wood first.');
-      add('heads-up', 'Penetrating stain needs bare wood', 'Over an existing finish, use a gel stain or a stain-and-poly in one after scuff-sanding, or strip to bare wood.');
+      if (p.L > bare.L - 4) add('caution', 'You can only go darker', 'Stain can’t lighten finished wood. Strip or sand to bare wood to go lighter.');
+      add('heads-up', 'Penetrating stain needs bare wood', 'Over a finish, scuff-sand and use a gel stain, or strip to bare wood.');
     }
-    if (a.condition === 'new_pt' || (sp === 'pt_pine' && a.condition !== 'finished')) add('caution', 'Let new pressure-treated wood dry', 'Fresh treated lumber is wet. Wait until water sprinkled on it soaks in instead of beading, often a few weeks to a few months.');
-    if (['cedar', 'redwood'].includes(sp) && solid) add('heads-up', 'Tannins can bleed through', 'Cedar and redwood can bleed tan streaks through light solid stains. Use an oil-based or stain-blocking primer under light colors.');
-    if (job.horizontal && solid) add('heads-up', 'Solid stain can peel on walking surfaces', 'On deck boards a solid stain acts like paint and can peel where feet and water wear it. Semi-transparent or semi-solid lasts better there.');
-    if (item.type === 'semisolid') add('tip', 'Semi-solid hides some grain', 'It covers more than semi-transparent and lasts a little longer, while still letting the wood texture show.');
-    if (job.kind === 'exterior' && !solid) add('tip', 'Recoat every 2–3 years', 'Semi-transparent stains wear away instead of peeling. Plan to clean and recoat sunny decks and fences every couple of years.');
-    if (job.kind === 'exterior' && p.L < 30 && job.horizontal) add('heads-up', 'Dark decks get hot', 'Dark stains on decks soak up sun and can get uncomfortable to walk on barefoot.');
-    if (job.traffic && p.L < 28 && job.kind === 'interior') add('heads-up', 'Dark floors show dust and scratches', 'Very dark floors show pet hair, dust and light scratches more than mid-tones.');
-    if (job.traffic && p.L > 70 && job.kind === 'interior') add('tip', 'Light floors hide wear', 'Pale floors hide dust and scratches well but show dark dirt near entries.');
-    if (item.type === 'white' && ['pine', 'fir'].includes(sp)) add('tip', 'Whitewash on pine can look pink or yellow', 'Pine’s yellow and knots can show through white stains. A coat of white-pigmented sealer or a second coat helps.');
-    if (job.food) add('tip', 'Food-safe finish for prep surfaces', 'For a counter or board that touches food, skip stain on the cutting area and use a food-safe oil.');
-    if (item.colored && !solid) add('tip', 'Colored stains show the wood under them', 'A blue or green stain over yellow wood shifts toward green. Test on the same wood first.');
-    if (item.kind === 'paint') add('tip', 'Tinted as a solid stain', 'Ask for this color in a solid exterior stain; most stores tint solid stain to their paint colors.');
+    if (a.condition === 'new_pt' || (sp === 'pt_pine' && a.condition !== 'finished')) add('caution', 'Let new pressure-treated wood dry', 'Wait until sprinkled water soaks in instead of beading, often a few weeks or more.');
+    if (['cedar', 'redwood'].includes(sp) && solid) add('heads-up', 'Tannins can bleed through', 'Cedar and redwood can bleed through light colors. Prime with a stain-blocking primer.');
+    if (job.horizontal && solid) add('heads-up', 'Solid stain can peel on walking surfaces', 'Solid stain can peel where feet and water wear it. Semi-transparent lasts better.');
+    if (item.type === 'semisolid') add('tip', 'Semi-solid hides some grain', 'Covers more than semi-transparent and lasts longer. The wood texture still shows.');
+    if (job.kind === 'exterior' && !solid) add('tip', 'Recoat every 2–3 years', 'Semi-transparent stain wears away instead of peeling. Clean and recoat every couple of years.');
+    if (job.kind === 'exterior' && p.L < 30 && job.horizontal) add('heads-up', 'Dark decks get hot', 'Dark boards get too hot for bare feet in sun.');
+    if (job.traffic && p.L < 28 && job.kind === 'interior') add('heads-up', 'Dark floors show dust and scratches', 'Very dark floors show pet hair, dust and scratches.');
+    if (job.traffic && p.L > 70 && job.kind === 'interior') add('tip', 'Light floors hide wear', 'Pale floors hide dust and scratches but show dark dirt.');
+    if (item.type === 'white' && ['pine', 'fir'].includes(sp)) add('tip', 'Whitewash on pine can look pink or yellow', 'Pine’s yellow and knots can show through. A second coat helps.');
+    if (job.food) add('tip', 'Food-safe finish for prep surfaces', 'Skip stain where food is cut. Use a food-safe oil there.');
+    if (item.colored && !solid) add('tip', 'Colored stains show the wood under them', 'Blue over yellow wood turns greenish. Test on the same wood.');
+    if (item.kind === 'paint') add('tip', 'Tinted as a solid stain', 'Ask for this color in a solid exterior stain. Most stores can tint it.');
     return out;
   }
   function tipsFor(a) {
     const job = JOBS[a.target] || JOBS.floors; const tips = [];
-    if (a.sheen && SHEENS[a.sheen]) tips.push({ title: 'Sheen', text: `Pick the topcoat in ${SHEENS[a.sheen]}. ${a.sheen === 'matte' ? 'Matte looks most natural and hides scratches.' : a.sheen === 'satin' ? 'Satin is the most popular: a soft glow that cleans easily.' : 'Shinier finishes show scratches and dust more, but wipe clean fastest.'}` });
-    if (a.evenness === 'even') tips.push({ title: 'Even Color', text: 'For an even color, use a wood conditioner first and wipe the stain off at the same time everywhere.' });
+    if (a.sheen && SHEENS[a.sheen]) tips.push({ title: 'Sheen', text: `Get the topcoat in ${SHEENS[a.sheen]}. ${a.sheen === 'matte' ? 'Matte looks natural and hides scratches.' : a.sheen === 'satin' ? 'Satin has a soft glow and cleans easily.' : 'Shinier shows scratches more but wipes clean fastest.'}` });
+    if (a.evenness === 'even') tips.push({ title: 'Even Color', text: 'Use a wood conditioner first and wipe the stain off evenly.' });
     if (a.pets && job.traffic) tips.push({ title: 'Pets and Kids', text: 'Mid-tone stains with a satin topcoat hide scratches and dust best.' });
-    tips.push({ title: 'Test It First', text: 'Stain color depends on the wood, the sanding grit and how long it sits before wiping. Try it on a scrap or a hidden spot of the same wood.' });
-    if (a.condition !== 'finished') tips.push({ title: 'Sanding', text: job.kind === 'interior' ? 'Sand to 120–150 grit for floors and 150–180 for furniture and cabinets. Finer sanding makes stain lighter.' : 'Clean and brighten old decks and fences first. Lightly sand rough or gray wood so stain can soak in.' });
-    tips.push({ title: 'Topcoat', text: job.kind === 'interior' ? (job.traffic ? 'Floors need 2–3 coats of floor polyurethane over the stain. Oil-based poly ambers over time; water-based stays clearer.' : 'Protect stained wood with polyurethane or a water-based clear coat. Water-based stays clear over light and gray stains.') : 'Exterior stains seal themselves; don’t put a clear coat over them.' });
-    if (job.kind === 'exterior') tips.push({ title: 'Weather', text: 'Stain when it will stay dry for 24–48 hours, out of hot midday sun, above 50 °F.' });
+    tips.push({ title: 'Test It First', text: 'Try it on a scrap or hidden spot of the same wood first.' });
+    if (a.condition !== 'finished') tips.push({ title: 'Sanding', text: job.kind === 'interior' ? 'Sand floors to 120–150 grit, furniture and cabinets to 150–180. Finer grit makes stain lighter.' : 'Clean and brighten old wood first. Sand rough or gray spots.' });
+    tips.push({ title: 'Topcoat', text: job.kind === 'interior' ? (job.traffic ? 'Use 2–3 coats of floor polyurethane. Water-based stays clearest.' : 'Seal it with polyurethane. Water-based stays clear over light colors.') : 'Exterior stain seals itself. No clear coat needed.' });
+    if (job.kind === 'exterior') tips.push({ title: 'Weather', text: 'Stain above 50 °F, out of midday sun, with 24–48 dry hours ahead.' });
     return tips;
   }
 

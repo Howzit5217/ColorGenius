@@ -252,9 +252,14 @@ test('paint lines: the right line for the job, and switched-off lines are skippe
   assert.ok(cab.byTier.every(x => x.line.tags.includes('enamel')));
   for (const [brand, lines] of Object.entries(E.PAINT_LINES)) {
     assert.ok(window.CG_BRANDS.some(b => b.id === brand), brand);
-    for (const l of lines) assert.ok([1, 2, 3].includes(l.tier) && ['interior', 'exterior'].includes(l.use) && l.note, l.id);
+    for (const l of lines) assert.ok([1, 2, 3].includes(l.tier) && ['interior', 'exterior', 'both'].includes(l.use) && l.note, l.id);
   }
   assert.equal(E.recommendLines('dv', white, { space: 'living' }, {}).best, null);
+  // floors get a porch & floor paint, and floor paints never show up for walls
+  assert.equal(pick('sw', 'porch_floor', navy), 'Porch & Floor Enamel');
+  assert.equal(pick('bm', 'floor_paint', white), 'Floor & Patio Latex Enamel');
+  assert.ok(E.recommendLines('bm', white, { space: 'living' }, {}).all.every(x => !x.line.tags.includes('floor')));
+  assert.equal(E.recommendLines('ppg', white, { space: 'porch_floor' }, {}).best, null, 'no floor paint listed: no wall paint offered instead');
 });
 test('what is staying: floors, counters, furniture, roof and custom items change the advice', () => {
   const sw = E.getIndex().byBrand.sw.filter(c => !(c.flags & E.F.DISC));
@@ -504,4 +509,38 @@ test('offline file list matches the brand files', () => {
   const files = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/files.json'), 'utf8'));
   assert.deepEqual(files.sort(), window.CG_BRANDS.map(b => `data/colors/${b.id}.js`).sort());
   for (const f of files) assert.ok(fs.existsSync(path.join(ROOT, f)), f);
+});
+
+test('exact color values: hex, short hex and RGB, with the closest color in each brand', () => {
+  assert.equal(E.parseColorValue('#d1cbc1'), 'D1CBC1');
+  assert.equal(E.parseColorValue('D1CBC1'), 'D1CBC1');
+  assert.equal(E.parseColorValue('#dcb'), 'DDCCBB');
+  assert.equal(E.parseColorValue('rgb(209, 203, 193)'), 'D1CBC1');
+  assert.equal(E.parseColorValue('209,203,193'), 'D1CBC1');
+  assert.equal(E.parseColorValue('209 203 193'), 'D1CBC1');
+  assert.equal(E.parseColorValue('300 1 1'), null);
+  assert.equal(E.parseColorValue('Agreeable Gray'), null);
+  const ag = E.search('Agreeable Gray')[0].color;
+  const near = E.closestByBrand(ag.hex, {});
+  assert.equal(near[0].color.id, ag.id, 'its own brand matches exactly');
+  assert.equal(near[0].dE, 0);
+  assert.ok(new Set(near.map(x => x.color.brand)).size === near.length, 'one per brand');
+  assert.ok(near.every((x, i) => i === 0 || x.dE >= near[i - 1].dE), 'closest first');
+  assert.equal(E.search('rgb(209, 203, 193)')[0].dE != null, true, 'search takes RGB too');
+});
+
+test('more things to paint and stain, each with a finish, a preview and primer surfaces', () => {
+  for (const k of ['powder', 'closet', 'attic', 'media', 'doors', 'builtins', 'wainscot', 'fireplace', 'floor_paint', 'shutters', 'garage_door', 'porch_floor', 'shed']) {
+    const sp = E.SPACES[k];
+    assert.ok(sp && sp.label && sp.sheens.length, k);
+    assert.ok(E.groupsFor(k).length, k + ' has its own "what is staying" list');
+    assert.ok(E.surfacesFor(k).length >= 2, k + ' primer surfaces');
+    assert.ok(E.recommend({ space: k }).results.length, k + ' gets picks');
+  }
+  assert.ok(E.surfacesFor('fireplace').includes('masonry'));
+  for (const k of ['doors', 'paneling', 'builtins', 'garage_door', 'shutters', 'shed', 'log', 'playset', 'dock']) {
+    const j = ST.JOBS[k];
+    assert.ok(j && j.label && j.wood && j.scene, k);
+    assert.ok(ST.recommend({ target: k, looks: [] }).results.length, k + ' gets stain picks');
+  }
 });
