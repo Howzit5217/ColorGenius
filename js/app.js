@@ -20,6 +20,7 @@
     askBulbs: true, askFixed: true, showWarnings: true, showLrv: true, showMatches: true, lightPreview: true,
     cal: { enabled: false, warmth: 0, brightness: 0, vividness: 0, ref: '' },
     theme: 'system', reduceMotion: false, lines: {}, collections: {}, audience: '', onboarded: false,
+    jobs: { paint: true, stain: true }, stainBrands: {}, chain: '',
   };
   function merge(base, over) {
     const out = clone(base);
@@ -40,7 +41,9 @@
     screen: detectScreen(), stylePalettes: {}, ready: false, ftype: {},
   };
   // every answer for both jobs: painting (the engine's) and staining (CG.stain's); the first question picks which
-  function freshAnswers() { return Object.assign(clone(E.DEFAULT_ANSWERS), clone(S.DEFAULT), { job: 'paint' }); }
+  function freshAnswers() { return Object.assign(clone(E.DEFAULT_ANSWERS), clone(S.DEFAULT), { job: settings.jobs && settings.jobs.paint === false ? 'stain' : 'paint' }); }
+  // painting and staining can each be switched off; with only one on, the first question is skipped
+  const jobOn = j => !settings.jobs || settings.jobs[j] !== false;
   const reduced = () => settings.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------------- screen ----------------
@@ -132,8 +135,11 @@
   // FIND: question flow
   // ================================================================
   function steps() {
-    if (state.answers.job === 'stain') return ['job', 'target', 'wood', 'slook'];
-    const list = ['job', 'space', 'light', 'look', 'color'];
+    const both = jobOn('paint') && jobOn('stain');
+    if (!jobOn('paint')) state.answers.job = 'stain';
+    if (!jobOn('stain')) state.answers.job = 'paint';
+    if (state.answers.job === 'stain') return (both ? ['job'] : []).concat(['target', 'wood', 'slook']);
+    const list = (both ? ['job'] : []).concat(['space', 'light', 'look', 'color']);
     if (settings.askFixed) list.push('room');
     return list;
   }
@@ -1656,6 +1662,9 @@
       <div class="sheet-body">
         <div class="set-group"><h3>${home ? 'My brands' : 'Store'}</h3><div class="set-card">
           <div class="set-row"><div class="set-text"><b>Who’s using it</b><span>${settings.audience === 'kiosk' ? 'Kiosk: big buttons, starts over when left idle. Hold the logo for 3 seconds to open settings.' : home ? 'Simple tips for buying and testing samples' : 'Chip locations and paint lines for the counter'}</span></div>${seg('audience', { store: 'Store staff', home: 'Homeowner', kiosk: 'Kiosk' }, settings.audience || 'store', 'Who’s using it')}</div>
+          <div class="set-row"><div class="set-text"><b>${home ? 'Where you shop' : 'Store'}</b><span>Sets the brands it usually carries</span></div>${selectHtml('setChain', [['', 'Choose a store']].concat(Object.entries(CHAINS).filter(([k, ch]) => !ch.other).map(([k, ch]) => [k, ch.label])), settings.chain, 'Store')}</div>
+          <div class="set-row"><div class="set-text"><b id="lbl-job-paint">Painting</b><span>Paint colors for walls, trim and the outside</span></div><button type="button" class="switch" role="switch" aria-checked="${jobOn('paint')}" aria-labelledby="lbl-job-paint" data-job-switch="paint"></button></div>
+          <div class="set-row"><div class="set-text"><b id="lbl-job-stain">Staining</b><span>Wood stains, shown on real wood</span></div><button type="button" class="switch" role="switch" aria-checked="${jobOn('stain')}" aria-labelledby="lbl-job-stain" data-job-switch="stain"></button></div>
           <div class="set-row"><div class="set-text"><b>${home ? 'Favorite brand' : 'Store brand'}</b><span>Shown first and used for top picks</span></div>
             ${selectHtml('setStoreBrand', [['', 'None, mix brands']].concat(brandList().map(b => [b.id, b.name])), settings.storeBrand, home ? 'Favorite brand' : 'Store brand')}</div>
           ${sw('storeOnly', settings.storeOnly, home ? 'Only recommend my favorite brand' : 'Only recommend the store brand', 'Other brands still appear as matches')}
@@ -1689,11 +1698,13 @@
         </div></div>
 
         <div class="set-group" id="setBrands"><h3>Brands &amp; collections</h3>
+          <p class="set-sub">Paint brands</p>
           <div class="set-card brand-tools">
             <label class="searchbox brand-find"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input type="search" id="brandFind" placeholder="Find a brand" autocomplete="off" aria-label="Find a brand"></label>
             <div class="set-mini"><button type="button" class="btn small" data-act="brands-all">Turn all on</button><button type="button" class="btn small" data-act="brands-us">US national only</button></div>
           </div>
           ${groups.map(([g, label]) => { const bs = brandList().filter(b => b.group === g); if (!bs.length) return ''; return `<div class="brand-group" data-group="${g}"><div class="brand-group-head"><p class="eyebrow">${label}</p><span class="spacer"></span><button type="button" class="link-btn" data-brand-group="${g}" data-on="1">All on</button><button type="button" class="link-btn" data-brand-group="${g}" data-on="0">All off</button></div><div class="set-card">${bs.map(b => brandSettingRow(b, en)).join('')}</div></div>`; }).join('')}
+          ${S.brands().length ? `<p class="set-sub">Stain brands</p>${[['interior', 'Inside'], ['exterior', 'Outside']].map(([use, label]) => { const bs = S.brands().filter(b => b.use === use); if (!bs.length) return ''; return `<div class="brand-group" data-group="stain-${use}"><div class="brand-group-head"><p class="eyebrow">${label}</p></div><div class="set-card">${bs.map(b => `<div class="brand-item" data-name="${esc(b.name.toLowerCase())}"><div class="set-row brand-row">${stainSwatch(b.id)}<div class="set-text"><b id="lbl-s-${esc(b.id)}">${esc(b.name)}</b><span>${fmt(stainCount(b.id))} stain colors · ${esc(b.note || b.source || '')}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.stainBrands[b.id] !== false}" aria-labelledby="lbl-s-${esc(b.id)}" data-sbrand="${esc(b.id)}"></button></div></div>`).join('')}</div></div>`; }).join('')}` : ''}
           <p class="muted brand-none" hidden>No brand matches that search.</p>
         </div>
 
@@ -1724,6 +1735,11 @@
         <div class="set-group"><div class="set-card"><div class="set-mini"><button type="button" class="btn small" data-act="run-setup">Run setup again</button><button type="button" class="btn small ghost" data-act="reset-all">Reset all settings</button></div></div></div>
         <p class="muted" style="font-size:12px">${fmt(E.getIndex().colors.length)} colors loaded from ${brandList().length} brands. Settings, shortlist and calibration are saved on this device only.</p>
       </div>`;
+    SELECTS.setChain.onChange = v => {
+      settings.chain = v;
+      if (chainPreset(v, settings)) { settings.stainBrands = Object.fromEntries(Object.entries(settings.stainBrands).filter(([, on]) => on === false)); toast(`Brands set for ${CHAINS[v].label}`); }
+      saveSettings(); keepScroll(el, renderSettings); afterSettingsChange('brands');
+    };
     SELECTS.setStoreBrand.onChange = v => {
       settings.storeBrand = v;
       if (settings.storeBrand) settings.brands[settings.storeBrand] = true;
@@ -1764,6 +1780,21 @@
       t.setAttribute('aria-checked', on); settings.brands[t.dataset.brand] = on; saveSettings();
       const cg = $('.coll-group', t.closest('.brand-item')); if (cg) cg.hidden = !on;
       afterSettingsChange('brands'); return;
+    }
+    if (t.dataset.jobSwitch) {
+      const j = t.dataset.jobSwitch, other = j === 'paint' ? 'stain' : 'paint';
+      settings.jobs = Object.assign({ paint: true, stain: true }, settings.jobs);
+      if (settings.jobs[j] && !settings.jobs[other]) { toast('Keep painting or staining on'); return; }
+      settings.jobs[j] = !settings.jobs[j]; t.setAttribute('aria-checked', settings.jobs[j]);
+      saveSettings(); state.answers = freshAnswers(); state.results = null; state.step = 0;
+      if (state.view === 'find') renderWizard(0);
+      return;
+    }
+    if (t.dataset.sbrand) {
+      const on = t.getAttribute('aria-checked') !== 'true';
+      t.setAttribute('aria-checked', on);
+      if (on) delete settings.stainBrands[t.dataset.sbrand]; else settings.stainBrands[t.dataset.sbrand] = false;
+      saveSettings(); afterSettingsChange('brands'); return;
     }
     if (t.dataset.coll) {
       const on = t.getAttribute('aria-checked') !== 'true';
@@ -1952,9 +1983,39 @@
   // Runs once per device (and once after this update for existing users, with their choices filled in).
   // ================================================================
   let ob = null;
+  // What the big chains usually carry. A starting point: every brand can still be switched on or off below it.
+  const CHAINS = {
+    homedepot: { label: 'The Home Depot', paint: ['behr', 'glidden', 'ppg', 'kilz'], stain: ['minwax', 'olympic'], main: 'behr' },
+    lowes: { label: 'Lowe’s', paint: ['valspar', 'hgsw'], stain: ['cabot', 'minwax'], main: 'valspar' },
+    ace: { label: 'Ace Hardware', paint: ['bm', 'ck', 'magnolia'], stain: ['cabot', 'minwax'], main: '' },
+    menards: { label: 'Menards', paint: ['dutchboy'], stain: ['minwax'], main: 'dutchboy' },
+    walmart: { label: 'Walmart', paint: ['glidden', 'kilz'], stain: ['minwax'], main: '' },
+    sw: { label: 'Sherwin-Williams', paint: ['sw'], stain: ['swstain', 'minwax'], main: 'sw' },
+    bm: { label: 'Benjamin Moore store', paint: ['bm'], stain: ['minwax'], main: 'bm' },
+    ppg: { label: 'PPG Paints store', paint: ['ppg', 'glidden'], stain: ['olympic'], main: 'ppg' },
+    de: { label: 'Dunn-Edwards', paint: ['de'], stain: [], main: 'de' },
+    dv: { label: 'Diamond Vogel', paint: ['dv'], stain: [], main: 'dv' },
+    other: { label: 'Another store', other: true },
+  };
+  // a chain's brands, written into a brand map (paint) and a stain-brand map
+  function chainPreset(id, target) {
+    const ch = CHAINS[id]; if (!ch || ch.other) return false;
+    for (const b of brandList()) target.brands[b.id] = ch.paint.includes(b.id);
+    for (const b of S.brands()) target.stainBrands[b.id] = ch.stain.includes(b.id);
+    target.storeBrand = ch.main && E.getIndex().brandById[ch.main] ? ch.main : '';
+    return true;
+  }
+  const chainBrandNames = ch => ch.paint.map(id => (E.getIndex().brandById[id] || {}).name).filter(Boolean).concat(ch.stain.map(id => S.brandName(id))).join(', ');
+  function stainSwatch(id) {
+    const hx = S.all().filter(x => x.brand === id).filter((_, i, arr) => i % Math.max(1, Math.floor(arr.length / 4)) === 0).slice(0, 4).map(x => '#' + x.hex);
+    while (hx.length < 4) hx.push('#b58a5c');
+    return `<span class="msw" style="background:conic-gradient(${hx[0]} 0 25%, ${hx[1]} 0 50%, ${hx[2]} 0 75%, ${hx[3]} 0)"></span>`;
+  }
+  const stainCount = id => S.all().filter(x => x.brand === id).length;
   const obHasCarry = id => E.collectionsFor(id).length > 1 || (ob && ob.audience !== 'home' && (E.PAINT_LINES[id] || []).length > 1);
   const obCarryBrands = () => brandList().filter(b => ob.brands[b.id] && obHasCarry(b.id)).sort((x, y) => (y.id === ob.storeBrand) - (x.id === ob.storeBrand));
-  const obSteps = () => ['who', 'brands', ob && obCarryBrands().length ? 'carry' : '', 'screen', 'done'].filter(Boolean);
+  const obSteps = () => ['who', 'store', 'brands', ob && obCarryBrands().length ? 'carry' : '', 'screen', 'done'].filter(Boolean);
+  const obStep = id => `<p class="eyebrow">Step ${obSteps().indexOf(id)} of ${obSteps().length - 2}</p>`;
   const OB_GROUPS = [['us', 'US national brands'], ['us-more', 'More US brands'], ['intl', 'International'], ['standard', 'Color standards'], ['custom', 'Imported']];
   function brandSwatch(id) {
     const list = (E.getIndex().byBrand[id] || []).filter(c => c.flags & E.F.POPULAR);
@@ -1967,6 +2028,7 @@
     ob = {
       step: 0, dir: 0, audience: settings.audience || '', brands: Object.assign({}, brandsEnabled()), storeBrand: settings.storeBrand || '', find: '',
       collections: Object.assign({}, settings.collections), lines: Object.assign({}, settings.lines),
+      chain: settings.chain || '', jobs: Object.assign({ paint: true, stain: true }, settings.jobs), stainBrands: Object.fromEntries(S.brands().map(b => [b.id, settings.stainBrands[b.id] !== false])),
       cal: { warmth: settings.cal.warmth || 0, brightness: settings.cal.brightness || 0 }, calTouched: false,
     };
     closeSheet($('#detailSheet')); closeSheet($('#settingsSheet'));
@@ -2008,29 +2070,54 @@
         </div>`;
       nextOff = !ob.audience;
     }
-    if (id === 'brands') {
+    if (id === 'store') {
+      const kiosk = ob.audience === 'kiosk';
       body = `
-        <p class="eyebrow">Step 2 of ${obSteps().length - 1}</p>
-        <h1 id="obTitle">${home ? 'Which brands would you buy?' : 'Which brands does your store carry?'}</h1>
-        <p class="muted">${home ? 'Picks only come from these. Turn on any you can get near you.' : 'Picks only come from these. Colors from other brands can still be matched into them.'}</p>
-        <div class="ob-quick">
-          <label class="searchbox ob-find"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input type="search" id="obFind" placeholder="Find a brand" autocomplete="off" aria-label="Find a brand" value="${esc(ob.find)}"></label>
-          <button type="button" class="btn small" data-ob="all-us">All US national</button><button type="button" class="btn small ghost" data-ob="none">Clear</button>
-        </div>
-        <p class="ob-count">${chosen.length ? `<b>${chosen.length}</b> brand${chosen.length > 1 ? 's' : ''} chosen` : 'No brands chosen yet'}</p>
-        ${OB_GROUPS.map(([g, label]) => { const bs = brandList().filter(b => b.group === g); if (!bs.length) return ''; const on = bs.filter(b => ob.brands[b.id]).length; return `<div class="group mgroup ob-group" data-group="${g}"><div class="group-head"><p class="group-label">${label} <span class="hint">${on} of ${bs.length}</span></p><span class="spacer"></span><button type="button" class="link-btn" data-ob-group="${g}" data-on="${on === bs.length ? 0 : 1}">${on === bs.length ? 'None' : 'All'}</button></div><div class="mchips">${bs.map(b => `<button type="button" class="mchip" data-ob-brand="${esc(b.id)}" data-name="${esc(b.name.toLowerCase())}" aria-pressed="${!!ob.brands[b.id]}">${brandSwatch(b.id)}${esc(b.name)}</button>`).join('')}</div></div>`; }).join('')}
+        ${obStep('store')}
+        <h1 id="obTitle">${home ? 'Where will you shop?' : kiosk ? 'Which store is this kiosk in?' : 'Where do you work?'}</h1>
+        <p class="muted">This turns on the brands that store usually carries. You can change any of them on the next screen.</p>
+        <div class="chain-opts">${Object.entries(CHAINS).map(([k, ch]) => `<button type="button" class="chain-opt" data-ob-chain="${k}" aria-pressed="${ob.chain === k}">${check}<b>${esc(ch.label)}</b><span>${ch.other ? 'Pick the brands yourself' : esc(chainBrandNames(ch))}</span></button>`).join('')}</div>
+        <div class="group mgroup">
+          <p class="group-label">${home ? 'What are you working on?' : 'What does the store help with?'} <span class="hint">turn off what you don’t need</span></p>
+          <div class="job-toggles">
+            <button type="button" class="job-toggle" data-ob-job="paint" aria-pressed="${ob.jobs.paint}">${check}<b>Painting</b><span>Walls, trim, cabinets, outside</span></button>
+            <button type="button" class="job-toggle" data-ob-job="stain" aria-pressed="${ob.jobs.stain}">${check}<b>Staining</b><span>Floors, furniture, decks, fences</span></button>
+          </div>
+        </div>`;
+      nextOff = !ob.chain;
+    }
+    if (id === 'brands') {
+      const paintOn = brandList().filter(b => ob.brands[b.id]).length;
+      const sb = S.brands();
+      const stainOn = sb.filter(b => ob.stainBrands[b.id]).length;
+      const groupHtml = ([g, label]) => { const bs = brandList().filter(b => b.group === g); if (!bs.length) return ''; const on = bs.filter(b => ob.brands[b.id]).length; return `<div class="group mgroup ob-group" data-group="${g}"><div class="group-head"><p class="group-label">${label} <span class="hint">${on} of ${bs.length}</span></p><span class="spacer"></span><button type="button" class="link-btn" data-ob-group="${g}" data-on="${on === bs.length ? 0 : 1}">${on === bs.length ? 'None' : 'All'}</button></div><div class="mchips">${bs.map(b => `<button type="button" class="mchip" data-ob-brand="${esc(b.id)}" data-name="${esc(b.name.toLowerCase())}" aria-pressed="${!!ob.brands[b.id]}">${brandSwatch(b.id)}${esc(b.name)}</button>`).join('')}</div></div>`; };
+      const stainGroup = (use, label) => { const bs = sb.filter(b => b.use === use); if (!bs.length) return ''; return `<div class="group mgroup ob-group" data-group="stain-${use}"><div class="group-head"><p class="group-label">${label}</p></div><div class="mchips">${bs.map(b => `<button type="button" class="mchip" data-ob-sbrand="${esc(b.id)}" data-name="${esc(b.name.toLowerCase())}" aria-pressed="${!!ob.stainBrands[b.id]}">${stainSwatch(b.id)}${esc(b.name)}<span class="mchip-n">${fmt(stainCount(b.id))}</span></button>`).join('')}</div></div>`; };
+      const ch = CHAINS[ob.chain];
+      body = `
+        ${obStep('brands')}
+        <h1 id="obTitle">${home ? 'Which brands would you buy?' : 'Which brands does the store carry?'}</h1>
+        <p class="muted">${ch && !ch.other ? `Set for ${esc(ch.label)}. Brands that are off still show here, so you can turn on anything else the store has.` : 'Picks only come from the brands that are on. Colors from other brands can still be matched into them.'}</p>
+        <label class="searchbox ob-find"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input type="search" id="obFind" placeholder="Find a brand" autocomplete="off" aria-label="Find a brand" value="${esc(ob.find)}"></label>
+        ${ob.jobs.paint ? `<section class="ob-section" aria-labelledby="obPaintH">
+          <div class="ob-section-head"><h2 id="obPaintH">Paint brands</h2><span class="ob-count">${paintOn} of ${brandList().length} on</span><span class="spacer"></span><button type="button" class="link-btn" data-ob="all-us">US national</button><button type="button" class="link-btn" data-ob="none">Clear</button></div>
+          ${OB_GROUPS.map(groupHtml).join('')}
+        </section>` : ''}
+        ${ob.jobs.stain && sb.length ? `<section class="ob-section" aria-labelledby="obStainH">
+          <div class="ob-section-head"><h2 id="obStainH">Stain brands</h2><span class="ob-count">${stainOn} of ${sb.length} on</span><span class="spacer"></span><button type="button" class="link-btn" data-ob-sall="1">All</button><button type="button" class="link-btn" data-ob-sall="0">None</button></div>
+          ${stainGroup('interior', 'Inside: floors, cabinets, furniture')}${stainGroup('exterior', 'Outside: decks, fences, siding')}
+        </section>` : ''}
         <p class="muted ob-nofind" hidden>No brand matches that search.</p>
-        ${chosen.length ? `<div class="group mgroup ob-main"><p class="group-label">${home ? 'Favorite brand' : 'Main store brand'} <span class="hint">optional, shown first</span></p><div class="mchips">
+        ${ob.jobs.paint && chosen.length ? `<section class="ob-section ob-main"><div class="ob-section-head"><h2>${home ? 'Favorite paint brand' : 'Main paint brand'}</h2><span class="hint">optional, shown first</span></div><div class="mchips">
           <button type="button" class="mchip" data-ob-main="" aria-pressed="${!ob.storeBrand}"><span class="msw flag-sw" aria-hidden="true"><svg viewBox="0 0 20 20" width="14" height="14"><path d="M5 10h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>No ${home ? 'favorite' : 'main brand'}</button>
           ${chosen.map(b => `<button type="button" class="mchip" data-ob-main="${esc(b.id)}" aria-pressed="${ob.storeBrand === b.id}">${brandSwatch(b.id)}${esc(b.name)}</button>`).join('')}
-        </div></div>` : ''}
-        ${chosen.length ? '' : '<p class="ob-need">Pick at least one brand to continue.</p>'}`;
-      nextOff = !chosen.length;
+        </div></section>` : ''}
+        ${ob.jobs.paint && !chosen.length ? '<p class="ob-need">Turn on at least one paint brand to continue.</p>' : ''}`;
+      nextOff = ob.jobs.paint && !chosen.length;
     }
     if (id === 'carry') {
       const bs = obCarryBrands();
       body = `
-        <p class="eyebrow">Step 3 of ${obSteps().length - 1}</p>
+        ${obStep('carry')}
         <h1 id="obTitle">${home ? 'Anything to leave out?' : 'What does your store carry?'}</h1>
         <p class="muted">${home ? 'Everything is on. Turn off any collection you don’t want picks from.' : 'Everything is on. Tap to turn off any color collection or paint line you don’t have, and picks will skip it.'}</p>
         ${bs.map(b => {
@@ -2046,7 +2133,7 @@
     if (id === 'screen') {
       const s = state.screen;
       body = `
-        <p class="eyebrow">Step ${obSteps().length - 1} of ${obSteps().length - 1}</p>
+        ${obStep('screen')}
         <h1 id="obTitle">Tune this screen</h1>
         <p class="muted">Screens show color differently. Hold plain white printer paper against the panel and slide until they look the same.</p>
         <p class="ob-screen"><span class="badge">${esc(s.gamut)}</span>${s.hdr ? '<span class="badge">HDR</span>' : ''}<span class="badge mono">${s.depth}-bit</span></p>
@@ -2065,7 +2152,8 @@
         <h1 id="obTitle">You’re all set</h1>
         <div class="set-card ob-summary">
           <div class="set-row"><div class="set-text"><b>${ob.audience === 'kiosk' ? 'Store kiosk' : home ? 'Picking paint for a home' : 'Paint store'}</b><span>${ob.audience === 'kiosk' ? 'Starts over after 2 minutes idle. Hold the logo for 3 seconds to open settings.' : home ? 'Tips for buying and testing samples' : 'Chip locations and paint lines for the counter'}</span></div></div>
-          <div class="set-row"><div class="set-text"><b>${names.length} brand${names.length > 1 ? 's' : ''}</b><span>${esc(names.slice(0, 4).join(', '))}${names.length > 4 ? ` and ${names.length - 4} more` : ''}</span></div></div>
+          <div class="set-row"><div class="set-text"><b>${ob.chain && !CHAINS[ob.chain].other ? esc(CHAINS[ob.chain].label) : 'Your own brand list'}</b><span>${[ob.jobs.paint ? 'Painting' : '', ob.jobs.stain ? 'Staining' : ''].filter(Boolean).join(' and ')}${ob.jobs.stain ? ` · ${S.brands().filter(b => ob.stainBrands[b.id]).map(b => b.name).join(', ') || 'no stain brands'}` : ''}</span></div></div>
+          <div class="set-row"><div class="set-text"><b>${names.length} paint brand${names.length > 1 ? 's' : ''}</b><span>${esc(names.slice(0, 4).join(', '))}${names.length > 4 ? ` and ${names.length - 4} more` : ''}</span></div></div>
           <div class="set-row"><div class="set-text"><b>${ob.storeBrand ? esc(brandName(ob.storeBrand)) : home ? 'No favorite brand' : 'No main brand'}</b><span>${ob.storeBrand ? (home ? 'Your favorite, shown first' : 'Your main brand, shown first') : 'Picks mix all your brands'}</span></div></div>
           <div class="set-row"><div class="set-text"><b>${ob.calTouched && (ob.cal.warmth || ob.cal.brightness) ? 'Screen tuned' : 'Screen not tuned'}</b><span>${ob.calTouched && (ob.cal.warmth || ob.cal.brightness) ? `Warmth ${ob.cal.warmth}, brightness ${ob.cal.brightness}` : 'You can tune it any time in Settings'}</span></div></div>
         </div>
@@ -2108,12 +2196,15 @@
       settings.audience = ob.audience || 'store';
       for (const b of brandList()) settings.brands[b.id] = !!ob.brands[b.id];
       settings.collections = ob.collections; settings.lines = ob.lines;
+      settings.chain = ob.chain === 'other' ? '' : ob.chain; settings.jobs = ob.jobs;
+      settings.stainBrands = Object.fromEntries(S.brands().filter(b => !ob.stainBrands[b.id]).map(b => [b.id, false]));
       settings.storeBrand = ob.storeBrand && ob.brands[ob.storeBrand] ? ob.storeBrand : '';
       if (!settings.storeBrand) settings.storeOnly = false;
       settings.inStoreSamples = settings.audience !== 'home';
       if (ob.calTouched) settings.cal = Object.assign({}, settings.cal, { warmth: ob.cal.warmth, brightness: ob.cal.brightness, enabled: !!(ob.cal.warmth || ob.cal.brightness || settings.cal.vividness) });
     } else if (!settings.audience) settings.audience = 'store';
     settings.onboarded = true;
+    state.answers = freshAnswers(); state.results = null; state.step = 0;
     saveSettings(); applyTheme(); applyAudience(); afterSettingsChange('all');
     closeOnboarding();
     if (!skipped) toast(settings.audience === 'home' ? 'All set. Happy painting!' : settings.audience === 'kiosk' ? 'Kiosk ready' : 'All set for the counter');
@@ -2121,6 +2212,20 @@
   $('#onboard').addEventListener('click', e => {
     const t = e.target.closest('button'); if (!t || !ob) return;
     if (t.dataset.obAud) { ob.audience = t.dataset.obAud; $$('[data-ob-aud]').forEach(x => x.setAttribute('aria-pressed', x.dataset.obAud === ob.audience)); const n = $('[data-ob="next"]'); n.disabled = false; setTimeout(() => { if (ob && obSteps()[ob.step] === 'who') obGo(1); }, 260); return; }
+    if (t.dataset.obChain) {
+      ob.chain = t.dataset.obChain;
+      chainPreset(ob.chain, ob);
+      $$('[data-ob-chain]').forEach(x => x.setAttribute('aria-pressed', x.dataset.obChain === ob.chain));
+      $('.ob-nav [data-ob="next"]').disabled = false;
+      return;
+    }
+    if (t.dataset.obJob) {
+      const j = t.dataset.obJob, other = j === 'paint' ? 'stain' : 'paint';
+      if (ob.jobs[j] && !ob.jobs[other]) { toast('Keep painting or staining on'); return; }
+      ob.jobs[j] = !ob.jobs[j]; t.setAttribute('aria-pressed', ob.jobs[j]); return;
+    }
+    if (t.dataset.obSbrand) { const id = t.dataset.obSbrand; ob.stainBrands[id] = !ob.stainBrands[id]; const y = $('#onboard').scrollTop; renderOnboarding(); $('#onboard').scrollTop = y; return; }
+    if (t.dataset.obSall) { for (const b of S.brands()) ob.stainBrands[b.id] = t.dataset.obSall === '1'; const y = $('#onboard').scrollTop; renderOnboarding(); $('#onboard').scrollTop = y; return; }
     if (t.dataset.obBrand) { const id = t.dataset.obBrand; ob.brands[id] = !ob.brands[id]; if (!ob.brands[id] && ob.storeBrand === id) ob.storeBrand = ''; const y = $('#onboard').scrollTop; renderOnboarding(); $('#onboard').scrollTop = y; return; }
     if (t.dataset.obGroup) { for (const b of brandList()) if (b.group === t.dataset.obGroup) ob.brands[b.id] = t.dataset.on === '1'; if (ob.storeBrand && !ob.brands[ob.storeBrand]) ob.storeBrand = ''; const y = $('#onboard').scrollTop; renderOnboarding(); $('#onboard').scrollTop = y; return; }
     if (t.dataset.obColl) {
@@ -2145,7 +2250,8 @@
   });
   function obFilter() {
     const q = (ob.find || '').trim().toLowerCase(); let any = false;
-    $$('#onboard .ob-group').forEach(g => { let n = 0; $$('[data-ob-brand]', g).forEach(c => { const hit = !q || c.dataset.name.includes(q); c.hidden = !hit; if (hit) n++; }); g.hidden = !n; if (n) any = true; });
+    $$('#onboard .ob-group').forEach(g => { let n = 0; $$('[data-ob-brand], [data-ob-sbrand]', g).forEach(c => { const hit = !q || c.dataset.name.includes(q); c.hidden = !hit; if (hit) n++; }); g.hidden = !n; if (n) any = true; });
+    $$('#onboard .ob-section').forEach(sec => { if (sec.classList.contains('ob-main')) return; sec.hidden = !!q && !$$('.ob-group', sec).some(g => !g.hidden); });
     const nf = $('#onboard .ob-nofind'); if (nf) nf.hidden = any;
   }
   $('#onboard').addEventListener('input', e => {
@@ -2353,12 +2459,12 @@
   // ================================================================
   // STAINING: questions, picks shown on real wood before and after, and the stain detail
   // ================================================================
-  const stainSpec = r => ({ hex: r.hex, type: r.type || (r.item && r.item.type) || 'semi', solid: !!r.solid, solidHex: r.solidHex || '' });
+  const stainSpec = r => ({ hex: r.hex, type: r.type || (r.item && r.item.type) || 'semi', solid: !!r.solid, solidHex: r.solidHex || '', ref: r.ref || (r.item && r.item.ref) || '', refMix: r.refMix || (r.item && r.item.refMix) || 0 });
   const sBrand = r => (r.kind === 'paint' ? brandName(r.brand) : S.brandName(r.brand));
-  const sCode = r => (r.kind === 'paint' && r.item ? E.codeLabel(r.item) : r.code);
+  const sCode = r => (r.kind === 'paint' && r.item ? E.codeLabel(r.item) : r.item ? S.codeLabel(r.item) : r.code);
   const spLabel = sp => WD.SPECIES[sp].label;
   function findAny(id) { return E.findColor(id) || S.find(id) || null; }
-  const stainSettings = () => ({ resultCount: settings.resultCount, brands: brandsEnabled(), collections: settings.collections, storeBrand: settings.storeBrand });
+  const stainSettings = () => ({ resultCount: settings.resultCount, brands: brandsEnabled(), collections: settings.collections, storeBrand: settings.storeBrand, stainBrands: settings.stainBrands });
   const qLabel = id => `<p class="eyebrow">Question ${steps().indexOf(id) + 1}</p>`;
   const woodUse = t => (t === 'front_door' ? 'door' : t);
 
@@ -2478,7 +2584,7 @@
           <span class="chip-role">${esc(r.role)}</span>
           <span class="chip-name">${esc(r.name)}</span>
           <span class="chip-meta"><span class="brand">${esc(sBrand(r))}</span><span class="mono">${esc(sCode(r))}</span></span>
-          <span class="s-meta">${r.solid ? 'Solid stain' : 'Shows the grain'}${R.guide && r.kind === 'stain' ? ' · tone guide' : ''}</span>
+          <span class="s-meta">${r.kind === 'paint' ? 'Solid stain' : sCode(r) === S.TYPES[r.type] ? `On ${esc(spLabel(R.wood).toLowerCase())}` : esc(S.TYPES[r.type] || 'Stain')}${R.guide && r.kind === 'stain' ? ' · tone guide' : ''}</span>
         </div>
       </button>
       <button type="button" class="star" data-star="${esc(r.id)}" aria-pressed="${starred}" aria-label="${starred ? 'Remove from' : 'Add to'} shortlist">${starSvg}</button>
@@ -2489,7 +2595,7 @@
     const host = $('#view-find');
     const R = state.results;
     if (!R.results.length) {
-      host.innerHTML = `<div class="empty"><h1>No stains to show</h1><p>Try another look, or let the grain show.</p><div style="display:flex;gap:8px"><button type="button" class="btn primary" data-act="edit">Edit answers</button></div></div>`;
+      host.innerHTML = `<div class="empty"><h1>No stains to show</h1><p>Try another look or opacity, or turn on more stain brands in Settings.</p><div style="display:flex;gap:8px"><button type="button" class="btn primary" data-act="edit">Edit answers</button></div></div>`;
       return;
     }
     host.innerHTML = `
@@ -2539,7 +2645,7 @@
     const a = R.answers, sp = R.wood, job = S.JOBS[a.target] || S.JOBS.floors;
     const st = stainSpec(r);
     const starred = shortlist.includes(r.id);
-    const others = S.onOtherWoods({ hex: r.hex, type: st.type, solidHex: r.solidHex, kind: r.kind }, a, ['red_oak', 'white_oak', 'pine', 'maple', 'cherry', 'cedar'].filter(k => k !== sp).slice(0, 5));
+    const others = S.onOtherWoods({ hex: r.hex, type: st.type, solidHex: r.solidHex, kind: r.kind, ref: st.ref, refMix: st.refMix }, a, ['red_oak', 'white_oak', 'pine', 'maple', 'cherry', 'cedar'].filter(k => k !== sp).slice(0, 5));
     const tex = { sp, stain: st };
     const roles = { wall: 'E7E2D8', side: 'E7E2D8', ceil: 'F4F2ED', trim: 'F2F1EC', door: 'F2F1EC', art: '5E6B73', art2: 'D9CFC0', cab: 'F2F1EC', counter: 'ECEAE5', tile: 'F6F5F1', hood: 'B9BDBF', rug: 'D6CDBE', curtain: 'ECE7DD', floor: job.scene === 'cabinets' ? 'D3CFC7' : 'A98661', body: 'D8D2C6', xtrim: 'F2F1EC', glass: '33404B', xdoor: '3E4A52', roof: '45484C', lawn: '6E8A4F', shrub: '4E6A3B', tree: '5D7649', walk: 'CFCAC0', step: 'BEB9B0' };
     const label = `${spLabel(sp)} ${job.label.toLowerCase()} stained ${r.name}`;
@@ -2574,7 +2680,7 @@
         <div class="facts">
           <div class="fact"><span class="k">Look</span><span class="v">${esc(r.look ? S.LOOKS[r.look].label : '—')}</span></div>
           <div class="fact"><span class="k">Wood</span><span class="v">${esc(spLabel(sp))}</span></div>
-          <div class="fact"><span class="k">Opacity</span><span class="v">${r.solid ? 'Solid (hides the grain)' : r.type === 'white' ? 'Whitewash' : 'Semi-transparent'}</span></div>
+          <div class="fact"><span class="k">Opacity</span><span class="v">${r.kind === 'paint' ? 'Solid (hides the grain)' : esc(S.TYPES[r.type] || 'Semi-transparent')}</span></div>
           <div class="fact"><span class="k">Wood before</span><span class="v"><i class="mini-sw" data-hex="${R.bare}" style="background-color:${paint(R.bare)}"></i><span class="mono">#${R.bare}</span></span></div>
           <div class="fact"><span class="k">Brand swatch</span><span class="v"><i class="mini-sw" data-hex="${r.hex}" style="background-color:${paint(r.hex)}"></i><span class="mono">#${r.hex}</span></span></div>
           <div class="fact"><span class="k">On this wood</span><span class="v"><i class="mini-sw" data-hex="${r.predicted}" style="background-color:${paint(r.predicted)}"></i><span class="mono">#${r.predicted}</span></span></div>
@@ -2584,7 +2690,7 @@
         ${r.warnings.length && settings.showWarnings ? `<div class="block"><h4>Warnings &amp; tips</h4>${r.warnings.map((w, i) => `<div class="warn ${w.level === 'heads-up' ? 'headsup' : w.level}" style="--i:${i}"><b>${esc(w.title)}</b><span>${esc(w.text)}</span></div>`).join('')}</div>` : ''}
         <div class="block"><h4>What to buy</h4><ul class="reasons buy">${R.products.map(p => `<li><b>${esc(p.name)}</b> ${esc(p.why)}</li>`).join('')}</ul></div>
         <div class="block"><h4>Good to know</h4><ul class="reasons">${R.tips.map(t => `<li><b>${esc(t.title)}.</b> ${esc(t.text)}</li>`).join('')}</ul></div>
-        <p class="muted" style="font-size:12px">${r.kind === 'paint' ? `Paint color from ${esc(sBrand(r))}, tinted as a solid stain.` : `Source: ${esc((window.CG_STAINS && window.CG_STAINS.brands[0] || {}).source || 'brand data')}. Screen colors are the brand’s digital swatches; stain always looks different on real wood, so test it.`}</p>
+        <p class="muted" style="font-size:12px">${r.kind === 'paint' ? `Paint color from ${esc(sBrand(r))}, tinted as a solid stain.` : `Source: ${esc(((window.CG_STAINS && window.CG_STAINS.brands || []).find(b => b.id === r.brand) || {}).source || 'brand data')}. Screen colors are the brand’s digital swatches; stain always looks different on real wood, so test it.`}</p>
       </div>`;
   }
   // the before/after divider: a range input over two stacked canvases, so dragging is instant

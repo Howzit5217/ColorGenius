@@ -392,10 +392,15 @@ const WD = require(path.join(ROOT, 'js/wood.js'));
 const ST = require(path.join(ROOT, 'js/stain.js'));
 ST.init(window.CG_STAINS);
 const stainOf = name => { const s = ST.all().find(x => x.name === name); assert.ok(s, name); return { hex: s.hex, type: s.type }; };
-test('stain data: Minwax colors with familiar names', () => {
-  assert.ok(ST.all().length >= 250, `${ST.all().length} stains`);
+test('stain data: Minwax, Cabot, Olympic and SuperDeck', () => {
+  assert.ok(ST.all().length >= 600, `${ST.all().length} stains`);
+  const count = id => ST.all().filter(x => x.brand === id).length;
+  for (const [id, min] of Object.entries({ minwax: 250, cabot: 180, olympic: 90, swstain: 90 })) assert.ok(count(id) >= min, `${id}: ${count(id)}`);
+  assert.equal(ST.brands().find(b => b.id === 'minwax').use, 'interior');
+  for (const id of ['cabot', 'olympic', 'swstain']) assert.equal(ST.brands().find(b => b.id === id).use, 'exterior', id);
+  assert.equal(ST.codeLabel(ST.all().find(x => x.brand === 'cabot' && x.type === 'semisolid')), 'Semi-solid', 'Cabot shows its opacity in place of a code');
   for (const n of ['Natural', 'Golden Oak', 'Early American', 'Provincial', 'Special Walnut', 'Dark Walnut', 'Jacobean', 'Ebony', 'Classic Gray', 'Weathered Oak']) assert.ok(ST.all().some(s => s.name === n), n);
-  for (const s of ST.all()) { assert.match(s.hex, /^[0-9A-F]{6}$/, s.id); assert.ok(['semi', 'solid', 'white'].includes(s.type), s.id); }
+  for (const s of ST.all()) { assert.match(s.hex, /^[0-9A-F]{6}$/, s.id); assert.ok(['trans', 'semi', 'semisolid', 'solid', 'white'].includes(s.type), s.id); assert.ok(WD.SPECIES[s.ref], s.id + ' reference wood'); }
 });
 test('every wood species is complete', () => {
   for (const [id, sp] of Object.entries(WD.SPECIES)) {
@@ -434,10 +439,18 @@ test('stain picks follow the look, the wood and the job', () => {
   assert.ok(fin.products.some(p => /gel stain/i.test(p.name)), 'finished wood gets a gel stain');
   const deck = ST.recommend({ target: 'deck', looks: ['natural'] }, { resultCount: 4, brands: US });
   assert.equal(deck.wood, 'pt_pine');
-  assert.ok(deck.guide, 'outdoor semi-transparent picks are tone guides');
+  assert.ok(!deck.guide, 'outdoor picks come from outdoor stain brands');
+  assert.ok(deck.results.every(x => ['cabot', 'olympic', 'swstain'].includes(x.brand)), 'deck picks are outdoor stains');
+  assert.ok(deck.products.some(p => /Cabot|Olympic|SuperDeck/.test(p.name)), 'products name the stain brand lines');
   assert.ok(deck.results[0].warnings.some(w => /pressure-treated/i.test(w.title)));
-  const fence = ST.recommend({ target: 'fence', grain: 'hide', looks: ['gray'] }, { resultCount: 4, brands: US });
-  assert.ok(fence.results.length && fence.results.every(x => x.kind === 'paint' && x.solid), 'solid exterior stain is tinted to paint colors');
+  const noOutdoor = ST.recommend({ target: 'deck', looks: ['natural'] }, { resultCount: 4, brands: US, stainBrands: { cabot: false, olympic: false, swstain: false } });
+  assert.ok(noOutdoor.guide && noOutdoor.results.every(x => x.brand === 'minwax'), 'with no outdoor brand on, Minwax tones are tone guides');
+  const onlyCabot = ST.recommend({ target: 'siding', looks: ['red', 'rich'] }, { resultCount: 6, brands: US, stainBrands: { olympic: false, swstain: false } });
+  assert.ok(onlyCabot.results.length && onlyCabot.results.every(x => x.brand === 'cabot'), 'switched-off stain brands are left out');
+  const solidDeck = ST.recommend({ target: 'deck', grain: 'hide', looks: ['gray'] }, { resultCount: 4, brands: US });
+  assert.ok(solidDeck.results.every(x => x.type === 'solid' && x.kind === 'stain'), 'solid outdoor stains come from the stain brands when they have solid colors');
+  const fence = ST.recommend({ target: 'fence', grain: 'hide', looks: ['gray'] }, { resultCount: 4, brands: US, stainBrands: { olympic: false, swstain: false } });
+  assert.ok(fence.results.length && fence.results.every(x => x.kind === 'paint' && x.solid), 'with no solid stain colors on, solid stain is tinted to paint colors');
   assert.ok(fence.products.some(p => /solid/i.test(p.name)));
 });
 

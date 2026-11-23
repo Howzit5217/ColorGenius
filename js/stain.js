@@ -41,6 +41,9 @@
     color: { label: 'A color', sub: 'Blue, green, red and more', color: true },
   };
   const GRAIN = { show: 'Show the grain', hide: 'Hide the grain (solid)' };
+  // how much each kind of stain covers
+  const TYPES = { trans: 'Transparent', semi: 'Semi-transparent', semisolid: 'Semi-solid', solid: 'Solid', white: 'Whitewash' };
+  const SHOWS_GRAIN = ['trans', 'semi', 'semisolid', 'white'];
   const CONDITION = { bare: 'Bare or sanded', finished: 'Has a finish on it', new_pt: 'New pressure-treated' };
   const DEFAULT = { job: 'stain', target: 'floors', wood: '', condition: 'bare', looks: [], grain: 'show' };
 
@@ -54,11 +57,12 @@
     BRANDS = Object.fromEntries((data.brands || []).map(b => [b.id, b]));
     STAINS = [];
     for (const [brand, rows] of Object.entries(data.rows || {})) {
-      for (const [code, name, hex, type, light, dark, n, solidHex] of rows) {
+      const meta = BRANDS[brand] || {};
+      for (const [code, name, hex, type, light, dark, n, solidHex, ref, line] of rows) {
         const lab = C.hexToLab(hex), lch = C.labToLch(lab);
         const woodish = (lch[2] > 18 && lch[2] < 95) || lch[1] < 10;
         const colorName = COLOR_WORDS.test(name) && !WOOD_WORDS.test(name);
-        STAINS.push({ id: `${brand}:${code}`, brand, code: String(code), name, hex, type, light, dark, n, solidHex: solidHex || '', lab, L: lch[0], C: lch[1], h: lch[2], colored: colorName || !woodish || (lch[1] > 22 && (lch[2] < 18 || lch[2] > 95)), stain: true, lrv: C.lrvFromHex(hex), flags: 0 });
+        STAINS.push({ id: `${brand}:${code}`, brand, code: String(code), name, hex, type, light, dark, n, solidHex: solidHex || '', ref: ref || meta.ref || 'red_oak', refMix: meta.refMix || 0, use: meta.use || 'interior', line: line || '', lab, L: lch[0], C: lch[1], h: lch[2], colored: colorName || !woodish || (lch[1] > 22 && (lch[2] < 18 || lch[2] > 95)), stain: true, lrv: C.lrvFromHex(hex), flags: 0 });
       }
     }
     return STAINS.length;
@@ -66,6 +70,10 @@
   const all = () => STAINS;
   const find = id => STAINS.find(s => s.id === id) || null;
   const brandName = id => (BRANDS[id] || {}).name || id;
+  const brands = () => Object.values(BRANDS);
+  const brandOn = (id, s) => !(s && s.stainBrands && s.stainBrands[id] === false);
+  // what to show where a code would go: Cabot doesn't number its colors, so its opacity stands in
+  const codeLabel = x => ((BRANDS[x.brand] || {}).codeless ? TYPES[x.type] || '' : x.code);
   const woodFor = a => (W.SPECIES[a.wood] ? a.wood : (JOBS[a.target] || JOBS.floors).wood);
 
   function lchOf(hex) { const l = C.labToLch(C.hexToLab(hex)); return { L: l[0], C: l[1], h: l[2] }; }
@@ -100,17 +108,24 @@
     const ext = job.kind === 'exterior';
     const solid = a.grain === 'hide';
     let pool = [];
-    if (ext && solid && E()) {
-      // exterior solid stain: tinted to paint colors, so the picks are exterior paint colors in stain-like tones
+    if (ext && solid && E() && !STAINS.some(x => x.use === 'exterior' && x.type === 'solid' && brandOn(x.brand, s))) {
+      // exterior solid stain with no solid stain colors on: stores tint solid stain to paint colors, so the
+      // picks are exterior paint colors in stain-like tones
       const en = s.brands || {};
       pool = E().getIndex().colors.filter(c => en[c.brand] !== false && !(c.flags & E().F.DISC) && (!(c.flags & (E().F.INT | E().F.EXT)) || (c.flags & E().F.EXT)) && E().collectionOn(c, s.collections) && c.L < 78)
         .map(c => ({ src: c, kind: 'paint', id: c.id, name: c.name, brand: c.brand, code: c.code, hex: c.hex, solidHex: c.hex }));
-    } else {
-      pool = STAINS.filter(x => !(a.condition === 'finished' && x.type === 'white')).map(x => ({ src: x, kind: 'stain', id: x.id, name: x.name, brand: x.brand, code: x.code, hex: x.hex, solidHex: x.solidHex, type: x.type }));
     }
+    // stains from the brands that are on: interior jobs use interior stains, exterior jobs exterior stains.
+    // Grain showing means transparent to semi-solid; hiding it means solid (or Minwax's solid swatch indoors).
+    const use = ext ? 'exterior' : 'interior';
+    const fits = x => brandOn(x.brand, s) && !(a.condition === 'finished' && x.type === 'white') && (solid ? (x.type === 'solid' || (!ext && x.solidHex)) : SHOWS_GRAIN.includes(x.type));
+    let stains = STAINS.filter(x => x.use === use && fits(x));
+    let guide = false;
+    if (ext && !stains.length && !solid) { stains = STAINS.filter(x => x.use === 'interior' && fits(x)); guide = stains.length > 0; } // no outdoor brand on: Minwax tones as a guide
+    if (stains.length || !pool.length) pool = stains.map(x => ({ src: x, kind: 'stain', id: x.id, name: x.name, brand: x.brand, code: x.code, hex: x.hex, solidHex: x.solidHex, type: x.type, ref: x.ref, refMix: x.refMix }));
     const scored = [];
     for (const x of pool) {
-      const st = { hex: x.hex, type: x.type, solid: solid || x.kind === 'paint', solidHex: x.solidHex };
+      const st = { hex: x.hex, type: x.type, solid: solid || x.kind === 'paint' || x.type === 'solid', solidHex: x.solidHex, ref: x.ref, refMix: x.refMix };
       const hex = x.kind === 'paint' ? W.quickHex(sp, st) : W.predictHex(sp, st);
       const p = Object.assign({ hex }, lchOf(hex));
       let score = 0;
@@ -141,9 +156,9 @@
       id: o.item.id, kind: o.item.kind, item: o.item.src, name: o.item.name, brand: o.item.brand, code: o.item.code, hex: o.item.hex, solidHex: o.item.solidHex,
       predicted: o.predicted, look: o.look, role: i === 0 ? 'Top pick' : LOOKS[o.look].label,
       warnings: warningsFor(o.item, a, o.predicted),
-      solid: solid || o.item.kind === 'paint',
+      solid: solid || o.item.kind === 'paint' || o.item.type === 'solid', type: o.item.type, ref: o.item.ref, refMix: o.item.refMix,
     }));
-    return { kind: 'stain', answers: a, wood: sp, bare: bare.hex, looks, results, tips: tipsFor(a), products: productsFor(a, s), poolSize: pool.length, guide: ext && !solid };
+    return { kind: 'stain', answers: a, wood: sp, bare: bare.hex, looks, results, tips: tipsFor(a), products: productsFor(a, s, results), poolSize: pool.length, guide };
   }
   function bestLook(looks, p, bare, x) {
     let best = looks[0], bs = -1;
@@ -178,6 +193,7 @@
     if (a.condition === 'new_pt' || (sp === 'pt_pine' && a.condition !== 'finished')) add('caution', 'Let new pressure-treated wood dry', 'Fresh treated lumber is wet. Wait until water sprinkled on it soaks in instead of beading, often a few weeks to a few months.');
     if (['cedar', 'redwood'].includes(sp) && solid) add('heads-up', 'Tannins can bleed through', 'Cedar and redwood can bleed tan streaks through light solid stains. Use an oil-based or stain-blocking primer under light colors.');
     if (job.horizontal && solid) add('heads-up', 'Solid stain can peel on walking surfaces', 'On deck boards a solid stain acts like paint and can peel where feet and water wear it. Semi-transparent or semi-solid lasts better there.');
+    if (item.type === 'semisolid') add('tip', 'Semi-solid hides some grain', 'It covers more than semi-transparent and lasts a little longer, while still letting the wood texture show.');
     if (job.kind === 'exterior' && !solid) add('tip', 'Recoat every 2–3 years', 'Semi-transparent stains wear away instead of peeling. Plan to clean and recoat sunny decks and fences every couple of years.');
     if (job.kind === 'exterior' && p.L < 30 && job.horizontal) add('heads-up', 'Dark decks get hot', 'Dark stains on decks soak up sun and can get uncomfortable to walk on barefoot.');
     if (job.traffic && p.L < 28 && job.kind === 'interior') add('heads-up', 'Dark floors show dust and scratches', 'Very dark floors show pet hair, dust and light scratches more than mid-tones.');
@@ -205,7 +221,14 @@
     behr: { semi: 'Behr Premium Semi-Transparent Waterproofing Stain & Sealer', solid: 'Behr Premium Solid Color Waterproofing Stain & Sealer' },
     ppg: { semi: 'Olympic Elite or Olympic Maximum Semi-Transparent', solid: 'Olympic Elite or Olympic Maximum Solid' },
   };
-  function productsFor(a, s) {
+  // the stain brands' own exterior lines, by how much the stain covers
+  const STAIN_LINES = {
+    cabot: { semi: 'Cabot Semi-Transparent Stain + Sealer', semisolid: 'Cabot Semi-Solid Decking Stain', solid: 'Cabot Solid Color Stain' },
+    olympic: { semi: 'Olympic Elite or Olympic Maximum Semi-Transparent', semisolid: 'Olympic Elite Semi-Solid', solid: 'Olympic Maximum Solid Color' },
+    swstain: { semi: 'SuperDeck Semi-Transparent Stain', semisolid: 'SuperDeck Semi-Solid Stain', solid: 'SuperDeck Solid Color Stain', dd: 'SuperDeck Deck & Dock Elastomeric Coating' },
+  };
+  const TYPE_WHY = { semi: 'Shows the grain and wears away instead of peeling.', semisolid: 'Hides some grain and lasts longer than semi-transparent.', solid: 'Covers like paint while keeping the wood texture.', dd: 'A thick coating that fills small cracks in old decks.' };
+  function productsFor(a, s, results) {
     const job = JOBS[a.target] || JOBS.floors; const sp = woodFor(a);
     const solid = a.grain === 'hide';
     const out = [];
@@ -219,6 +242,17 @@
       if (!solid && BLOTCHY.includes(sp) && a.condition !== 'finished') out.push({ name: 'Minwax Pre-Stain Wood Conditioner', why: `Evens out how ${W.SPECIES[sp].label.toLowerCase()} soaks up stain. Use the water-based one under water-based stain.` });
       if (['maple', 'birch'].includes(sp) && a.condition !== 'finished') out.push({ name: 'Minwax Gel Stain', why: 'Easier to get a dark, even color on dense woods.' });
       out.push(job.traffic ? { name: 'Floor polyurethane (oil or water based)', why: 'Two to three coats over the stain for wear.' } : { name: 'Minwax Polycrylic or Fast-Drying Polyurethane', why: 'Polycrylic stays clear over light colors; polyurethane is tougher and warmer.' });
+    } else if ((results || []).some(r => r.kind === 'stain' && STAIN_LINES[r.brand])) {
+      // the lines the picks actually come in
+      const seen = new Set();
+      for (const r of results) {
+        if (r.kind !== 'stain' || !STAIN_LINES[r.brand]) continue;
+        const t = /Deck & Dock/.test((r.item || {}).line || '') ? 'dd' : r.type;
+        const name = STAIN_LINES[r.brand][t] || STAIN_LINES[r.brand].semi;
+        if (seen.has(name)) continue; seen.add(name);
+        out.push({ name, brand: r.brand, why: TYPE_WHY[t] || TYPE_WHY.semi });
+      }
+      out.push({ name: 'Deck & siding cleaner or brightener', why: 'Clean, brightened wood takes stain far more evenly.' });
     } else {
       const en = (s && s.brands) || {};
       const store = s && s.storeBrand && EXT_LINES[s.storeBrand] ? [s.storeBrand] : [];
@@ -232,11 +266,11 @@
 
   // the same stain on other woods, for the detail sheet
   function onOtherWoods(item, a, list) {
-    const st = { hex: item.hex, type: item.type, solid: a.grain === 'hide' || item.kind === 'paint', solidHex: item.solidHex };
+    const st = { hex: item.hex, type: item.type, solid: a.grain === 'hide' || item.kind === 'paint', solidHex: item.solidHex, ref: item.ref, refMix: item.refMix };
     return (list || ['red_oak', 'white_oak', 'pine', 'maple', 'cherry', 'cedar']).map(sp => ({ sp, label: W.SPECIES[sp].label, hex: W.predictHex(sp, st), bare: W.bareHex(sp) }));
   }
 
-  const api = { JOBS, LOOKS, GRAIN, CONDITION, DEFAULT, init, all, find, brandName, woodFor, recommend, warningsFor, tipsFor, productsFor, onOtherWoods, lookScore };
+  const api = { JOBS, LOOKS, GRAIN, CONDITION, DEFAULT, TYPES, init, all, find, brandName, brands, brandOn, codeLabel, woodFor, recommend, warningsFor, tipsFor, productsFor, onOtherWoods, lookScore };
   root.CG = root.CG || {};
   root.CG.stain = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

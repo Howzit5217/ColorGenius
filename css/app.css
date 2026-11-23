@@ -815,3 +815,34 @@ html.kiosk .wood-opt .opt-title, html.kiosk .look-opt .opt-title { font-size: 17
   .wood-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .look-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ---------------- setup: store chains, painting/staining, brand sections ---------------- */
+.chain-opts { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); grid-auto-rows: 1fr; }
+.chain-opt, .job-toggle { position: relative; display: grid; gap: 4px; align-content: start; text-align: left; padding: 14px 40px 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.chain-opt:active, .job-toggle:active { transform: scale(.98); }
+.chain-opt[aria-pressed="true"], .job-toggle[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.chain-opt b, .job-toggle b { font-size: 15.5px; font-weight: 650; }
+.chain-opt span:last-child, .job-toggle span:last-child { font-size: 12.5px; color: var(--ink-3); line-height: 1.35; }
+.chain-opt .tick, .job-toggle .tick { position: absolute; top: 12px; right: 12px; width: 20px; height: 20px; border-radius: 999px; background: var(--ink); color: var(--on-primary); display: grid; place-items: center; transform: scale(0); transition: transform var(--t-med) var(--ease-spring); }
+.chain-opt[aria-pressed="true"] .tick, .job-toggle[aria-pressed="true"] .tick { transform: scale(1); }
+.job-toggles { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.job-toggle[aria-pressed="false"] b { color: var(--ink-3); }
+/* the brand screen: one section per kind of brand, each with its own heading, count and quick buttons */
+.ob-section { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.ob-section-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.ob-section-head h2 { font-size: 18px; font-weight: 650; margin: 0; }
+.ob-section-head .spacer { flex: 1; }
+.ob-section-head .ob-count { margin: 0; font-size: 13px; color: var(--ink-3); }
+.ob-section-head .link-btn { padding: 4px 0; }
+.ob-section .ob-group { gap: 10px; }
+.ob-section .mchip { background: var(--bg); }
+.ob-main { background: var(--surface-2); }
+.ob-main .mchip { background: var(--surface); }
+.set-sub { font-size: 15px; font-weight: 650; margin: 14px 2px 10px; color: var(--ink); }
+.set-sub:first-of-type { margin-top: 4px; }
+html.kiosk .chain-opt b, html.kiosk .job-toggle b { font-size: 18px; }
+@media (max-width: 560px) {
+  .chain-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chain-opt, .job-toggle { padding: 12px 34px 12px 12px; }
+  .ob-section { padding: 14px; }
+}

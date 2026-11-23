@@ -10,10 +10,29 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 
 - **First-launch setup** runs once on each device. It takes about a minute and can be rerun from Settings → Run setup again.
   1. **Who's using it:** paint store staff, a homeowner, or a touch-screen kiosk in the store. This sets the wording and defaults; for example, in-store chip locations are on for staff and kiosks and off for homeowners.
-  2. **Brands:** the brands the store carries, or the brands a homeowner would buy, plus an optional main or favorite brand. A search box and All/None buttons for each group make long lists quick.
-  3. **What the store carries:** for each chosen brand, the color collections and paint lines on hand (see below). Skipped when no chosen brand has any.
-  4. **Screen tuning:** match the screen to white printer paper.
-  5. **Done:** a summary, with an option to install the app.
+  2. **Where you work (or shop):** picking a store turns on the brands it usually carries. You can still turn any brand on or off on the next screen:
+
+     | Store | Paint | Stain |
+     | --- | --- | --- |
+     | The Home Depot | Behr, Glidden, PPG, KILZ | Minwax, Olympic |
+     | Lowe's | Valspar, HGTV Home | Cabot, Minwax |
+     | Ace Hardware | Benjamin Moore, Clark+Kensington, Magnolia Home | Cabot, Minwax |
+     | Menards | Dutch Boy | Minwax |
+     | Walmart | Glidden, KILZ | Minwax |
+     | Sherwin-Williams | Sherwin-Williams | SuperDeck, Minwax |
+     | Benjamin Moore store | Benjamin Moore | Minwax |
+     | PPG Paints store | PPG, Glidden | Olympic |
+     | Dunn-Edwards / Diamond Vogel | Their own brand | — |
+
+     "Another store" keeps the brands as they are. The same screen has two switches, **Painting** and **Staining**. Turn either off and the app only does the other, skipping the "Painting or staining?" question. One must stay on.
+  3. **Brands:** one screen with two sections, each with its own heading, count and All/None.
+     - **Paint brands:** grouped into US national, more US, international, color standards and imported.
+     - **Stain brands:** split into Inside and Outside.
+
+     Brands the store doesn't carry still show, switched off. A search box filters both sections, and a main paint brand can be picked at the bottom.
+  4. **What the store carries:** for each chosen brand, the color collections and paint lines on hand (see below). Skipped when no chosen brand has any.
+  5. **Screen tuning:** match the screen to white printer paper.
+  6. **Done:** a summary, with an option to install the app.
 
 - **Kiosk mode** (Settings → Who's using it → Kiosk):
   - Bigger buttons and text for touch screens.
@@ -62,9 +81,9 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 
   Products:
   - **Inside:** Minwax Wood Finish, Water Based Wood Stain, Gel Stain, Pre-Stain Wood Conditioner and the topcoat.
-  - **Outside:** the store's exterior stain lines (SuperDeck or Woodscapes, Arborcoat, Behr Premium, Olympic).
+  - **Outside:** the line each pick comes in (Cabot Semi-Transparent or Semi-Solid, Olympic Elite or Maximum, SuperDeck Semi-Transparent, Solid or Deck & Dock), plus a cleaner or brightener.
 
-  Outdoor solid stains come from the paint colors, since stores tint solid stain to them. Outdoor semi-transparent picks are marked as tone guides, because only Minwax's interior stain colors are in ColorGenius.
+  Outside jobs pick from the outdoor stain brands that are on (Cabot, Olympic, SuperDeck). With none on, Minwax tones are shown and marked as tone guides. Outdoor solid stains come from the brands' solid colors, or from paint colors (which stores tint solid stain to) when none are on.
 
 - **Previews look like real rooms:**
   - Floors are drawn in perspective as wood planks with real grain, tile with grout, carpet pile or concrete.
@@ -122,7 +141,8 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 - **Saved colors**: star colors to compare them, show them full screen, or copy the list.
 - **Settings**:
   - Who's using it: store staff, homeowner or kiosk.
-  - Turn each brand on or off (search by name, or All on / All off for a group), switch off color collections the store doesn't carry, and set a store brand (with "store brand only" if wanted).
+  - Store: pick a chain to set its usual brands. Switch Painting or Staining off to use the app for just one.
+  - Turn each brand on or off (search by name, or All on / All off for a group), switch off color collections the store doesn't carry, and set a store brand (with "store brand only" if wanted). Brands are listed under **Paint brands** and **Stain brands** (inside and outside).
   - In-store samples: shows chip strip locations for Sherwin-Williams, Valspar and HGTV Home, and Behr's rack colors.
   - Include discontinued colors, and choose how many colors each search shows.
   - Turn individual questions on or off, plus warnings, LRV, matches and the light preview.
@@ -157,7 +177,20 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 | Farrow & Ball | 132 | Calculated | Older public list |
 | RAL Classic (color standard) | 213 | Calculated | Public list of the RAL Classic chart |
 
-**Wood stains:** Minwax, 280 stain colors (253 wood tones, 27 whitewash), from the Sherwin-Williams color service. Minwax publishes each stain as several swatches without saying which product or wood each shows, so the middle swatch stands for the color. The lightest and darkest are kept as its range.
+**Wood stains** (674 stain colors; each brand can be switched off in setup or Settings):
+
+| Brand | Stains | Kinds | Source |
+| --- | ---: | --- | --- |
+| Minwax | 280 | Wood tones and whitewash (interior) | Sherwin-Williams color service |
+| Cabot | 196 | Semi-transparent and semi-solid (exterior) | cabotstain.com color pages |
+| Olympic | 99 | Solid and semi-transparent (exterior) | olympic.com color page, averaged swatch photos |
+| Sherwin-Williams SuperDeck | 99 | Semi-transparent, plus solid Deck & Dock coatings (exterior) | sherwin-williams.com stain color pages, averaged swatch photos |
+
+Minwax publishes each stain as several swatches without saying which product or wood each shows, so the middle swatch stands for the color. The lightest and darkest are kept as its range. Olympic and SuperDeck show their stains only as photos (on cedar or treated pine), so each color is the average of its own photo (`tools/fetch/average_swatches.js`). Cabot's solid colors show no value on its site, so only its semi-transparent and semi-solid colors are included.
+
+Inside jobs use Minwax. Outside jobs use the outdoor brands that are on. With none on, Minwax tones are shown as tone guides. Outdoor solid stains come from the stain brands' solid colors, or from paint colors when no solid stain colors are on.
+
+Not included, because the brands don't publish color values in a form that can be read: Behr stains (behr.com blocks automated access), Valspar stains (loaded only through a third-party search service; the PDF color card has no readable names), Varathane, Thompson's, Ready Seal and Benjamin Moore Arborcoat/Woodluxe (beyond the handful of exterior stain colors in its paint data).
 
 All colors were collected on 2026-11-23. "Calculated" LRV comes from the color value and is usually within a couple of points of the printed number; the app marks it with an asterisk. Screen colors are each brand's own digital values. Always confirm with a physical chip.
 

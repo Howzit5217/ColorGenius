@@ -110,8 +110,13 @@
   // A stain's published swatch is taken as how it looks on red oak. Its "filter" is that swatch divided by red
   // oak's own color, applied to any wood as wood × filter^absorb, so a wood that soaks up less (maple) comes out
   // lighter and open pores come out darker. Whitewashes and solid stains add pigment that sits on top.
-  const REF = (() => { const s = SPECIES.red_oak, L = C.hexToLinear(s.light), D = C.hexToLinear(s.dark); return L.map((v, i) => mix(v, D[i], 0.38)); })();
+  // the wood a brand shows its swatches on: Minwax on red oak, the deck and siding brands on cedar or treated pine
+  const refCache = {};
+  // mixAmt pulls the reference toward a gray of the same lightness: for brands whose swatches are flat color
+  // samples rather than photos on wood, so their own hue carries over to every wood instead of being undone twice
+  const refLin = (sp, mixAmt) => { const k = (sp || 'red_oak') + '|' + (mixAmt || 0); return refCache[k] || (refCache[k] = (() => { const s = SPECIES[sp] || SPECIES.red_oak, L = C.hexToLinear(s.light), D = C.hexToLinear(s.dark); const r = L.map((v, i) => mix(v, D[i], 0.38)); const g = lum(r); return r.map(v => mix(v, g, mixAmt || 0)); })()); };
   function filterFor(stain) {
+    const REF = refLin(stain && stain.ref, stain && stain.refMix);
     if (!stain) return null;
     if (stain.clear) return { T: stain.clear === 'water' ? [0.97, 0.965, 0.95] : [0.93, 0.84, 0.66], a: 0, P: [0, 0, 0], wet: stain.clear === 'water' ? 0.97 : 0.9 };
     const S = lin(stain.solid && stain.solidHex ? stain.solidHex : stain.hex);
@@ -140,7 +145,7 @@
   const avgCache = {};
   const SAMPLE_BOARDS = [0, 1, 2, 3].map(i => i);
   function predictLin(sp, stain) {
-    const key = sp + '|' + (stain ? (stain.clear || '') + (stain.solid ? 'S' : '') + (stain.solidHex || '') + stain.hex : 'bare');
+    const key = sp + '|' + (stain ? (stain.clear || '') + (stain.solid ? 'S' : '') + (stain.solidHex || '') + stain.hex + (stain.ref || '') + (stain.refMix || '') : 'bare');
     if (avgCache[key]) return avgCache[key];
     const F = filterFor(stain);
     const acc = [0, 0, 0]; const w = [0, 0, 0, 0], o = [0, 0, 0];
