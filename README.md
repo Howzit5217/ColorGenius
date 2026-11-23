@@ -47,7 +47,21 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   - **PPG and Glidden:** PPG color system codes and older codes; PPG also has SidingSafe vinyl colors.
   - **Diamond Vogel:** Color Essentials and Interior Whites.
 
-- **Painting or staining?** is the first question. One tap picks the job.
+- **Painting or Staining?** is the first question. One tap picks the job. (Either can be switched off in setup or Settings.)
+
+- **Basic, Advanced or Perfect?** comes next:
+  - **Basic** (about 1 minute): the quick questions and a handful of colors to pick from.
+  - **Advanced** (about 3 minutes): adds more specific questions.
+    - **Painting:** what's on the surface now (the current color, what it is, such as drywall, glossy paint, laminate or bare wood, and any problems like water stains or old oil-based paint), plus how the room should feel, warm or cool, and colors to stay away from.
+    - **Staining:** other wood to match, the wall color next to it, the sheen, even or natural color, and pets or kids.
+  - **Perfect** (about 4 minutes): the advanced questions plus a few "Which do you like better?" rounds between the finalists. The result is the one color that wins, with the other finalists tucked below.
+
+- **Primer advice** for every paint pick, based on the surface, any problems and how much the color changes:
+  - The kind of primer: stain-blocking, bonding, drywall, high-hiding, wood, oil-based for cedar and knots, masonry or metal.
+  - Specific products, with the store's own brand first (for example Sherwin-Williams Extreme Bond, Benjamin Moore Stix, Zinsser B-I-N, KILZ).
+  - Whether to tint the primer gray or toward the new color, and how many coats to plan on.
+
+- **Shadows:** previews darken the wall with the window and cast furniture shadows away from the light, stronger in sun. The advice covers walls that read darker in shadow, deep colors in shaded corners, and shaded siding.
 
 - **Staining** takes three quick questions and shows every pick on real-looking wood, bare and stained:
   1. **What's being stained:**
@@ -64,7 +78,9 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 
   The detail shows:
   - A scene for the job: a living room floor, a kitchen of stained cabinets with real frame-and-panel doors, a dining table, trim and doors, a deck with railings, a fence, cedar siding, or a wood front door.
-  - A board you drag across to compare bare and stained.
+  - A board you drag across to compare. The left side can be bare wood or any other stain from the results.
+  - **With Paint Colors:** the stain under four wall colors that suit it. Tap one to see it on the walls in the scene.
+  - **Compare** on the results page shows every stain side by side on the same wood.
   - The same stain on five other woods.
   - Warnings, products to buy, and prep and topcoat tips.
 
@@ -92,8 +108,8 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   - Kitchens get stone counters, a sink, pendant lights and a fruit bowl.
   - The wood and stone textures are adapted from the Flowchart Producer house builder's texture recipes.
 
-- **Five quick questions** for painting
-  1. What's being painted: a room (including stairways, laundry rooms, sunrooms and garages), a surface or an exterior.
+- **The painting questions** (Basic mode)
+  1. What's being painted: a room (including stairways, laundry rooms, sunrooms and garages), a surface or furniture (dressers, tables, chairs), or an exterior.
   2. Which way the windows face, using a compass picker, plus how much daylight and what bulbs. Tap every side that has windows: corner rooms often have two. Each side changes the advice, for example a north wall reading cooler in an otherwise sunny room, or opposite windows making walls look different.
   3. Style, with up to two picks shown as real color previews.
   4. Color families and how light or dark.
@@ -177,20 +193,23 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 | Farrow & Ball | 132 | Calculated | Older public list |
 | RAL Classic (color standard) | 213 | Calculated | Public list of the RAL Classic chart |
 
-**Wood stains** (674 stain colors; each brand can be switched off in setup or Settings):
+**Wood stains** (753 stain colors; each brand can be switched off in setup or Settings):
 
 | Brand | Stains | Kinds | Source |
 | --- | ---: | --- | --- |
 | Minwax | 280 | Wood tones and whitewash (interior) | Sherwin-Williams color service |
 | Cabot | 196 | Semi-transparent and semi-solid (exterior) | cabotstain.com color pages |
 | Olympic | 99 | Solid and semi-transparent (exterior) | olympic.com color page, averaged swatch photos |
+| Varathane | 79 | Fast Dry, Premium, Water-Based and Gel stains (interior) | rustoleum.com product pages, averaged color chip photos |
 | Sherwin-Williams SuperDeck | 99 | Semi-transparent, plus solid Deck & Dock coatings (exterior) | sherwin-williams.com stain color pages, averaged swatch photos |
 
 Minwax publishes each stain as several swatches without saying which product or wood each shows, so the middle swatch stands for the color. The lightest and darkest are kept as its range. Olympic and SuperDeck show their stains only as photos (on cedar or treated pine), so each color is the average of its own photo (`tools/fetch/average_swatches.js`). Cabot's solid colors show no value on its site, so only its semi-transparent and semi-solid colors are included.
 
-Inside jobs use Minwax. Outside jobs use the outdoor brands that are on. With none on, Minwax tones are shown as tone guides. Outdoor solid stains come from the stain brands' solid colors, or from paint colors when no solid stain colors are on.
+Inside jobs use Minwax and Varathane. Outside jobs use the outdoor brands that are on. With none on, Minwax tones are shown as tone guides. Outdoor solid stains come from the stain brands' solid colors, or from paint colors when no solid stain colors are on.
 
-Not included, because the brands don't publish color values in a form that can be read: Behr stains (behr.com blocks automated access), Valspar stains (loaded only through a third-party search service; the PDF color card has no readable names), Varathane, Thompson's, Ready Seal and Benjamin Moore Arborcoat/Woodluxe (beyond the handful of exterior stain colors in its paint data).
+Varathane's chip photos can't be read by a browser, so they're averaged with Windows' built-in image library (`tools/fetch/average_chips.ps1`).
+
+Not included, because the brands don't publish color values in a form that can be read: Behr stains (behr.com blocks automated access), Valspar stains (loaded only through a third-party search service; the PDF color card has no readable names), Thompson's, Ready Seal and Benjamin Moore Arborcoat/Woodluxe (beyond the handful of exterior stain colors in its paint data).
 
 All colors were collected on 2026-11-23. "Calculated" LRV comes from the color value and is usually within a couple of points of the printed number; the app marks it with an asterisk. Screen colors are each brand's own digital values. Always confirm with a physical chip.
 

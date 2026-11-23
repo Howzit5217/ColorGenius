@@ -1,6 +1,6 @@
 /* ColorGenius service worker: makes the installed app open instantly and work offline.
    App files and color data are saved on first visit; when online the newest versions always load. */
-const VERSION = 'cg-2026-11-23-13';
+const VERSION = 'cg-2026-11-23-14';
 const SHELL = [
   './', 'index.html', 'css/app.css', 'js/color.js', 'js/wood.js', 'js/stain.js', 'js/engine.js', 'js/app.js',
   'data/brands.js', 'data/stains.js', 'data/files.json', 'manifest.webmanifest',

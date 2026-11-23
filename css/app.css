@@ -846,3 +846,62 @@ html.kiosk .chain-opt b, html.kiosk .job-toggle b { font-size: 18px; }
   .chain-opt, .job-toggle { padding: 12px 34px 12px 12px; }
   .ob-section { padding: 14px; }
 }
+
+/* stain detail: compare with another stain, and the stain under paint colors */
+.ba-vs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ba-vs-label { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-right: 2px; }
+.ba-vs .mchip { min-height: 36px; padding: 4px 12px 4px 4px; font-size: 13px; }
+.ba-vs .mchip[data-ba-vs="bare"] { padding-left: 12px; }
+.ba-vs .msw { width: 26px; height: 26px; }
+.sp-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.sp-card { display: grid; grid-template-rows: auto auto 1fr; padding: 0; text-align: left; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; background: var(--surface); transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+button.sp-card[data-wall-paint] { cursor: pointer; }
+button.sp-card[data-wall-paint]:active { transform: scale(.97); }
+.sp-card.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.sp-wall { display: block; aspect-ratio: 3 / 2; box-shadow: inset 0 -6px 8px -6px rgba(0, 0, 0, .25); }
+.sp-wood { display: block; aspect-ratio: 30 / 7; background: #cdb08a; overflow: hidden; }
+.sp-text { display: grid; gap: 2px; padding: 8px 10px 10px; font-size: 12.5px; }
+.sp-text b { font-size: 13.5px; font-weight: 600; }
+.sp-text > span { color: var(--ink-3); }
+.sc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+.sc-col { display: grid; gap: 4px; padding: 0; border: 0; background: none; text-align: left; font-size: 12.5px; color: var(--ink-3); }
+.sc-col .wood-cv { aspect-ratio: 22 / 30; height: auto; border-radius: 10px; background: #cdb08a; margin-bottom: 4px; }
+.sc-col b { font-size: 13.5px; color: var(--ink); font-weight: 600; }
+button.sc-col { cursor: pointer; }
+button.sc-col:active { transform: scale(.98); }
+
+/* ---------------- modes, advanced questions, Perfect's rounds ---------------- */
+.mode-cards { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; }
+.mode-card { position: relative; display: grid; gap: 6px; align-content: start; text-align: left; padding: 18px 18px 20px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.mode-card:active { transform: scale(.98); }
+.mode-card[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.mode-card .opt-title { font-size: 19px; font-weight: 650; }
+.mode-card .opt-sub { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+.mode-time { justify-self: start; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); }
+.mode-card .tick { position: absolute; top: 14px; right: 14px; width: 22px; height: 22px; border-radius: 999px; background: var(--ink); color: var(--on-primary); display: grid; place-items: center; transform: scale(0); transition: transform var(--t-med) var(--ease-spring); }
+.mode-card[aria-pressed="true"] .tick { transform: scale(1); }
+.now-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; font-size: 13.5px; }
+.duel { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; }
+.duel-or { font-size: 13px; font-weight: 600; color: var(--ink-3); }
+.duel-opt { display: grid; gap: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); text-align: left; transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+.duel-opt:hover { border-color: var(--ink-3); }
+.duel-opt:active { transform: scale(.98); }
+.duel-sw { display: block; aspect-ratio: 4 / 3; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .06); }
+.duel-opt .wood-cv { aspect-ratio: 42 / 30; height: auto; }
+.duel-name { display: grid; gap: 2px; padding: 12px 14px 14px; font-size: 13px; color: var(--ink-3); }
+.duel-name b { font-size: 16px; color: var(--ink); font-weight: 650; }
+.grid.grid-one { grid-template-columns: minmax(0, 520px); }
+.grid.grid-one .chip-name { font-size: 22px; }
+.perfect-why { margin-top: 18px; display: grid; gap: 10px; max-width: 640px; }
+.perfect-why h2 { font-size: 18px; margin: 0; }
+.finalists > summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--ink-2); padding: 6px 0; list-style: none; }
+.finalists > summary::-webkit-details-marker { display: none; }
+.finalists > summary::before { content: "+ "; }
+.finalists[open] > summary::before { content: "– "; }
+.finalists .grid { margin-top: 10px; }
+@media (max-width: 760px) { .mode-cards { grid-template-columns: 1fr; } .duel { grid-template-columns: 1fr; } .duel-or { justify-self: center; } }
+.grid.grid-one .swatch { aspect-ratio: 16 / 9; }
+.grid.grid-one .wood-sw { aspect-ratio: 16 / 9; }
+.primer { display: grid; gap: 8px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.primer > b { font-size: 15px; }
+.primer > span { font-size: 13.5px; color: var(--ink-2); }

@@ -280,13 +280,13 @@ test('what is staying: floors, counters, furniture, roof and custom items change
 });
 test('question 5 adapts to the job, and every listed item exists', () => {
   const titles = s => E.groupsFor(s).map(g => g.title);
-  assert.ok(titles('bedroom').includes('Bedding & furniture') && titles('bedroom').includes('Floor'));
+  assert.ok(titles('bedroom').includes('Bedding & Furniture') && titles('bedroom').includes('Floor'));
   assert.ok(E.groupsFor('bedroom').find(g => g.key === 'floor').ids.some(id => id.includes('carpet')), 'bedrooms offer carpet');
   assert.ok(!E.groupsFor('kitchen').find(g => g.key === 'floorHard').ids.some(id => id.includes('carpet')), 'kitchens do not');
-  assert.ok(titles('kitchen').includes('Countertops') && !titles('kitchen').includes('Bedding & furniture'));
+  assert.ok(titles('kitchen').includes('Countertops') && !titles('kitchen').includes('Bedding & Furniture'));
   assert.ok(titles('bathroom').includes('Vanity'));
-  assert.ok(titles('front_door').includes('Siding staying'));
-  assert.ok(!titles('trim').includes('Trim, baseboards & crown'), 'the trim job does not ask about existing trim');
+  assert.ok(titles('front_door').includes('Siding Staying'));
+  assert.ok(!titles('trim').includes('Trim, Baseboards & Crown'), 'the trim job does not ask about existing trim');
   assert.ok(E.groupsFor('living').find(g => g.key === 'trim').flags.crown);
   for (const space of Object.keys(E.SPACES)) for (const g of E.groupsFor(space)) for (const id of g.ids || []) assert.ok(E.FIXED_ITEMS.some(f => f.id === id), `${space}: ${id}`);
   assert.ok(E.allowedFixed('kitchen').has('counter-white') && !E.allowedFixed('kitchen').has('roof-black'));
@@ -393,12 +393,16 @@ const ST = require(path.join(ROOT, 'js/stain.js'));
 ST.init(window.CG_STAINS);
 const stainOf = name => { const s = ST.all().find(x => x.name === name); assert.ok(s, name); return { hex: s.hex, type: s.type }; };
 test('stain data: Minwax, Cabot, Olympic and SuperDeck', () => {
-  assert.ok(ST.all().length >= 600, `${ST.all().length} stains`);
+  assert.ok(ST.all().length >= 700, `${ST.all().length} stains`);
   const count = id => ST.all().filter(x => x.brand === id).length;
-  for (const [id, min] of Object.entries({ minwax: 250, cabot: 180, olympic: 90, swstain: 90 })) assert.ok(count(id) >= min, `${id}: ${count(id)}`);
+  for (const [id, min] of Object.entries({ minwax: 250, cabot: 180, olympic: 90, swstain: 90, varathane: 70 })) assert.ok(count(id) >= min, `${id}: ${count(id)}`);
+  assert.equal(ST.brands().find(b => b.id === 'varathane').use, 'interior');
+  assert.match(ST.codeLabel(ST.all().find(x => x.brand === 'varathane')), /Stain/, 'Varathane shows its product line in place of a code');
+  const vOnly = ST.recommend({ target: 'floors', wood: 'red_oak', looks: ['warm'] }, { resultCount: 4, stainBrands: { minwax: false } });
+  assert.ok(vOnly.results.every(x => x.brand === 'varathane') && vOnly.products.every(p => !/Minwax/.test(p.name)), 'with Minwax off, Varathane picks get Varathane products');
   assert.equal(ST.brands().find(b => b.id === 'minwax').use, 'interior');
   for (const id of ['cabot', 'olympic', 'swstain']) assert.equal(ST.brands().find(b => b.id === id).use, 'exterior', id);
-  assert.equal(ST.codeLabel(ST.all().find(x => x.brand === 'cabot' && x.type === 'semisolid')), 'Semi-solid', 'Cabot shows its opacity in place of a code');
+  assert.equal(ST.codeLabel(ST.all().find(x => x.brand === 'cabot' && x.type === 'semisolid')), 'Semi-Solid', 'Cabot shows its opacity in place of a code');
   for (const n of ['Natural', 'Golden Oak', 'Early American', 'Provincial', 'Special Walnut', 'Dark Walnut', 'Jacobean', 'Ebony', 'Classic Gray', 'Weathered Oak']) assert.ok(ST.all().some(s => s.name === n), n);
   for (const s of ST.all()) { assert.match(s.hex, /^[0-9A-F]{6}$/, s.id); assert.ok(['trans', 'semi', 'semisolid', 'solid', 'white'].includes(s.type), s.id); assert.ok(WD.SPECIES[s.ref], s.id + ' reference wood'); }
 });
@@ -444,7 +448,7 @@ test('stain picks follow the look, the wood and the job', () => {
   assert.ok(deck.products.some(p => /Cabot|Olympic|SuperDeck/.test(p.name)), 'products name the stain brand lines');
   assert.ok(deck.results[0].warnings.some(w => /pressure-treated/i.test(w.title)));
   const noOutdoor = ST.recommend({ target: 'deck', looks: ['natural'] }, { resultCount: 4, brands: US, stainBrands: { cabot: false, olympic: false, swstain: false } });
-  assert.ok(noOutdoor.guide && noOutdoor.results.every(x => x.brand === 'minwax'), 'with no outdoor brand on, Minwax tones are tone guides');
+  assert.ok(noOutdoor.guide && noOutdoor.results.every(x => ['minwax', 'varathane'].includes(x.brand)), 'with no outdoor brand on, interior stain tones are tone guides');
   const onlyCabot = ST.recommend({ target: 'siding', looks: ['red', 'rich'] }, { resultCount: 6, brands: US, stainBrands: { olympic: false, swstain: false } });
   assert.ok(onlyCabot.results.length && onlyCabot.results.every(x => x.brand === 'cabot'), 'switched-off stain brands are left out');
   const solidDeck = ST.recommend({ target: 'deck', grain: 'hide', looks: ['gray'] }, { resultCount: 4, brands: US });
@@ -452,6 +456,48 @@ test('stain picks follow the look, the wood and the job', () => {
   const fence = ST.recommend({ target: 'fence', grain: 'hide', looks: ['gray'] }, { resultCount: 4, brands: US, stainBrands: { olympic: false, swstain: false } });
   assert.ok(fence.results.length && fence.results.every(x => x.kind === 'paint' && x.solid), 'with no solid stain colors on, solid stain is tinted to paint colors');
   assert.ok(fence.products.some(p => /solid/i.test(p.name)));
+});
+
+// ---------------- advanced questions, primer, furniture ----------------
+test('advanced answers steer the picks: undertone, mood and colors to avoid', () => {
+  const base = { space: 'living', styles: [], families: [] };
+  const warm = rec(Object.assign({}, base, { undertone: 'warm' }));
+  const cool = rec(Object.assign({}, base, { undertone: 'cool' }));
+  const share = (r, t) => r.results.filter(x => x.color.temp === t).length / r.results.length;
+  assert.ok(share(warm, 'warm') > share(cool, 'warm'), 'warm undertone gives warmer picks');
+  const airy = rec(Object.assign({}, base, { feel: 'airy' })), dramatic = rec(Object.assign({}, base, { feel: 'dramatic' }));
+  const avgL = r => r.results.reduce((t, x) => t + x.color.lrv, 0) / r.results.length;
+  assert.ok(avgL(airy) > avgL(dramatic) + 25, 'bright & airy is much lighter than bold & dramatic');
+  const noBlue = rec(Object.assign({}, base, { families: ['blue', 'green'], avoid: ['blue'] }));
+  assert.ok(noBlue.results.every(x => x.color.fam !== 'blue'), 'avoided colors are left out');
+});
+test('primer advice follows the surface, the problems and the color change', () => {
+  const white = E.getIndex().byBrand.sw.find(c => c.lrv > 85), deep = E.getIndex().byBrand.sw.find(c => c.lrv < 10);
+  assert.equal(E.primerFor({ space: 'living', surface: 'painted', nowKind: 'white' }, white).need, '', 'good walls, same color: no primer');
+  assert.equal(E.primerFor({ space: 'living', issues: ['stains'] }, white).need, 'stain');
+  assert.equal(E.primerFor({ space: 'cabinets', surface: 'laminate' }, white).need, 'bond');
+  assert.equal(E.primerFor({ space: 'living', surface: 'drywall_new' }, white).need, 'drywall');
+  assert.equal(E.primerFor({ space: 'ext_body', surface: 'bare_wood' }, white).need, 'tannin');
+  assert.equal(E.primerFor({ space: 'front_door', surface: 'metal' }, white).need, 'metal');
+  assert.equal(E.primerFor({ space: 'living', surface: 'painted', nowKind: 'dark' }, white).need, 'hide', 'dark to light: a hiding primer');
+  assert.ok(E.primerFor({ space: 'living', surface: 'painted', nowKind: 'white' }, deep).tips.some(t => /gray/i.test(t)), 'deep colors: gray-tinted primer');
+  const store = E.primerFor({ space: 'cabinets', surface: 'laminate' }, white, { brands: US, storeBrand: 'sw' });
+  assert.match(store.products[0].name, /Sherwin-Williams/, 'the store brand’s primer comes first');
+  assert.ok(E.warningsFor(white, { space: 'living', nowKind: 'dark' }).some(w => w.title === 'Going much lighter'));
+});
+test('painting furniture, and shadow tips', () => {
+  assert.ok(E.SPACES.furniture && E.SPACES.furniture.surface === 'furniture');
+  assert.equal(rec({ space: 'furniture' }).results.length, 6);
+  assert.ok(E.surfacesFor('furniture').includes('laminate'));
+  const c = E.getIndex().byBrand.sw.find(x => x.lrv > 50 && x.lrv < 70);
+  assert.ok(E.warningsFor(c, { space: 'living', facing: 'north', facings: ['north'] }).some(w => /Shadows/.test(w.title)), 'light from one side: shadow tip');
+});
+test('advanced stain answers: matching other wood and pets', () => {
+  const dark = ST.recommend({ target: 'floors', wood: 'red_oak', looks: ['natural', 'golden'], matchWood: 'dark' }, { resultCount: 4 });
+  const light = ST.recommend({ target: 'floors', wood: 'red_oak', looks: ['natural', 'golden'], matchWood: 'light' }, { resultCount: 4 });
+  const avgL = r => r.results.reduce((t, x) => t + C.hexToLab(x.predicted)[0], 0) / r.results.length;
+  assert.ok(avgL(dark) < avgL(light), 'matching dark wood gives darker picks than matching light wood');
+  assert.ok(ST.recommend({ target: 'floors', wood: 'red_oak', looks: [], pets: true, sheen: 'satin' }).tips.some(t => t.title === 'Sheen'));
 });
 
 test('offline file list matches the brand files', () => {

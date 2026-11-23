@@ -14,38 +14,42 @@
   // ---------------- what's being stained ----------------
   const JOBS = {
     floors: { label: 'Floors', kind: 'interior', wood: 'red_oak', sub: 'Hardwood floors and stair treads', scene: 'floor', traffic: true },
-    stairs: { label: 'Stairs & railings', kind: 'interior', wood: 'red_oak', sub: 'Treads, handrails, newels', scene: 'floor', traffic: true },
+    stairs: { label: 'Stairs & Railings', kind: 'interior', wood: 'red_oak', sub: 'Treads, handrails, newels', scene: 'floor', traffic: true },
     cabinets: { label: 'Cabinets', kind: 'interior', wood: 'maple', sub: 'Kitchen or bath', scene: 'cabinets' },
     furniture: { label: 'Furniture', kind: 'interior', wood: 'pine', sub: 'Tables, dressers, chairs', scene: 'furniture' },
-    tabletop: { label: 'Tabletop or butcher block', kind: 'interior', wood: 'maple', sub: 'Counters, desks, tables', scene: 'furniture', food: true },
-    trim: { label: 'Trim & doors', kind: 'interior', wood: 'pine', sub: 'Baseboards, casing, interior doors', scene: 'trim' },
+    tabletop: { label: 'Tabletop or Butcher Block', kind: 'interior', wood: 'maple', sub: 'Counters, desks, tables', scene: 'furniture', food: true },
+    trim: { label: 'Trim & Doors', kind: 'interior', wood: 'pine', sub: 'Baseboards, casing, interior doors', scene: 'trim' },
     deck: { label: 'Deck', kind: 'exterior', wood: 'pt_pine', sub: 'Boards, steps, railings', scene: 'deck', traffic: true, horizontal: true },
     fence: { label: 'Fence', kind: 'exterior', wood: 'pt_pine', sub: 'Pickets and panels', scene: 'fence' },
-    siding: { label: 'Siding & shakes', kind: 'exterior', wood: 'cedar', sub: 'Cedar siding, shingles, board & batten', scene: 'siding' },
-    outdoor: { label: 'Outdoor furniture', kind: 'exterior', wood: 'cedar', sub: 'Chairs, benches, planters', scene: 'deck' },
-    pergola: { label: 'Pergola or porch', kind: 'exterior', wood: 'cedar', sub: 'Posts, beams, ceilings', scene: 'deck' },
-    front_door: { label: 'Front door', kind: 'exterior', wood: 'fir', sub: 'Wood entry doors', scene: 'door' },
+    siding: { label: 'Siding & Shakes', kind: 'exterior', wood: 'cedar', sub: 'Cedar siding, shingles, board & batten', scene: 'siding' },
+    outdoor: { label: 'Outdoor Furniture', kind: 'exterior', wood: 'cedar', sub: 'Chairs, benches, planters', scene: 'deck' },
+    pergola: { label: 'Pergola or Porch', kind: 'exterior', wood: 'cedar', sub: 'Posts, beams, ceilings', scene: 'deck' },
+    front_door: { label: 'Front Door', kind: 'exterior', wood: 'fir', sub: 'Wood entry doors', scene: 'door' },
   };
   // ---------------- the look ----------------
   // Targets are on the predicted color (on the chosen wood), in CIE LCh. L = lightness, C = colorfulness, h = hue.
   const LOOKS = {
     natural: { label: 'Natural', sub: 'The wood’s own color, slightly richer', near: true },
-    light: { label: 'Light & airy', sub: 'Pale, soft, Scandinavian', L: [62, 86], C: [3, 18] },
-    golden: { label: 'Golden honey', sub: 'Warm, glowing, classic oak', L: [48, 66], C: [24, 46], h: [62, 82] },
-    warm: { label: 'Warm medium brown', sub: 'Early American, Provincial', L: [40, 54], C: [16, 34], h: [56, 76] },
-    rich: { label: 'Rich brown', sub: 'Walnut, chestnut', L: [30, 42], C: [12, 30], h: [52, 78] },
-    dark: { label: 'Dark espresso', sub: 'Jacobean, ebony, near black', L: [12, 31], C: [0, 22] },
+    light: { label: 'Light & Airy', sub: 'Pale, soft, Scandinavian', L: [62, 86], C: [3, 18] },
+    golden: { label: 'Golden Honey', sub: 'Warm, glowing, classic oak', L: [48, 66], C: [24, 46], h: [62, 82] },
+    warm: { label: 'Warm Medium Brown', sub: 'Early American, Provincial', L: [40, 54], C: [16, 34], h: [56, 76] },
+    rich: { label: 'Rich Brown', sub: 'Walnut, chestnut', L: [30, 42], C: [12, 30], h: [52, 78] },
+    dark: { label: 'Dark Espresso', sub: 'Jacobean, ebony, near black', L: [12, 31], C: [0, 22] },
     red: { label: 'Reddish', sub: 'Cherry, mahogany', L: [24, 52], C: [20, 46], h: [28, 56] },
-    gray: { label: 'Gray & weathered', sub: 'Driftwood, barnwood', L: [34, 72], C: [0, 10] },
+    gray: { label: 'Gray & Weathered', sub: 'Driftwood, barnwood', L: [34, 72], C: [0, 10] },
     white: { label: 'Whitewash', sub: 'Pickled, limed, white-washed', L: [74, 94], C: [0, 14], white: true },
-    color: { label: 'A color', sub: 'Blue, green, red and more', color: true },
+    color: { label: 'A Color', sub: 'Blue, green, red and more', color: true },
   };
-  const GRAIN = { show: 'Show the grain', hide: 'Hide the grain (solid)' };
+  const GRAIN = { show: 'Show the Grain', hide: 'Hide the Grain (Solid)' };
   // how much each kind of stain covers
-  const TYPES = { trans: 'Transparent', semi: 'Semi-transparent', semisolid: 'Semi-solid', solid: 'Solid', white: 'Whitewash' };
+  const TYPES = { trans: 'Transparent', semi: 'Semi-Transparent', semisolid: 'Semi-Solid', solid: 'Solid', white: 'Whitewash' };
   const SHOWS_GRAIN = ['trans', 'semi', 'semisolid', 'white'];
-  const CONDITION = { bare: 'Bare or sanded', finished: 'Has a finish on it', new_pt: 'New pressure-treated' };
-  const DEFAULT = { job: 'stain', target: 'floors', wood: '', condition: 'bare', looks: [], grain: 'show' };
+  const CONDITION = { bare: 'Bare or Sanded', finished: 'Already Finished', new_pt: 'New Pressure-Treated' };
+  const DEFAULT = { job: 'stain', target: 'floors', wood: '', condition: 'bare', looks: [], grain: 'show', matchWood: '', wallTone: '', sheen: '', evenness: '', pets: false };
+  // advanced stain questions
+  const MATCH_WOOD = { light: ['Light Wood', 'D9B98E'], medium: ['Medium Wood', 'A87447'], dark: ['Dark Wood', '5A3E2B'], reddish: ['Reddish Wood', '8E4A32'], gray: ['Gray Wood', '8C847A'] };
+  const WALL_TONES = { white: ['White', 'F1EFE8'], warm: ['Warm Neutral', 'D9CDB8'], gray: ['Gray', 'B9BAB6'], color: ['A Color', '8FA6A0'], dark: ['Dark', '3E4246'] };
+  const SHEENS = { matte: 'Matte', satin: 'Satin', semigloss: 'Semi-Gloss', gloss: 'Gloss' };
 
   // ---------------- stain index ----------------
   // colored stains are told apart by hue, and by name for the pale ones (a pale blue reads as gray-white by hue alone)
@@ -73,7 +77,7 @@
   const brands = () => Object.values(BRANDS);
   const brandOn = (id, s) => !(s && s.stainBrands && s.stainBrands[id] === false);
   // what to show where a code would go: Cabot doesn't number its colors, so its opacity stands in
-  const codeLabel = x => ((BRANDS[x.brand] || {}).codeless ? TYPES[x.type] || '' : x.code);
+  const codeLabel = x => ((BRANDS[x.brand] || {}).codeless ? (x.line || TYPES[x.type] || '') : x.code);
   const woodFor = a => (W.SPECIES[a.wood] ? a.wood : (JOBS[a.target] || JOBS.floors).wood);
 
   function lchOf(hex) { const l = C.labToLch(C.hexToLab(hex)); return { L: l[0], C: l[1], h: l[2] }; }
@@ -134,6 +138,10 @@
       // finished wood can only go darker without stripping
       if (a.condition === 'finished' && p.L > bare.L - 4 && !solid) score *= 0.35;
       if (x.kind === 'stain' && x.src.n >= 3) score += 0.03; // published in several products: a core color
+      // advanced: match other wood in the room, keep a contrast with the walls, hide wear from pets and kids
+      if (a.matchWood && MATCH_WOOD[a.matchWood]) { const close = Math.max(0, 1 - C.deltaE2000(C.hexToLab(hex), C.hexToLab(MATCH_WOOD[a.matchWood][1])) / 16); score = 0.45 * score + 0.55 * close; }
+      if (a.wallTone && WALL_TONES[a.wallTone] && C.deltaE2000(C.hexToLab(hex), C.hexToLab(WALL_TONES[a.wallTone][1])) < 12) score -= 0.15;
+      if (a.pets && job.traffic && (p.L < 28 || p.L > 76)) score -= 0.15;
       if (x.kind === 'paint' && (x.src.flags & E().F.POPULAR)) score += 0.04;
       scored.push({ x, p, score, look: bestLook(looks, p, bare, x) });
     }
@@ -206,7 +214,10 @@
   }
   function tipsFor(a) {
     const job = JOBS[a.target] || JOBS.floors; const tips = [];
-    tips.push({ title: 'Test it first', text: 'Stain color depends on the wood, the sanding grit and how long it sits before wiping. Try it on a scrap or a hidden spot of the same wood.' });
+    if (a.sheen && SHEENS[a.sheen]) tips.push({ title: 'Sheen', text: `Pick the topcoat in ${SHEENS[a.sheen]}. ${a.sheen === 'matte' ? 'Matte looks most natural and hides scratches.' : a.sheen === 'satin' ? 'Satin is the most popular: a soft glow that cleans easily.' : 'Shinier finishes show scratches and dust more, but wipe clean fastest.'}` });
+    if (a.evenness === 'even') tips.push({ title: 'Even Color', text: 'For an even color, use a wood conditioner first and wipe the stain off at the same time everywhere.' });
+    if (a.pets && job.traffic) tips.push({ title: 'Pets and Kids', text: 'Mid-tone stains with a satin topcoat hide scratches and dust best.' });
+    tips.push({ title: 'Test It First', text: 'Stain color depends on the wood, the sanding grit and how long it sits before wiping. Try it on a scrap or a hidden spot of the same wood.' });
     if (a.condition !== 'finished') tips.push({ title: 'Sanding', text: job.kind === 'interior' ? 'Sand to 120–150 grit for floors and 150–180 for furniture and cabinets. Finer sanding makes stain lighter.' : 'Clean and brighten old decks and fences first. Lightly sand rough or gray wood so stain can soak in.' });
     tips.push({ title: 'Topcoat', text: job.kind === 'interior' ? (job.traffic ? 'Floors need 2–3 coats of floor polyurethane over the stain. Oil-based poly ambers over time; water-based stays clearer.' : 'Protect stained wood with polyurethane or a water-based clear coat. Water-based stays clear over light and gray stains.') : 'Exterior stains seal themselves; don’t put a clear coat over them.' });
     if (job.kind === 'exterior') tips.push({ title: 'Weather', text: 'Stain when it will stay dry for 24–48 hours, out of hot midday sun, above 50 °F.' });
@@ -233,15 +244,27 @@
     const solid = a.grain === 'hide';
     const out = [];
     if (job.kind === 'interior') {
-      if (a.condition === 'finished') out.push({ name: 'Minwax Gel Stain', why: 'Sits on top of a scuffed finish and goes on evenly, so you don’t have to strip first.' });
-      else if (solid) out.push({ name: 'Minwax Water Based Solid Color Stain', why: 'Covers the wood’s color while letting some texture show.' });
+      // the brands the picks come from (Minwax, Varathane), each with its own products
+      const picked = [...new Set((results || []).filter(r => r.kind === 'stain').map(r => r.brand))];
+      const brandsIn = picked.length ? picked : ['minwax'];
+      const mw = brandsIn.includes('minwax'), vt = brandsIn.includes('varathane');
+      const blotchy = !solid && BLOTCHY.includes(sp) && a.condition !== 'finished';
+      if (a.condition === 'finished') {
+        if (mw) out.push({ name: 'Minwax Gel Stain', why: 'Goes over a scuff-sanded finish evenly, so you don’t have to strip first.' });
+        if (vt) out.push({ name: 'Varathane Premium Gel Stain', why: 'Goes over a scuff-sanded finish evenly, so you don’t have to strip first.' });
+      } else if (solid && mw) out.push({ name: 'Minwax Water Based Solid Color Stain', why: 'Covers the wood’s color while some texture still shows.' });
       else {
-        out.push({ name: 'Minwax Wood Finish', why: 'Oil-based penetrating stain: the classic choice, with the longest working time.' });
-        out.push({ name: 'Minwax Water Based Wood Stain', why: 'Dries fast with little odor; good for cabinets and trim.' });
+        if (mw) out.push({ name: 'Minwax Wood Finish', why: 'Oil-based stain that soaks in. The classic choice, with the most time to work.' });
+        if (vt) {
+          const lines = [...new Set((results || []).filter(r => r.brand === 'varathane').map(r => (r.item || {}).line).filter(Boolean))];
+          for (const l of (lines.length ? lines : ['Fast Dry Wood Stain']).slice(0, 2)) out.push({ name: 'Varathane ' + l, why: /Fast Dry/.test(l) ? 'Oil-based stain that dries in about an hour.' : /Water/.test(l) ? 'Low odor, quick drying and easy cleanup.' : /Gel/.test(l) ? 'Thick, so it won’t run on doors and cabinets.' : 'Oil-based stain with rich color in one coat.' });
+        }
+        if (mw) out.push({ name: 'Minwax Water Based Wood Stain', why: 'Dries fast with little odor. Good for cabinets and trim.' });
       }
-      if (!solid && BLOTCHY.includes(sp) && a.condition !== 'finished') out.push({ name: 'Minwax Pre-Stain Wood Conditioner', why: `Evens out how ${W.SPECIES[sp].label.toLowerCase()} soaks up stain. Use the water-based one under water-based stain.` });
-      if (['maple', 'birch'].includes(sp) && a.condition !== 'finished') out.push({ name: 'Minwax Gel Stain', why: 'Easier to get a dark, even color on dense woods.' });
-      out.push(job.traffic ? { name: 'Floor polyurethane (oil or water based)', why: 'Two to three coats over the stain for wear.' } : { name: 'Minwax Polycrylic or Fast-Drying Polyurethane', why: 'Polycrylic stays clear over light colors; polyurethane is tougher and warmer.' });
+      if (blotchy) out.push({ name: vt && !mw ? 'Varathane Premium Wood Conditioner' : 'Minwax Pre-Stain Wood Conditioner', why: `Helps ${W.SPECIES[sp].label.toLowerCase()} take stain evenly. Brush it on first.` });
+      if (['maple', 'birch'].includes(sp) && a.condition !== 'finished') out.push({ name: vt && !mw ? 'Varathane Premium Gel Stain' : 'Minwax Gel Stain', why: 'Easier to get a dark, even color on dense woods.' });
+      if (job.traffic) out.push({ name: vt && !mw ? 'Varathane Premium Floor Finish' : 'Floor polyurethane (oil or water based)', why: 'Two to three coats over the stain so it stands up to wear.' });
+      else out.push(vt && !mw ? { name: 'Varathane Ultimate Polyurethane', why: 'The water-based one stays clear over light colors; the oil-based one is warmer.' } : { name: 'Minwax Polycrylic or Fast-Drying Polyurethane', why: 'Polycrylic stays clear over light colors; polyurethane is tougher and warmer.' });
     } else if ((results || []).some(r => r.kind === 'stain' && STAIN_LINES[r.brand])) {
       // the lines the picks actually come in
       const seen = new Set();
@@ -270,7 +293,7 @@
     return (list || ['red_oak', 'white_oak', 'pine', 'maple', 'cherry', 'cedar']).map(sp => ({ sp, label: W.SPECIES[sp].label, hex: W.predictHex(sp, st), bare: W.bareHex(sp) }));
   }
 
-  const api = { JOBS, LOOKS, GRAIN, CONDITION, DEFAULT, TYPES, init, all, find, brandName, brands, brandOn, codeLabel, woodFor, recommend, warningsFor, tipsFor, productsFor, onOtherWoods, lookScore };
+  const api = { JOBS, LOOKS, GRAIN, CONDITION, DEFAULT, TYPES, MATCH_WOOD, WALL_TONES, SHEENS, init, all, find, brandName, brands, brandOn, codeLabel, woodFor, recommend, warningsFor, tipsFor, productsFor, onOtherWoods, lookScore };
   root.CG = root.CG || {};
   root.CG.stain = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
