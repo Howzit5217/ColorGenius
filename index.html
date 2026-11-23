@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ColorGenius</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Paint color finder for store staff: a few questions, the right colors from every major brand, with warnings and cross-brand matches.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f3f3f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141414" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ColorGenius">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <button class="wordmark" id="homeBtn" type="button" aria-label="ColorGenius, start a new search">
+        <span class="fan" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="wordmark-text">ColorGenius</span>
+      </button>
+      <nav class="tabs" aria-label="Main">
+        <button type="button" class="tab" data-view="find" aria-current="page"><span class="long">Find a color</span><span class="short">Find</span></button>
+        <button type="button" class="tab" data-view="lookup"><span class="long">Look up &amp; match</span><span class="short">Look up</span></button>
+        <button type="button" class="tab" data-view="shortlist"><span class="long">Shortlist</span><span class="short">Saved</span> <span class="count" id="shortCount" hidden>0</span></button>
+      </nav>
+      <button type="button" class="btn small install-btn" id="installBtn" hidden>
+        <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0l-3.2-3.2M8 10l3.2-3.2M3 13h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Get the app</span>
+      </button>
+      <button type="button" class="icon-btn" id="settingsBtn" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="main" id="main">
+    <section class="loading" id="loading" aria-live="polite">
+      <div class="loading-fan" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <p class="loading-text" id="loadingText">Loading paint colors…</p>
+    </section>
+    <section class="view" id="view-find" hidden></section>
+    <section class="view" id="view-lookup" hidden></section>
+    <section class="view" id="view-shortlist" hidden></section>
+  </main>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="detailSheet" role="dialog" aria-modal="true" aria-labelledby="detailTitle" hidden></aside>
+<aside class="sheet sheet-settings" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden></aside>
+<div class="modal" id="calModal" role="dialog" aria-modal="true" aria-labelledby="calTitle" hidden></div>
+<div class="modal" id="installModal" role="dialog" aria-modal="true" aria-labelledby="installTitle" hidden></div>
+<div class="modal" id="infoModal" role="dialog" aria-modal="true" aria-labelledby="infoTitle" hidden></div>
+<div class="present" id="present" role="dialog" aria-modal="true" aria-label="Saved colors, full screen" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="data/brands.js"></script>
+<script src="js/color.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
