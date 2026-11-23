@@ -167,9 +167,11 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   - Below that is the closest color in every brand that's on, with the measured difference. Brands that are turned off are listed underneath, folded away, so a customer's color from another store can still be matched into what this store carries.
 - **Sessions**: everything picked for one customer in one list.
   - Tap **Add to Session** on any paint, stain or exact color. The session button in the top bar shows **New Session** (or the customer's name) and a count.
-  - The session popup has a name field, one row per item with an editable "where it goes", and **+ Add**, which starts the next search for the same customer.
-  - **Print Take-Home** and **Print for Store** print a plain black-and-white list, text only, one line per item. The take-home copy has the area, brand, color, code, finish and product; the store copy adds the hex, LRV, chip location and primer, and prints sideways.
-  - **New Session** clears the list. Kiosks clear it automatically when they start over.
+  - The session popup has a name, notes for the printout, and one row per item with an editable "where it goes". Tap a swatch to open that color again. **Add Another** starts the next search for the same customer.
+  - **New Session** saves the current one under **Past Sessions** and starts fresh. The last 10 sessions are kept on this device, newest first; older ones drop off automatically. Each past session can be opened again, printed or deleted (Delete asks once). Kiosks keep no past sessions and clear the current one when they start over.
+- **Printing**: one printout for everyone. **Print** opens a preview of the page at real letter proportions, then prints it.
+  - Black and white, text only, one line per item: area, brand, color, code, hex, finish, product, primer and where to find the chip. Columns nothing fills in are left out, and a wide list turns the page sideways so it fits.
+  - The header has the customer or project name, the store and the date, and any notes. **Copy as Text** puts the same list on the clipboard for a text or email.
 - **Full-width layout**: pages fill the screen on computers. The questions get a side panel with a short note on the current pick and your answers so far (tap one to go back to it).
 - **Saved colors**: star colors to compare them, show them full screen, or copy the list.
 - **Settings**:

@@ -979,24 +979,34 @@ button.exact-val:hover { border-color: var(--line-2); }
 @media (max-width: 560px) { .exact { grid-template-columns: 1fr; } .exact-sw { min-height: 110px; } }
 @media (min-width: 1100px) { #lookupResults .list { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); } }
 
-/* ---------------- printing: one line per item, black and white, text only ---------------- */
+/* ---------------- the printout ----------------
+   One sheet, black and white, letters and numbers only, one line per item. The same rules draw the on-screen
+   preview (a white page at real letter proportions) and the printed page, so what you see is what prints. */
+.pr-sheet { color: #000; background: #fff; font-family: Arial, Helvetica, sans-serif; font-size: 9pt; line-height: 1.3; text-align: left; letter-spacing: 0; }
+.pr-sheet .pr-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 14pt; border-bottom: 1.5pt solid #000; padding-bottom: 6pt; margin-bottom: 8pt; }
+.pr-sheet .pr-title { font-size: 16pt; font-weight: 700; line-height: 1.15; }
+.pr-sheet .pr-sub { font-size: 9pt; margin-top: 2pt; }
+.pr-sheet .pr-meta { display: flex; gap: 14pt; font-size: 9pt; white-space: nowrap; }
+.pr-sheet .pr-notes { margin: 0 0 8pt; font-size: 9pt; }
+.pr-sheet .pr-notes b { margin-right: 6pt; }
+.pr-sheet table { width: 100%; border-collapse: collapse; }
+.pr-sheet th, .pr-sheet td { text-align: left; padding: 4.5pt 8pt 4.5pt 0; border-bottom: 0.5pt solid #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 2.1in; color: #000; background: #fff; font-weight: 400; }
+.pr-sheet th { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1pt solid #000; padding-top: 0; }
+.pr-sheet td.c-name { font-weight: 700; }
+.pr-sheet .c-n { width: 12pt; }
+.pr-sheet .pr-foot { display: flex; justify-content: space-between; gap: 12pt; margin-top: 10pt; font-size: 7.5pt; }
 #printArea { display: none; }
 @media print {
-  @page { margin: 0.5in; }
-  html.printing-store, html.printing-home { background: #fff !important; }
-  html.printing-store body, html.printing-home body { background: #fff !important; color: #000 !important; }
-  html.printing-store body > *:not(#printArea), html.printing-home body > *:not(#printArea) { display: none !important; }
-  html.printing-store #printArea, html.printing-home #printArea { display: block !important; color: #000; background: #fff; font-family: Arial, Helvetica, sans-serif; font-size: 9.5pt; -webkit-print-color-adjust: economy; print-color-adjust: economy; }
-  html.printing-store #printArea { font-size: 8.5pt; }
-  #printArea .pr-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12pt; border-bottom: 1.5pt solid #000; padding-bottom: 4pt; margin-bottom: 6pt; }
-  #printArea .pr-head b { font-size: 13pt; }
-  #printArea .pr-meta { display: flex; gap: 16pt; }
-  #printArea table { width: 100%; border-collapse: collapse; table-layout: auto; }
-  #printArea th, #printArea td { text-align: left; padding: 3pt 5pt 3pt 0; border-bottom: 0.5pt solid #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 2.2in; color: #000; background: #fff; }
-  #printArea th { font-size: 0.85em; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1pt solid #000; }
-  #printArea .c-n { width: 14pt; }
-  #printArea .pr-foot { margin-top: 8pt; font-size: 8pt; }
+  html.printing, html.printing body { background: #fff !important; color: #000 !important; }
+  html.printing body > *:not(#printArea) { display: none !important; }
+  html.printing #printArea { display: block !important; print-color-adjust: economy; -webkit-print-color-adjust: economy; }
 }
+/* the preview: a white page scaled to fit the popup */
+.sess-card.sess-preview { width: min(1180px, 100%); }
+.paper-wrap { margin-top: 14px; overflow: hidden; border-radius: 10px; background: var(--surface-2); padding: 12px 0; }
+.sess-preview .sess-actions { position: sticky; bottom: 0; z-index: 2; margin-block: 0; padding-block: 12px 16px; background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.paper { width: 816px; min-height: 1056px; padding: 48px; background: #fff; transform-origin: top left; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+.paper.landscape { width: 1056px; min-height: 816px; }
 
 .more-brands { margin-top: 16px; }
 .more-brands > summary { list-style: none; }
@@ -1014,3 +1024,29 @@ button.exact-val:hover { border-color: var(--line-2); }
   .wordmark { padding-right: 0; }
 }
 @media (max-width: 360px) { .install-btn { display: none !important; } }
+
+/* sessions: tabs, notes, past sessions */
+.sess-card .sess-tabs { margin: 12px 18px 0; display: flex; }
+.sess-tabs button { flex: 1; }
+.sess-card .sess-body > * { margin-inline: 18px; }
+.sess-card > :not(.modal-head) { margin-inline: 0; }
+.sess-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 14px; }
+.sess-name em { font-style: normal; font-weight: 400; color: var(--ink-3); }
+.sess-sw { border: 0; padding: 0; cursor: pointer; }
+.sess-sw:hover { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08), 0 0 0 2px var(--surface), 0 0 0 3.5px var(--ink); }
+.past-list { list-style: none; padding: 0; margin-block: 16px 0; display: grid; gap: 8px; }
+.past-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-md); padding: 10px 10px 10px 12px; }
+.past-sw { display: grid; grid-template-columns: repeat(3, 14px); grid-auto-rows: 14px; gap: 2px; width: 46px; }
+.past-sw i { border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
+.past-main { display: grid; gap: 2px; min-width: 0; }
+.past-main b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.past-main span { font-size: 12.5px; color: var(--ink-2); }
+.past-btns { display: flex; gap: 6px; }
+.past-del.armed { background: var(--ink); color: var(--on-primary); }
+.past-note { margin-top: 12px; font-size: 12.5px; color: var(--ink-3); }
+@media (max-width: 560px) {
+  .sess-fields { grid-template-columns: 1fr; }
+  .past-item { grid-template-columns: auto minmax(0, 1fr); }
+  .past-btns { grid-column: 1 / -1; }
+  .past-btns .btn { flex: 1; justify-content: center; }
+}

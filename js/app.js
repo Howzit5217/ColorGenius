@@ -1657,15 +1657,25 @@
   });
 
   // ================================================================
-  // SESSION: everything picked for one customer, in one list, with printable reports
+  // SESSION: everything picked for one customer, in one list, with a printout
   // ================================================================
-  // An item is plain text (area, brand, color, code, finish, product...) so the list and the printouts never
-  // depend on the color data being loaded. The session lives on this device until "New Session" clears it.
-  let session = store.get('session', { name: '', items: [] });
-  if (!session || !Array.isArray(session.items)) session = { name: '', items: [] };
-  const saveSession = () => store.set('session', session);
-  const sessionTitle = () => (session.name || '').trim() || 'New Session';
+  // An item is plain text (area, brand, color, code, finish, product...) so the list and the printout never
+  // depend on the color data being loaded. "New Session" files the current one under Past Sessions, which keeps
+  // the last PAST_MAX on this device (none on a shared kiosk).
+  const PAST_MAX = 10;
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const blankSession = () => ({ id: newId(), name: '', notes: '', created: Date.now(), updated: Date.now(), items: [] });
+  const fixSession = s => (s && Array.isArray(s.items) ? Object.assign(blankSession(), s, { id: s.id || newId() }) : blankSession());
+  let session = fixSession(store.get('session', null));
+  let past = (store.get('sessions', []) || []).filter(s => s && Array.isArray(s.items)).map(fixSession).slice(0, PAST_MAX);
+  const kioskOn = () => settings.audience === 'kiosk';
+  const saveSession = () => { session.updated = Date.now(); store.set('session', session); };
+  const savePast = () => store.set('sessions', past);
+  const titleOf = s => (s.name || '').trim() || (s === session ? 'New Session' : 'Untitled Session');
+  const sessionTitle = () => titleOf(session);
+  const whenOf = t => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
   const sessEl = () => $('#sessionModal');
+  let sessView = 'current', previewOf = null, delArmed = '';
   function updateSessionBtn(bump) {
     const n = session.items.length;
     const cnt = $('#sessionCount'), lbl = $('#sessionLabel');
@@ -1695,77 +1705,164 @@
   // an exact color value from Look Up, with its closest paint
   function customItem(hex) {
     const best = E.closestByBrand(hex, { brands: brandsEnabled() })[0];
-    return { kind: 'custom', ref: '#' + hex, area: '', brand: 'Custom', name: best ? `Closest: ${brandName(best.color.brand)} ${best.color.name} ${E.codeLabel(best.color)}` : 'Exact color', code: '#' + hex, hex, lrv: String(C.lrvFromHex(hex)), finish: '', product: '', primer: '', loc: '' };
+    return { kind: 'custom', ref: '#' + hex, area: '', brand: 'Custom Color', name: best ? `Closest: ${brandName(best.color.brand)} ${best.color.name} ${E.codeLabel(best.color)}` : 'Exact Color', code: '', hex, lrv: String(C.lrvFromHex(hex)), finish: '', product: '', primer: '', loc: '' };
   }
   function addToSession(item) {
     if (!item) return;
-    const at = session.items.findIndex(x => x.ref === item.ref && x.area === item.area);
-    if (at >= 0) { toast(`Already in ${sessionTitle()}`); return; }
-    session.items.push(Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }, item));
+    if (session.items.some(x => x.ref === item.ref && x.area === item.area)) { toast(`Already in ${sessionTitle()}`); return; }
+    session.items.push(Object.assign({ id: newId() }, item));
     saveSession(); updateSessionBtn(true);
-    toast(`Added ${item.name.replace(/^Closest: .*/, item.code)} to ${sessionTitle()}`);
+    toast(`Added ${item.kind === 'custom' ? '#' + item.hex : item.name} to ${sessionTitle()}`);
   }
-  const sessLine = x => [x.brand !== 'Custom' ? x.brand : '', x.name, x.code, x.finish].filter(Boolean).join(' · ');
-  function sessionHtml() {
+  // file a session under Past Sessions: newest first, the oldest drops off past PAST_MAX
+  function fileSession(s) {
+    if (kioskOn() || !s.items.length) return false;
+    past = [s].concat(past.filter(p => p.id !== s.id)).slice(0, PAST_MAX);
+    savePast();
+    return true;
+  }
+  function startNewSession() {
+    const filed = fileSession(session);
+    const was = sessionTitle();
+    session = blankSession(); saveSession(); updateSessionBtn();
+    sessView = 'current'; renderSession();
+    if (filed) toast(`Saved ${was} to Past Sessions`);
+    $('#sessName', sessEl()).focus({ preventScroll: true });
+  }
+  function openPast(id) {
+    const p = past.find(s => s.id === id); if (!p) return;
+    fileSession(session);
+    past = past.filter(s => s.id !== id); savePast();
+    session = p; saveSession(); updateSessionBtn();
+    sessView = 'current'; renderSession();
+    toast(`Opened ${sessionTitle()}`);
+  }
+
+  // ---- the printout: one page, black and white, letters and numbers only, one line per item ----
+  const PR_COLS = [['#', 'n'], ['Area', 'area'], ['Brand', 'brand'], ['Color', 'name'], ['Code', 'code'], ['Hex', 'hex'], ['Finish', 'finish'], ['Product', 'product'], ['Primer', 'primer'], ['Find It', 'loc']];
+  const prCell = (x, k, i) => k === 'n' ? String(i + 1) : k === 'hex' ? (x.hex ? '#' + x.hex.toUpperCase() : '') : (x[k] || '');
+  const storeName = () => settings.chain && CHAINS[settings.chain] && !CHAINS[settings.chain].other ? CHAINS[settings.chain].label.replace(/ Store$/, '') : '';
+  function sheetOf(s) {
+    // only the columns something fills in; a wide list turns the page sideways
+    const cols = PR_COLS.filter(([, k]) => ['n', 'area', 'name'].includes(k) || s.items.some((x, i) => prCell(x, k, i)));
+    const est = cols.reduce((w, [h, k]) => w + 8 + 5.1 * Math.min(34, Math.max(h.length, ...s.items.map((x, i) => prCell(x, k, i).length))), 0);
+    const landscape = est > 540;
+    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const n = s.items.length;
+    const html = `<div class="pr-sheet">
+      <div class="pr-head"><div><div class="pr-title">${esc(titleOf(s))}</div><div class="pr-sub">Paint and Stain List</div></div>
+        <div class="pr-meta">${[storeName(), date, n + (n === 1 ? ' item' : ' items')].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</div></div>
+      ${(s.notes || '').trim() ? `<p class="pr-notes"><b>Notes</b> ${esc(s.notes.trim())}</p>` : ''}
+      <table><thead><tr>${cols.map(([h, k]) => `<th class="c-${k}">${h}</th>`).join('')}</tr></thead>
+        <tbody>${s.items.map((x, i) => `<tr>${cols.map(([, k]) => `<td class="c-${k}">${esc(prCell(x, k, i))}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      <div class="pr-foot"><span>Colors look different on screens and paper. Check a real chip or sample before buying.</span><span>ColorGenius</span></div>
+    </div>`;
+    return { html, landscape };
+  }
+  function sheetText(s) {
+    const lines = [titleOf(s), [storeName(), new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })].filter(Boolean).join(', ')];
+    if ((s.notes || '').trim()) lines.push('Notes: ' + s.notes.trim());
+    lines.push('');
+    s.items.forEach((x, i) => lines.push(`${i + 1}. ${[x.area, [x.brand, x.name, x.code].filter(Boolean).join(' '), x.hex ? '#' + x.hex.toUpperCase() : '', x.finish, x.product, x.primer ? 'Primer: ' + x.primer : '', x.loc ? 'Find it: ' + x.loc : ''].filter(Boolean).join(' - ')}`));
+    return lines.join('\n');
+  }
+  function printSheet(s) {
+    const sh = sheetOf(s);
+    $('#printArea').innerHTML = sh.html;
+    const page = document.createElement('style'); page.id = 'printPage';
+    page.textContent = `@page { size: letter ${sh.landscape ? 'landscape' : 'portrait'}; margin: 0.5in; }`;
+    $('#printPage') && $('#printPage').remove();
+    document.head.appendChild(page);
+    document.documentElement.classList.add('printing');
+    const done = () => { document.documentElement.classList.remove('printing'); page.remove(); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
+  }
+  // the preview shows the page at its real proportions, scaled to fit the popup
+  function fitPaper() {
+    const wrap = $('.paper-wrap', sessEl()), paper = $('.paper', sessEl()); if (!wrap || !paper) return;
+    // the whole first page fits on screen; longer lists scroll
+    const pageH = paper.classList.contains('landscape') ? 816 : 1056;
+    const k = Math.max(0.3, Math.min(1, (wrap.clientWidth - 24) / paper.offsetWidth, (window.innerHeight - 250) / pageH));
+    paper.style.transform = `scale(${k})`;
+    paper.style.marginLeft = Math.max(0, (wrap.clientWidth - paper.offsetWidth * k) / 2) + 'px';
+    wrap.style.height = Math.ceil(paper.offsetHeight * k + 24) + 'px';
+  }
+  window.addEventListener('resize', () => { if (!sessEl().hidden && sessView === 'preview') fitPaper(); });
+
+  // ---- the popup ----
+  const xSvg = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+  const sessLine = x => [x.brand, x.name, x.code, x.finish].filter(Boolean).join(' · ');
+  const swatches = s => s.items.slice(0, 6).map(x => `<i style="background-color:${paint(x.hex)}"></i>`).join('');
+  function currentHtml() {
     const items = session.items;
-    return `<div class="modal-card sess-card" role="document">
-      <div class="modal-head"><h2 id="sessionTitle">${esc(sessionTitle())}</h2><button type="button" class="icon-btn" data-sess="close" aria-label="Close"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button></div>
-      <label class="sess-name"><span>Customer or Project</span><input type="text" class="cg-input" id="sessName" value="${esc(session.name || '')}" placeholder="New Session" maxlength="60" autocomplete="off"></label>
-      ${items.length ? `<ol class="sess-list">${items.map((x, i) => `<li class="sess-item" data-id="${esc(x.id)}">
+    return `
+      <div class="sess-fields">
+        <label class="sess-name"><span>Customer or Project</span><input type="text" class="cg-input" id="sessName" value="${esc(session.name || '')}" placeholder="New Session" maxlength="60" autocomplete="off"></label>
+        <label class="sess-name"><span>Notes <em>for the printout</em></span><input type="text" class="cg-input" id="sessNotes" value="${esc(session.notes || '')}" placeholder="Phone, deadline, how much to buy..." maxlength="160" autocomplete="off"></label>
+      </div>
+      ${items.length ? `<ol class="sess-list">${items.map((x, i) => `<li class="sess-item">
         <span class="sess-n">${i + 1}</span>
-        <span class="sess-sw" style="background-color:${paint(x.hex)}" aria-hidden="true"></span>
+        <button type="button" class="sess-sw" data-sess-open="${esc(x.ref)}" style="background-color:${paint(x.hex)}" aria-label="Open ${esc(x.name)}"></button>
         <span class="sess-main"><input type="text" class="sess-area" data-sess-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><span class="sess-what">${esc(sessLine(x))}</span></span>
         <button type="button" class="icon-btn sess-del" data-sess-del="${esc(x.id)}" aria-label="Remove ${esc(x.name)}"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </li>`).join('')}</ol>`
         : '<div class="sess-empty"><b>Nothing added yet</b><span>Open any color or stain and tap Add to Session.</span></div>'}
       <div class="sess-actions">
-        <button type="button" class="btn primary" data-sess="add"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Add</button>
+        <button type="button" class="btn primary" data-sess="add"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>${items.length ? 'Add Another' : 'Find Colors'}</button>
+        <button type="button" class="btn" data-sess="preview" ${items.length ? '' : 'disabled'}><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6V2.5h7V6M4.5 11.5H3a1 1 0 01-1-1V7a1 1 0 011-1h10a1 1 0 011 1v3.5a1 1 0 01-1 1h-1.5M4.5 9.5h7v4h-7z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Print</button>
         <span class="spacer"></span>
-        <button type="button" class="btn" data-sess="print-home" ${items.length ? '' : 'disabled'}>Print Take-Home</button>
-        <button type="button" class="btn" data-sess="print-store" ${items.length ? '' : 'disabled'}>Print for Store</button>
         <button type="button" class="btn ghost" data-sess="new">New Session</button>
-      </div>
-    </div>`;
+      </div>`;
   }
-  function openSession() {
+  function pastHtml() {
+    if (!past.length) return '<div class="sess-empty"><b>No past sessions yet</b><span>When you start a new session, the current one is saved here.</span></div>';
+    return `<ul class="past-list">${past.map(s => `<li class="past-item">
+        <span class="past-sw" aria-hidden="true">${swatches(s)}</span>
+        <span class="past-main"><b>${esc(titleOf(s))}</b><span>${s.items.length} item${s.items.length === 1 ? '' : 's'} · ${esc(whenOf(s.updated))}</span></span>
+        <span class="past-btns">
+          <button type="button" class="btn small" data-past-open="${esc(s.id)}">Open</button>
+          <button type="button" class="btn small" data-past-print="${esc(s.id)}">Print</button>
+          <button type="button" class="btn small ghost past-del${delArmed === s.id ? ' armed' : ''}" data-past-del="${esc(s.id)}">${delArmed === s.id ? 'Delete?' : 'Delete'}</button>
+        </span></li>`).join('')}</ul>
+      <p class="past-note">The last ${PAST_MAX} sessions stay on this device. Older ones are removed automatically.</p>`;
+  }
+  function previewHtml() {
+    const s = previewOf || session, sh = sheetOf(s);
+    return `
+      <div class="paper-wrap"><div class="paper${sh.landscape ? ' landscape' : ''}">${sh.html}</div></div>
+      <p class="past-note">${sh.landscape ? 'Prints sideways so every column fits.' : 'Prints on one letter page.'} One line per item, black and white.</p>
+      <div class="sess-actions">
+        <button type="button" class="btn ghost" data-sess="back"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-sess="copy">Copy as Text</button>
+        <button type="button" class="btn primary" data-sess="print">Print</button>
+      </div>`;
+  }
+  function renderSession() {
     const el = sessEl();
-    el.innerHTML = sessionHtml();
-    el.hidden = false;
-    const name = $('#sessName', el);
-    name.addEventListener('input', () => { session.name = name.value; saveSession(); $('#sessionTitle', el).textContent = sessionTitle(); updateSessionBtn(); });
-    $$('[data-sess-area]', el).forEach(inp => inp.addEventListener('input', () => { const x = session.items.find(i => i.id === inp.dataset.sessArea); if (x) { x.area = inp.value; saveSession(); } }));
-    $('[data-sess="close"]', el).focus({ preventScroll: true });
+    const showPast = !kioskOn();
+    const head = sessView === 'preview' ? `Print ${esc(titleOf(previewOf || session))}` : sessView === 'past' && showPast ? 'Sessions' : esc(sessionTitle());
+    el.innerHTML = `<div class="modal-card sess-card${sessView === 'preview' ? ' sess-preview' : ''}" role="document">
+      <div class="modal-head"><h2 id="sessionTitle">${head}</h2><button type="button" class="icon-btn" data-sess="close" aria-label="Close">${xSvg}</button></div>
+      ${sessView !== 'preview' && showPast ? `<div class="seg sess-tabs" role="group" aria-label="Sessions"><button type="button" data-sess-view="current" aria-pressed="${sessView === 'current'}">This Session${session.items.length ? ` (${session.items.length})` : ''}</button><button type="button" data-sess-view="past" aria-pressed="${sessView === 'past'}">Past Sessions${past.length ? ` (${past.length})` : ''}</button></div>` : ''}
+      <div class="sess-body">${sessView === 'preview' ? previewHtml() : sessView === 'past' && showPast ? pastHtml() : currentHtml()}</div>
+    </div>`;
+    const name = $('#sessName', el), notes = $('#sessNotes', el);
+    if (name && notes) {
+      name.addEventListener('input', () => { session.name = name.value; saveSession(); $('#sessionTitle', el).textContent = sessionTitle(); updateSessionBtn(); });
+      notes.addEventListener('input', () => { session.notes = notes.value; saveSession(); });
+      $$('[data-sess-area]', el).forEach(inp => inp.addEventListener('input', () => { const x = session.items.find(i => i.id === inp.dataset.sessArea); if (x) { x.area = inp.value; saveSession(); } }));
+    }
+    if (sessView === 'preview') { fitPaper(); requestAnimationFrame(fitPaper); }
   }
-  function closeSession() { sessEl().hidden = true; }
-  function newSession() {
-    if (session.items.length && !window.confirm(`Clear ${sessionTitle()} and start a new session?`)) return;
-    session = { name: '', items: [] }; saveSession(); updateSessionBtn(); openSession();
+  function openSession(view) {
+    sessView = view || 'current'; previewOf = null; delArmed = '';
+    renderSession();
+    sessEl().hidden = false;
+    $('[data-sess="close"]', sessEl()).focus({ preventScroll: true });
   }
-  // ---- printing: black and white, letters and numbers only, one line per item ----
-  function printReport(kind) {
-    const staff = kind === 'store';
-    const chain = settings.chain && CHAINS[settings.chain] && !CHAINS[settings.chain].other ? CHAINS[settings.chain].label.replace(/ Store$/, '') : '';
-    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-    const cols = staff
-      ? [['#', 'n'], ['Area', 'area'], ['Brand', 'brand'], ['Color', 'name'], ['Code', 'code'], ['Hex', 'hex'], ['LRV', 'lrv'], ['Find It', 'loc'], ['Finish', 'finish'], ['Product', 'product'], ['Primer', 'primer']]
-      : [['#', 'n'], ['Area', 'area'], ['Brand', 'brand'], ['Color', 'name'], ['Code', 'code'], ['Finish', 'finish'], ['Product', 'product']];
-    const cell = (x, k, i) => k === 'n' ? String(i + 1) : k === 'hex' ? (x.hex ? '#' + x.hex.toUpperCase() : '') : k === 'brand' && x.brand === 'Custom' ? 'Custom' : (x[k] || '');
-    const rows = session.items.map((x, i) => `<tr>${cols.map(([, k]) => `<td class="c-${k}">${esc(cell(x, k, i))}</td>`).join('')}</tr>`).join('');
-    const area = $('#printArea');
-    area.className = staff ? 'print-store' : 'print-home';
-    area.innerHTML = `
-      <div class="pr-head"><b>${esc(sessionTitle())}</b><span class="pr-meta">${[staff ? 'Store Copy' : 'Paint and Stain List', chain, date].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</span></div>
-      <table><thead><tr>${cols.map(([h, k]) => `<th class="c-${k}">${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
-      <p class="pr-foot">${staff ? 'Hex and LRV are screen values. Match to the chip.' : 'Colors on screens and paper differ. Check a real chip or sample before buying.'}</p>`;
-    document.documentElement.classList.add('printing-' + (staff ? 'store' : 'home'));
-    // the store copy has more columns, so it prints sideways
-    const page = document.createElement('style'); page.id = 'printPage';
-    page.textContent = `@page { size: ${staff ? 'landscape' : 'portrait'}; margin: 0.5in; }`;
-    document.head.appendChild(page);
-    const done = () => { document.documentElement.classList.remove('printing-store', 'printing-home'); page.remove(); window.removeEventListener('afterprint', done); };
-    window.addEventListener('afterprint', done);
-    window.print();
-  }
+  function closeSession() { sessEl().hidden = true; delArmed = ''; }
   document.addEventListener('click', e => {
     const t = e.target.closest('button'); if (!t) return;
     if (t.id === 'sessionBtn') { openSession(); return; }
@@ -1781,15 +1878,36 @@
       return;
     }
     if (!t.closest('#sessionModal')) return;
-    if (t.dataset.sess === 'close') closeSession();
-    if (t.dataset.sess === 'add') { closeSession(); closeSheet($('#detailSheet')); startOver(); }
-    if (t.dataset.sess === 'new') newSession();
-    if (t.dataset.sess === 'print-home') printReport('home');
-    if (t.dataset.sess === 'print-store') printReport('store');
-    if (t.dataset.sessDel) { session.items = session.items.filter(x => x.id !== t.dataset.sessDel); saveSession(); updateSessionBtn(); openSession(); }
+    const act = t.dataset.sess;
+    if (act === 'close') closeSession();
+    if (act === 'add') { closeSession(); closeSheet($('#detailSheet')); startOver(); }
+    if (act === 'new') startNewSession();
+    if (act === 'preview') { previewOf = null; sessView = 'preview'; renderSession(); }
+    if (act === 'back') { sessView = previewOf ? 'past' : 'current'; previewOf = null; renderSession(); }
+    if (act === 'print') printSheet(previewOf || session);
+    if (act === 'copy') copyText(sheetText(previewOf || session), 'List copied');
+    if (t.dataset.sessView) { sessView = t.dataset.sessView; delArmed = ''; renderSession(); }
+    if (t.dataset.sessDel) { session.items = session.items.filter(x => x.id !== t.dataset.sessDel); saveSession(); updateSessionBtn(); renderSession(); }
+    if (t.dataset.sessOpen) {
+      const ref = t.dataset.sessOpen;
+      closeSession();
+      if (ref.startsWith('#')) { state.query = ref; route('lookup'); }
+      else if (E.findColor(ref) || S.find(ref)) openDetail(ref);
+    }
+    if (t.dataset.pastOpen) openPast(t.dataset.pastOpen);
+    if (t.dataset.pastPrint) { previewOf = past.find(s => s.id === t.dataset.pastPrint) || null; if (previewOf) { sessView = 'preview'; renderSession(); } }
+    if (t.dataset.pastDel) {
+      // two taps: the first asks, the second deletes
+      if (delArmed !== t.dataset.pastDel) { delArmed = t.dataset.pastDel; renderSession(); return; }
+      past = past.filter(s => s.id !== delArmed); delArmed = ''; savePast(); renderSession();
+    }
   });
   sessEl().addEventListener('click', e => { if (e.target === sessEl()) closeSession(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sessEl().hidden) { e.stopImmediatePropagation(); closeSession(); } }, true);
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || sessEl().hidden) return;
+    e.stopImmediatePropagation();
+    if (sessView === 'preview') { sessView = previewOf ? 'past' : 'current'; previewOf = null; renderSession(); } else closeSession();
+  }, true);
   updateSessionBtn();
 
   // ================================================================
@@ -3442,7 +3560,7 @@
     closeSheet($('#detailSheet')); closeSheet($('#settingsSheet')); closeInfo();
     $('#present').hidden = true; $('#calModal').hidden = true; $('#installModal').hidden = true;
     shortlist = []; saveShortlist(); updateShortCount();
-    session = { name: '', items: [] }; saveSession(); updateSessionBtn(); closeSession();
+    session = blankSession(); saveSession(); updateSessionBtn(); closeSession();
     state.detailStack = []; state.query = '';
     startOver();
     window.scrollTo(0, 0);
