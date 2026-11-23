@@ -397,6 +397,24 @@ p { margin: 0; }
 .sheen-best { font-size: 13px; color: var(--ink-2); border-top: 1px solid var(--line); padding-top: 9px; }
 .sheen-best span { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-3); letter-spacing: .02em; }
 
+/* paint lines */
+.line-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; display: grid; gap: 8px; }
+.line-card p { font-size: 13.5px; color: var(--ink-2); }
+.line-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.line-name { font-weight: 650; font-size: 16px; }
+.tier { font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+.tier.t3 { background: var(--ink); color: var(--on-primary); }
+.tier.t2 { background: var(--line-2); color: var(--ink); }
+.line-alts { display: flex; flex-wrap: wrap; gap: 6px; }
+.line-alt { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; padding: 5px 10px 5px 5px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+.line-group { margin-top: 10px; }
+.line-group summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; padding: 12px 14px; font-weight: 600; font-size: 14.5px; }
+.line-group summary::-webkit-details-marker { display: none; }
+.line-group summary::after { content: ""; width: 8px; height: 8px; margin: 5px 2px 0 0; border-right: 1.6px solid var(--ink-3); border-bottom: 1.6px solid var(--ink-3); transform: rotate(45deg); transition: transform var(--t-med) var(--ease); flex: none; }
+.line-group[open] summary::after { transform: rotate(-135deg); margin-top: 9px; }
+.line-group summary .muted { margin-left: auto; font-weight: 400; font-size: 13px; }
+.line-group[open] summary { border-bottom: 1px solid var(--line); }
+
 /* install */
 .install-btn { flex: none; padding: 8px 13px; }
 .install-steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 10px; }

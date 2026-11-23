@@ -422,6 +422,131 @@
     return tips;
   }
 
+  // ---------------- paint lines ----------------
+  // Product lines by brand. tier: 1 = good, 2 = better, 3 = best. tags describe what each line is made for.
+  // Lineups change, so the app tells staff to confirm against the current product guide, and every line
+  // can be switched off in settings to match what the store carries.
+  const TIERS = { 1: 'Good', 2: 'Better', 3: 'Best' };
+  const pl = (id, name, use, tier, tags, note) => ({ id, name, use, tier, tags, note });
+  const PAINT_LINES = {
+    bm: [
+      pl('bm-ben', 'ben', 'interior', 1, ['value'], 'Good everyday coverage at a lower price.'),
+      pl('bm-regal', 'Regal Select', 'interior', 2, ['washable', 'popular'], 'Benjamin Moore’s best-selling interior: durable, washable and easy to apply.'),
+      pl('bm-scuffx', 'Scuff-X', 'interior', 2, ['scuff', 'washable'], 'Made to resist scuffs in busy rooms and hallways.'),
+      pl('bm-aura', 'Aura', 'interior', 3, ['premium', 'washable', 'onecoat', 'rich'], 'Top-tier color depth and durability, often in one coat.'),
+      pl('bm-aura-bath', 'Aura Bath & Spa', 'interior', 3, ['bath', 'washable'], 'Matte finish made for humid bathrooms, mildew resistant.'),
+      pl('bm-advance', 'Advance', 'interior', 3, ['enamel'], 'Waterborne alkyd that levels like oil for cabinets, trim and doors.'),
+      pl('bm-ceiling', 'Waterborne Ceiling Paint', 'interior', 2, ['ceiling'], 'Ultra-flat ceiling finish that hides flaws and spatters less.'),
+      pl('bm-regal-ext', 'Regal Select Exterior', 'exterior', 2, ['popular'], 'Durable, fade-resistant exterior.'),
+      pl('bm-element', 'Element Guard', 'exterior', 2, ['mildew'], 'Weather- and mildew-resistant exterior for damp or shaded walls.'),
+      pl('bm-aura-ext', 'Aura Exterior', 'exterior', 3, ['premium', 'rich', 'onecoat'], 'Best color retention outdoors, especially for deep colors.'),
+    ],
+    sw: [
+      pl('sw-captivate', 'Captivate', 'interior', 1, ['value'], 'Value interior with good hide.'),
+      pl('sw-promar', 'ProMar 200 Zero VOC', 'interior', 1, ['value', 'pro'], 'Contractor favorite: good coverage at a lower price.'),
+      pl('sw-superpaint', 'SuperPaint', 'interior', 2, ['washable', 'popular'], 'Durable, washable everyday wall paint.'),
+      pl('sw-cashmere', 'Cashmere', 'interior', 2, ['smooth'], 'Very smooth, low-lap finish that’s easy to apply.'),
+      pl('sw-duration', 'Duration Home', 'interior', 3, ['scuff', 'washable'], 'Scrubbable and stain resistant, great for kids’ rooms and busy areas.'),
+      pl('sw-emerald', 'Emerald', 'interior', 3, ['premium', 'washable', 'onecoat', 'rich'], 'Sherwin-Williams’ best interior: rich color, excellent hide and washability.'),
+      pl('sw-urethane', 'Emerald Urethane Trim Enamel', 'interior', 3, ['enamel'], 'Hard, smooth enamel for trim, doors and cabinets.'),
+      pl('sw-eminence', 'Eminence Ceiling Paint', 'interior', 2, ['ceiling'], 'High-hide, ultra-flat ceiling paint.'),
+      pl('sw-a100', 'A-100 Exterior', 'exterior', 1, ['value'], 'Reliable exterior at a lower price.'),
+      pl('sw-superpaint-ext', 'SuperPaint Exterior', 'exterior', 2, ['popular'], 'Solid all-round exterior protection.'),
+      pl('sw-duration-ext', 'Duration Exterior', 'exterior', 3, ['mildew', 'premium'], 'Thick, long-lasting exterior that resists peeling and mildew.'),
+      pl('sw-emerald-ext', 'Emerald Exterior', 'exterior', 3, ['premium', 'rich', 'onecoat'], 'Top exterior for color retention and hide.'),
+      pl('sw-rain', 'Emerald Rain Refresh', 'exterior', 3, ['premium', 'mildew'], 'Sheds dirt when it rains; stays clean longer.'),
+    ],
+    behr: [
+      pl('behr-pp', 'Behr Premium Plus', 'interior', 1, ['value'], 'Budget-friendly interior with good coverage.'),
+      pl('behr-ultra', 'Behr Ultra Scuff Defense', 'interior', 2, ['scuff', 'washable'], 'Scuff-resistant and washable for busy rooms.'),
+      pl('behr-marquee', 'Behr Marquee', 'interior', 3, ['premium', 'onecoat', 'washable', 'rich'], 'One-coat hide in most colors with strong stain resistance.'),
+      pl('behr-dynasty', 'Behr Dynasty', 'interior', 3, ['premium', 'scuff', 'onecoat', 'washable'], 'Behr’s top interior, built to resist scuffs and stains.'),
+      pl('behr-cabinet', 'Behr Premium Cabinet & Trim Enamel', 'interior', 2, ['enamel'], 'Smooth, hard enamel for cabinets, trim and doors.'),
+      pl('behr-ceiling', 'Behr Premium Plus Ceiling Paint', 'interior', 1, ['ceiling'], 'Flat ceiling paint that hides flaws.'),
+      pl('behr-pp-ext', 'Behr Premium Plus Exterior', 'exterior', 1, ['value'], 'Budget-friendly exterior.'),
+      pl('behr-ultra-ext', 'Behr Ultra Exterior', 'exterior', 2, ['popular'], 'Durable exterior with stain blocking.'),
+      pl('behr-marquee-ext', 'Behr Marquee Exterior', 'exterior', 3, ['premium', 'rich', 'onecoat'], 'Premium exterior for color retention and one-coat hide.'),
+      pl('behr-dynasty-ext', 'Behr Dynasty Exterior', 'exterior', 3, ['premium', 'mildew', 'rich'], 'Behr’s most weather-resistant exterior.'),
+    ],
+    valspar: [
+      pl('val-ultra', 'Valspar Ultra', 'interior', 1, ['value'], 'Everyday interior with stain blocking.'),
+      pl('val-signature', 'Valspar Signature', 'interior', 2, ['washable', 'popular', 'onecoat'], 'Popular paint-and-primer with good one-coat hide.'),
+      pl('val-reserve', 'Valspar Reserve', 'interior', 3, ['premium', 'washable', 'rich'], 'Valspar’s premium interior for durability and rich color.'),
+      pl('val-cabinet', 'Valspar Cabinet Enamel', 'interior', 2, ['enamel'], 'Self-leveling enamel for cabinets and trim.'),
+      pl('val-duramax', 'Valspar Duramax Exterior', 'exterior', 3, ['premium', 'rich', 'mildew'], 'Premium exterior for weather and fade resistance.'),
+    ],
+    hgsw: [
+      pl('hgsw-showcase', 'Showcase', 'interior', 2, ['washable', 'scuff'], 'Stain-resistant, scrubbable interior.'),
+      pl('hgsw-infinity', 'Infinity', 'interior', 3, ['premium', 'onecoat', 'rich'], 'One-coat hide in most colors with a rich finish.'),
+    ],
+    dutchboy: [
+      pl('db-duraclean', 'Dura Clean', 'interior', 2, ['washable', 'scuff'], 'Scrubbable interior for busy rooms.'),
+      pl('db-platinum', 'Platinum Plus', 'interior', 3, ['premium', 'onecoat'], 'Dutch Boy’s premium paint-and-primer.'),
+    ],
+    ppg: [
+      pl('ppg-speedhide', 'Speedhide', 'interior', 1, ['value', 'pro'], 'Contractor-grade coverage at a lower price.'),
+      pl('ppg-diamond', 'Diamond', 'interior', 2, ['washable', 'scuff'], 'Durable, washable interior.'),
+      pl('ppg-timeless', 'Timeless', 'interior', 3, ['premium', 'onecoat', 'rich', 'washable'], 'Premium one-coat interior.'),
+      pl('ppg-breakthrough', 'Break-Through!', 'interior', 3, ['enamel'], 'Fast-drying, very hard finish for doors, trim and cabinets.'),
+      pl('ppg-timeless-ext', 'Timeless Exterior', 'exterior', 3, ['premium', 'rich', 'onecoat'], 'Premium exterior for color retention.'),
+    ],
+    glidden: [
+      pl('gl-premium', 'Glidden Premium', 'interior', 1, ['value', 'washable'], 'Affordable, washable interior.'),
+      pl('gl-onecoat', 'Glidden One Coat', 'interior', 2, ['onecoat'], 'Made to cover in one coat in most colors.'),
+      pl('gl-trim', 'Glidden Trim & Door', 'interior', 2, ['enamel'], 'Durable enamel for trim and doors.'),
+      pl('gl-premium-ext', 'Glidden Premium Exterior', 'exterior', 1, ['value'], 'Affordable exterior protection.'),
+      pl('gl-onecoat-ext', 'Glidden One Coat Exterior', 'exterior', 2, ['onecoat'], 'One-coat exterior in most colors.'),
+    ],
+    de: [
+      pl('de-spartawall', 'Spartawall', 'interior', 2, ['washable'], 'Durable, low-odor interior.'),
+      pl('de-suprema', 'Suprema', 'interior', 3, ['premium', 'washable', 'rich'], 'Dunn-Edwards’ premium interior.'),
+      pl('de-everest', 'Everest', 'interior', 3, ['scuff', 'washable'], 'Highly scrubbable interior for busy rooms.'),
+      pl('de-aristoshield', 'Aristoshield', 'interior', 3, ['enamel'], 'Smooth enamel for trim, doors and cabinets.'),
+      pl('de-spartashield', 'Spartashield', 'exterior', 2, ['popular'], 'All-round exterior.'),
+      pl('de-evershield', 'Evershield', 'exterior', 3, ['premium', 'rich', 'mildew'], 'Premium exterior for harsh sun and weather.'),
+    ],
+  };
+  const LINE_BY_ID = {}; for (const [b, list] of Object.entries(PAINT_LINES)) for (const l of list) LINE_BY_ID[l.id] = Object.assign(l, { brand: b });
+
+  // Picks the paint line for this job from one brand. Lines switched off in settings are skipped.
+  function recommendLines(brandId, color, answers, settings) {
+    const a = Object.assign({}, DEFAULT_ANSWERS, answers || {});
+    const lines = (PAINT_LINES[brandId] || []).filter(l => !(settings && settings.lines && settings.lines[l.id] === false));
+    const sp = SPACES[a.space] || SPACES.living;
+    const use = sp.kind;
+    const enamelJob = sp.surface === 'trim' || sp.surface === 'cabinets' || (sp.surface === 'door' && use === 'interior');
+    const deep = color && (color.lrv < 15 || color.C > 40);
+    const scored = [];
+    for (const l of lines) {
+      if (l.use !== use) continue;
+      const has = t => l.tags.includes(t);
+      let s = l.tier * 0.6; const why = [];
+      if (sp.surface === 'ceiling') { if (has('ceiling')) { s += 4; why.push('Made for ceilings'); } }
+      else if (has('ceiling')) s -= 5;
+      if (enamelJob) { if (has('enamel')) { s += 4; why.push('Hard enamel finish for ' + sp.label.toLowerCase()); } }
+      else if (has('enamel')) s -= 5;
+      if (a.space === 'bathroom') { if (has('bath')) { s += 3; why.push('Made for humid bathrooms'); } if (has('washable')) { s += 1; if (!has('bath')) why.push('Washable, holds up to bathroom moisture'); } }
+      else if (has('bath')) s -= 3;
+      if (a.space === 'kitchen') { if (has('washable')) { s += 1.5; why.push('Washable for kitchen splatter'); } if (has('scuff')) s += 0.8; }
+      if (sp.kid || a.space === 'entry') { if (has('scuff')) { s += 2; why.push('Resists scuffs in a busy space'); } if (has('washable')) s += 0.8; }
+      if (use === 'exterior' && (a.facing === 'north' || a.amount === 'low') && has('mildew')) { s += 1.2; why.push('Mildew resistant for a shaded wall'); }
+      if (use === 'exterior' && a.amount === 'high' && has('rich')) { s += 0.8; why.push('Holds color in strong sun'); }
+      if (deep && (has('rich') || has('onecoat') || has('premium'))) { s += 1; why.push(color.lrv < 15 ? 'Better hide for a deep color' : 'Keeps a bold color rich'); }
+      if (!why.length && has('popular')) why.push('A dependable all-rounder');
+      if (!why.length && has('premium')) why.push('Best durability and color depth');
+      if (!why.length && has('value')) why.push('Lowest cost option');
+      scored.push({ line: l, score: s, why });
+    }
+    scored.sort((x, y) => y.score - x.score || y.line.tier - x.line.tier);
+    const best = scored[0] || null;
+    // one option per tier that suits the job: ceilings and enamel jobs only list lines made for them,
+    // and walls never list ceiling, enamel or bath-only lines
+    const needTag = sp.surface === 'ceiling' ? 'ceiling' : enamelJob ? 'enamel' : null;
+    const fits = x => (needTag ? x.line.tags.includes(needTag) : x.score >= x.line.tier * 0.6 - 0.01);
+    const byTier = [1, 2, 3].map(t => scored.find(x => x.line.tier === t && fits(x))).filter(Boolean);
+    return { brand: brandId, best, byTier, all: scored };
+  }
+
   // ---------------- advantages and disadvantages ----------------
   // Plain-language pros and cons of one color for this job. `others` are the other colors on screen,
   // used for "lightest / warmest of these options" comparisons.
@@ -708,7 +833,7 @@
     return { brands, errors };
   }
 
-  const api = { F, SPACES, SHEENS, STYLES, prosCons, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, LIGHTS, DEFAULT_ANSWERS,
+  const api = { F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, LIGHTS, DEFAULT_ANSWERS,
     init, addBrand, getIndex, findColor, codeLabel, target, familyMatch, styleMatch, scoreColor, warningsFor, roomTips, recommend,
     matchesFor, pairings, search, lightForAnswers, parseCustomCsv, allowedColor };
   root.CG = root.CG || {};

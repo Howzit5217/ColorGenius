@@ -19,7 +19,7 @@
     inStoreSamples: true, showDiscontinued: false,
     askBulbs: true, askFixed: true, showWarnings: true, showLrv: true, showMatches: true, lightPreview: true,
     cal: { enabled: false, warmth: 0, brightness: 0, vividness: 0, ref: '' },
-    theme: 'system', reduceMotion: false,
+    theme: 'system', reduceMotion: false, lines: {},
   };
   function merge(base, over) {
     const out = clone(base);
@@ -412,9 +412,19 @@
       </div>
       ${(R.notices || []).map((w, i) => `<div class="warn ${w.level === 'heads-up' ? 'headsup' : w.level}" style="--i:${i};margin-bottom:16px"><b>${esc(w.title)}</b><span>${esc(w.text)}</span></div>`).join('')}
       <div class="grid" id="resultGrid">${R.results.map(r => chipCard(r.color, { role: r.role, flags: flagsFor(r), light: state.gridLight })).join('')}</div>
-      <div class="tips">${R.tips.map(t => `<div class="tip-card"><b>${esc(t.title)}</b><p>${esc(t.text)}</p>${t.title === 'Finish' ? `<button type="button" class="btn small" data-sheens="${esc(R.results[0].color.id)}" style="justify-self:start;margin-top:6px">Compare sheens</button>` : ''}</div>`).join('')}</div>
+      <div class="tips">${withPaintTip(R).map(t => `<div class="tip-card"><b>${esc(t.title)}</b><p>${esc(t.text)}</p>${t.title === 'Finish' ? `<button type="button" class="btn small" data-sheens="${esc(R.results[0].color.id)}" style="justify-self:start;margin-top:6px">Compare sheens</button>` : ''}</div>`).join('')}</div>
       ${st.length ? '' : ''}`;
     if (animate && !reduced()) fanIn($('#resultGrid'));
+  }
+  function withPaintTip(R) {
+    const tips = R.tips.slice();
+    const top = R.results[0] && R.results[0].color;
+    const p = top && bestLine(top, R.answers);
+    if (p) {
+      const l = p.r.best.line;
+      tips.splice(1, 0, { title: 'Paint', text: `${lineLabel(p.brand, l)} (${E.TIERS[l.tier]}). ${p.r.best.why[0] ? p.r.best.why[0] + '.' : l.note}` });
+    }
+    return tips;
   }
   function fanIn(grid) {
     const cards = Array.from(grid.children); if (!cards.length) return;
@@ -438,7 +448,8 @@
     if (t.dataset.act === 'restart') { startOver(); return; }
     if (t.dataset.act === 'settings') { openSettings(); return; }
   });
-  function startOver() { state.answers = clone(E.DEFAULT_ANSWERS); state.results = null; state.step = 0; if (state.view !== 'find') route('find'); else renderWizard(-1); }
+  function startOver() {
+    if (typeof updateWaiting !== 'undefined' && updateWaiting) { applyUpdate(); return; } state.answers = clone(E.DEFAULT_ANSWERS); state.results = null; state.step = 0; if (state.view !== 'find') route('find'); else renderWizard(-1); }
 
   // shared clicks: open chip, star, light preview
   document.addEventListener('click', e => {
@@ -505,7 +516,7 @@
     const starred = shortlist.includes(c.id);
     const kind = sceneKind(answers.space);
     const roles = scenePalette(c, answers, pairs);
-    const sceneLabel = kind === 'house' ? `Front of a house showing ${c.name} on the ${sp.label.toLowerCase()}` : kind === 'kitchen' ? `Kitchen with cabinets in ${c.name}` : `Room preview showing ${c.name} on the ${sp.label.toLowerCase()}`;
+    const sceneLabel = kind === 'house' ? `Front of a house showing ${c.name} on the ${sp.label.toLowerCase()}` : kind === 'kitchen' ? (answers.space === 'cabinets' ? `Kitchen with cabinets in ${c.name}` : `Kitchen with walls in ${c.name}`) : `Room preview showing ${c.name} ${sp.surface ? 'on the' : 'in the'} ${sp.label.toLowerCase()}`;
     return `
       <div class="sheet-head">
         <button type="button" class="icon-btn" data-act="close-detail" aria-label="Close"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
@@ -515,7 +526,7 @@
       </div>
       <div class="sheet-body">
         <div class="room" id="roomScene" data-scene="${kind}" data-roles="${esc(JSON.stringify(roles))}" data-light-locked="1">
-          ${sceneSvg(kind, { label: sceneLabel, siding: answers.siding })}
+          ${sceneSvg(kind, { label: sceneLabel, siding: answers.siding, furniture: sceneFurniture(answers.space) })}
           <span class="light-label" id="roomLabel"></span>
         </div>
         ${settings.lightPreview ? lightBar(state.roomLight, 'room') : ''}
@@ -540,6 +551,7 @@
         <p class="muted" style="font-size:13.5px">${esc(d.summary)}.${b.mixNote ? ' ' + esc(b.mixNote) : ''}</p>
         ${sampleNote(c)}
         ${res && res.reasons.length ? `<div class="block"><h4>Why it fits</h4><ul class="reasons">${res.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
+        ${paintLineHtml(c, answers)}
         ${prosConsHtml(c, answers, res ? state.results.results.map(r => r.color) : null)}
         ${warnings.length ? `<div class="block"><h4>Warnings &amp; tips${res ? '' : ' for the current answers'}</h4>${warnings.map((w, i) => `<div class="warn ${w.level === 'heads-up' ? 'headsup' : w.level}" style="--i:${i}"><b>${esc(w.title)}</b><span>${esc(w.text)}</span></div>`).join('')}</div>` : ''}
         ${pairs.length ? `<div class="block"><h4>Pairs well with</h4><div class="pairs">${pairs.map(p => `<button type="button" class="pair" data-open="${esc(p.color.id)}"><span class="p-sw" data-hex="${p.color.hex}" style="background-color:${paint(p.color.hex)}"></span><span class="p-text"><span class="p-role">${esc(p.role)}</span><span class="p-name">${esc(p.color.name)}</span><span class="p-code mono">${esc(E.codeLabel(p.color))}</span></span></button>`).join('')}</div></div>` : ''}
@@ -559,8 +571,15 @@
   function sceneKind(space) {
     const sp = E.SPACES[space] || E.SPACES.living;
     if (sp.kind === 'exterior') return 'house';
-    if (space === 'cabinets') return 'kitchen';
+    if (space === 'cabinets' || space === 'kitchen') return 'kitchen';
     return 'room';
+  }
+  // what stands against the back wall
+  function sceneFurniture(space) {
+    if (space === 'bedroom' || space === 'nursery' || space === 'kids') return 'bed';
+    if (space === 'bathroom') return 'vanity';
+    if (space === 'office') return 'desk';
+    return 'sofa';
   }
   function scenePalette(c, answers, pairs) {
     const space = answers.space;
@@ -574,6 +593,9 @@
     if (space === 'ceiling') Object.assign(p, { ceil: c.hex, wall: soft, side: soft, art2: soft });
     if (space === 'trim') Object.assign(p, { trim: c.hex, door: c.hex, wall: soft, side: soft, ceil: 'F2F1EC', art2: soft });
     if (space === 'cabinets') Object.assign(p, { cab: c.hex, wall: c.lrv > 75 ? 'D7D1C6' : 'EEEBE4', side: c.lrv > 75 ? 'D7D1C6' : 'EEEBE4', counter: 'ECEAE5', tile: 'F6F5F1', hood: 'B9BDBF' });
+    if (space === 'kitchen') Object.assign(p, { cab: c.lrv > 82 ? '3F4A52' : white, counter: 'ECEAE5', tile: 'F6F5F1', hood: 'B9BDBF' });
+    if (space === 'bathroom') Object.assign(p, { floor: 'CFCBC4', vanity: c.lrv > 82 ? '5B6770' : white, counter: 'ECEAE5' });
+    p.duvet = 'F1F0EC'; p.wood = 'A27B55';
     if (sceneKind(space) === 'house') {
       Object.assign(p, { roof: '45484C', lawn: '6E8A4F', shrub: '4E6A3B', walk: 'CFCAC0', step: 'BEB9B0', glass: '33404B', tree: '5D7649' });
       if (space === 'front_door') Object.assign(p, { xdoor: c.hex, body: c.lrv > 55 ? '6B6F72' : 'D9D5CC', xtrim: 'F2F1EC' });
@@ -671,12 +693,56 @@
       <rect x="226" y="271" width="440" height="3" fill="#000" opacity=".12"/>
       <rect class="r-night" x="0" y="0" width="800" height="480" fill="url(#rgNight)"/></svg>`;
     // room
+    const art = (x, y, w, h) => `
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="#000" opacity=".12" filter="url(#rfShadow)" transform="translate(3 5)"/>
+      <rect class="r-frame" x="${x}" y="${y}" width="${w}" height="${h}" rx="2"/>
+      <rect class="r-trim" x="${x + 7}" y="${y + 7}" width="${w - 14}" height="${h - 14}"/>
+      <rect class="r-art" x="${x + 21}" y="${y + 20}" width="${w - 42}" height="${h - 40}"/>
+      <rect class="r-art2" x="${x + 21}" y="${y + h - 46}" width="${w - 42}" height="${26}"/>`;
+    const furniture = opts.furniture || 'sofa';
+    if (furniture === 'bed') return `${open}<defs>${DEFS_COMMON}${INTERIOR_DEFS}</defs>${interiorShell(true)}
+      ${art(412, 140, 132, 84)}
+      <ellipse cx="478" cy="396" rx="190" ry="14" fill="#000" opacity=".24" filter="url(#rfShadow)"/>
+      <rect class="r-sofa-d" x="384" y="252" width="188" height="92" rx="8"/>
+      <polygon class="r-duvet" points="378,318 578,318 616,396 340,396"/>
+      <polygon points="378,318 578,318 616,396 340,396" fill="#000" opacity=".05"/>
+      <path d="M352 372 Q478 360 604 372" fill="none" stroke="#000" stroke-opacity=".10" stroke-width="2"/>
+      <rect class="r-duvet" x="398" y="296" width="72" height="28" rx="10"/><rect class="r-duvet" x="486" y="296" width="72" height="28" rx="10"/>
+      <rect x="398" y="296" width="72" height="28" rx="10" fill="#000" opacity=".04"/><rect x="486" y="296" width="72" height="28" rx="10" fill="#000" opacity=".04"/>
+      <rect class="r-sofa-l" x="340" y="388" width="276" height="10" rx="3"/>
+      ${[322, 594].map(x => `<rect x="${x - 3}" y="314" width="66" height="50" rx="3" fill="#000" opacity=".16" filter="url(#rfShadow)"/><rect class="r-wood" x="${x}" y="312" width="60" height="50" rx="3"/><line x1="${x + 4}" y1="335" x2="${x + 56}" y2="335" stroke="#000" stroke-opacity=".18"/><circle class="r-lamp-glow" cx="${x + 30}" cy="282" r="70" fill="url(#rgLamp)"/><rect x="${x + 28}" y="288" width="4" height="24" fill="#3a3632"/><polygon class="r-shade" points="${x + 18},270 ${x + 42},270 ${x + 47},290 ${x + 13},290"/>`).join('')}
+      <rect class="r-night" x="0" y="0" width="800" height="480" fill="url(#rgNight)"/></svg>`;
+    if (furniture === 'vanity') return `${open}<defs>${DEFS_COMMON}${INTERIOR_DEFS}
+        <linearGradient id="rgMirror" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e9eef1"/><stop offset=".5" stop-color="#c9d2d7"/><stop offset="1" stop-color="#dfe5e8"/></linearGradient></defs>${interiorShell(true)}
+      <rect x="398" y="128" width="148" height="126" rx="6" fill="#000" opacity=".14" filter="url(#rfShadow)" transform="translate(2 5)"/>
+      <rect class="r-frame" x="398" y="128" width="148" height="126" rx="6"/>
+      <rect x="405" y="135" width="134" height="112" rx="3" fill="url(#rgMirror)"/>
+      <path d="M420 240 L470 140 M450 240 L500 140" stroke="#fff" stroke-opacity=".35" stroke-width="6"/>
+      ${[372, 572].map(x => `<rect x="${x - 4}" y="150" width="8" height="34" rx="3" fill="#3a3632"/><circle class="r-lamp-glow" cx="${x}" cy="160" r="46" fill="url(#rgLamp)"/><rect class="r-shade" x="${x - 9}" y="146" width="18" height="26" rx="8"/>`).join('')}
+      <ellipse cx="472" cy="362" rx="120" ry="9" fill="#000" opacity=".22" filter="url(#rfShadow)"/>
+      <rect class="r-vanity" x="380" y="282" width="184" height="72"/>
+      <g fill="none" stroke="#000" stroke-opacity=".16" stroke-width="1.5"><rect x="386" y="288" width="84" height="60" rx="1.5"/><rect x="474" y="288" width="84" height="60" rx="1.5"/></g>
+      <rect x="452" y="300" width="3" height="16" rx="1.5" fill="#8d8f91"/><rect x="489" y="300" width="3" height="16" rx="1.5" fill="#8d8f91"/>
+      <rect class="r-counter" x="372" y="273" width="200" height="11" rx="2"/>
+      <ellipse cx="472" cy="276" rx="34" ry="4.5" fill="#000" opacity=".16"/>
+      <path d="M472 274 v-16 q0 -6 8 -6 h6" fill="none" stroke="#9a9c9e" stroke-width="3" stroke-linecap="round"/>
+      <rect x="590" y="214" width="40" height="4" rx="2" fill="#8d8f91"/><rect class="r-duvet" x="594" y="218" width="32" height="56" rx="3"/>
+      <rect class="r-night" x="0" y="0" width="800" height="480" fill="url(#rgNight)"/></svg>`;
+    if (furniture === 'desk') return `${open}<defs>${DEFS_COMMON}${INTERIOR_DEFS}</defs>${interiorShell(true)}
+      ${art(300, 140, 120, 86)}
+      <rect x="456" y="150" width="150" height="10" rx="2" fill="#000" opacity=".1" filter="url(#rfShadow)" transform="translate(0 4)"/>
+      <rect class="r-wood" x="456" y="150" width="150" height="8" rx="2"/>
+      <rect x="470" y="124" width="14" height="26" fill="#6b5d52"/><rect x="488" y="128" width="12" height="22" fill="#8c7b6d"/><rect x="504" y="120" width="10" height="30" fill="#4d5a63"/>
+      <ellipse cx="560" cy="142" rx="14" ry="9" fill="#5e7a4c"/><rect x="552" y="140" width="16" height="10" fill="#b48a63"/>
+      <ellipse cx="470" cy="372" rx="150" ry="10" fill="#000" opacity=".24" filter="url(#rfShadow)"/>
+      <rect class="r-wood" x="352" y="292" width="236" height="12" rx="2"/>
+      <rect x="362" y="304" width="7" height="64" fill="#3a3632"/><rect x="571" y="304" width="7" height="64" fill="#3a3632"/>
+      <rect x="430" y="236" width="94" height="56" rx="4" fill="#26282b"/><rect x="436" y="242" width="82" height="44" rx="2" fill="#3c4650"/><rect x="472" y="290" width="10" height="4" fill="#26282b"/>
+      <circle class="r-lamp-glow" cx="390" cy="262" r="70" fill="url(#rgLamp)"/><path d="M380 292 l10 -30 l16 6" fill="none" stroke="#2d2a27" stroke-width="3" stroke-linecap="round"/><polygon class="r-shade" points="398,262 420,262 416,276 402,276"/>
+      <rect class="r-sofa-d" x="440" y="312" width="70" height="44" rx="10"/><rect x="471" y="356" width="8" height="22" fill="#2d2a27"/><rect x="452" y="376" width="46" height="5" rx="2" fill="#2d2a27"/>
+      <rect class="r-night" x="0" y="0" width="800" height="480" fill="url(#rgNight)"/></svg>`;
     return `${open}<defs>${DEFS_COMMON}${INTERIOR_DEFS}</defs>${interiorShell(true)}
-      <rect x="402" y="140" width="150" height="104" rx="2" fill="#000" opacity=".12" filter="url(#rfShadow)" transform="translate(3 5)"/>
-      <rect class="r-frame" x="402" y="140" width="150" height="104" rx="2"/>
-      <rect class="r-trim" x="409" y="147" width="136" height="90"/>
-      <rect class="r-art" x="423" y="160" width="108" height="64"/>
-      <rect class="r-art2" x="423" y="198" width="108" height="26"/>
+      ${art(402, 140, 150, 104)}
       <ellipse cx="480" cy="374" rx="168" ry="11" fill="#000" opacity=".26" filter="url(#rfShadow)"/>
       <rect class="r-sofa-d" x="352" y="282" width="256" height="62" rx="14"/>
       <rect class="r-sofa" x="336" y="318" width="288" height="44" rx="10"/>
@@ -767,7 +833,7 @@
     none: ['#cfe1f3', '#eef4f8'], daylight: ['#bcd6ef', '#eaf2f8'], north: ['#b7c7d8', '#dfe7ee'], sun: ['#9cc6ef', '#fff2d9'],
     golden: ['#f2a65a', '#ffd9a0'], warm: ['#141b26', '#2c3647'], soft: ['#141b26', '#2c3647'], cool: ['#141b26', '#2c3647'], dim: ['#8e979f', '#b9c0c5'],
   };
-  const FIXED_FILL = { floor: 'A9784B', frame: '2B2926', sofa: '8A857E', 'sofa-d': '77726B', 'sofa-l': '9A958E', shade: 'ECE6DA' };
+  const FIXED_FILL = { floor: 'A9784B', frame: '2B2926', sofa: '8A857E', 'sofa-d': '77726B', 'sofa-l': '9A958E', shade: 'ECE6DA', duvet: 'F1F0EC', wood: 'A27B55' };
   function updateRoomScene() {
     const room = $('#roomScene'); if (!room) return;
     const id = state.roomLight;
@@ -924,6 +990,38 @@
   // PROS & CONS, COMPARE, SHEENS
   // ================================================================
   const currentAnswers = () => (state.results ? state.results.answers : state.answers);
+  // Which brand's paint lines to suggest: the store brand when set (any color can be mixed in it), else the color's own brand.
+  function lineBrandFor(c) {
+    if (settings.storeBrand && E.PAINT_LINES[settings.storeBrand]) return settings.storeBrand;
+    return E.PAINT_LINES[c.brand] ? c.brand : null;
+  }
+  // "Behr Marquee" already names its brand; "Aura" needs "Benjamin Moore" in front
+  function lineLabel(brand, line) {
+    const bn = brandName(brand);
+    return line.name.toLowerCase().startsWith(bn.split(/[ -]/)[0].toLowerCase()) ? line.name : `${bn} ${line.name}`;
+  }
+  function bestLine(c, answers) {
+    const brand = lineBrandFor(c); if (!brand) return null;
+    const r = E.recommendLines(brand, c, answers, { lines: settings.lines });
+    return r.best ? { brand, r } : null;
+  }
+  function paintLineHtml(c, answers) {
+    const brand = lineBrandFor(c);
+    if (!brand) return `<div class="block"><h4>Paint to use</h4><div class="sample-note"><div>Paint lines for ${esc(brandName(c.brand))} aren’t listed. Set a store brand in settings to see which of your paints to mix this color in.</div></div></div>`;
+    const r = E.recommendLines(brand, c, answers, { lines: settings.lines });
+    if (!r.best) return `<div class="block"><h4>Paint to use</h4><div class="sample-note"><div>All ${esc(brandName(brand))} lines for this job are switched off in settings.</div></div></div>`;
+    const b = r.best.line;
+    const others = r.byTier.filter(x => x.line.id !== b.id);
+    return `<div class="block"><h4>Paint to use</h4>
+      <div class="line-card">
+        <div class="line-top"><span class="line-name">${esc(lineLabel(brand, b))}</span><span class="tier t${b.tier}">${esc(E.TIERS[b.tier])}</span></div>
+        <p>${esc(b.note)}</p>
+        ${r.best.why.length ? `<ul class="reasons">${r.best.why.slice(0, 3).map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+        ${brand !== c.brand ? `<p class="muted" style="font-size:13px">Mix ${esc(c.name)} (${esc(brandName(c.brand))} ${esc(E.codeLabel(c))}) in this paint with a color match.</p>` : ''}
+      </div>
+      ${others.length ? `<div class="line-alts">${others.map(x => `<span class="line-alt"><span class="tier t${x.line.tier}">${esc(E.TIERS[x.line.tier])}</span>${esc(x.line.name)}</span>`).join('')}</div>` : ''}
+      <p class="muted" style="font-size:12px">Lines and features change; confirm with the current product guide. Turn off lines the store doesn’t carry in settings.</p></div>`;
+  }
   function prosConsHtml(c, answers, others) {
     const pc = E.prosCons(c, answers, { inStoreSamples: settings.inStoreSamples }, others);
     return `<div class="block"><h4>Advantages &amp; disadvantages</h4>
@@ -960,6 +1058,7 @@
         ${cell('Compared', r => r.pc.compared.length ? esc(r.pc.compared.join(', ')) : '<span class="muted">In the middle</span>')}
         ${cell('Advantages', r => `<ul class="mini pros">${r.pc.pros.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`)}
         ${cell('Disadvantages', r => r.pc.cons.length ? `<ul class="mini cons">${r.pc.cons.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<span class="muted">None for this space</span>')}
+        ${cell('Paint to use', r => { const p = bestLine(r.c, answers); return p ? `<b>${esc(p.r.best.line.name)}</b><br><span class="muted">${esc(brandName(p.brand))} · ${esc(E.TIERS[p.r.best.line.tier])}</span>` : '<span class="muted">No lines listed</span>'; })}
       </div></div>`;
     openInfo(html, `Compare ${colors.length} colors`);
   }
@@ -1056,6 +1155,15 @@
           <div class="set-mini"><span class="btn small file-btn">Choose CSV file<input type="file" id="csvInput" accept=".csv,.tsv,.txt,text/csv"></span>${Object.keys(store.get('custom', {})).length ? '<button type="button" class="btn small ghost" data-act="clear-custom">Remove imported</button>' : ''}</div>
         </div></div>
 
+        <div class="set-group"><h3>Paint lines the store carries</h3>
+          <div class="set-card"><div class="set-note" style="border-top:0">ColorGenius suggests a line for each job (for example Aura Bath &amp; Spa for a bathroom or Advance for cabinets). Switch off lines you don’t stock.${settings.storeBrand ? '' : ' Set a store brand above to always suggest your own paint.'}</div></div>
+          ${Object.keys(E.PAINT_LINES).filter(id => E.getIndex().brandById[id] && (en[id] || id === settings.storeBrand)).sort((x, y) => (y === settings.storeBrand) - (x === settings.storeBrand)).map(id => {
+            const lines = E.PAINT_LINES[id]; const on = lines.filter(l => settings.lines[l.id] !== false).length;
+            return `<details class="set-card line-group" ${id === settings.storeBrand ? 'open' : ''}><summary><span>${esc(brandName(id))}</span><span class="muted">${on} of ${lines.length} on</span></summary>
+              ${lines.map(l => `<div class="set-row"><div class="set-text"><b id="lbl-l-${esc(l.id)}">${esc(l.name)}</b><span>${esc(E.TIERS[l.tier])} · ${l.use === 'interior' ? 'Interior' : 'Exterior'} · ${esc(l.note)}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.lines[l.id] !== false}" aria-labelledby="lbl-l-${esc(l.id)}" data-line="${esc(l.id)}"></button></div>`).join('')}
+            </details>`; }).join('')}
+        </div>
+
         <div class="set-group"><h3>Phone app</h3><div class="set-card">
           <div class="set-row"><img src="icons/icon-192.png" width="40" height="40" alt="" style="border-radius:10px;flex:none"><div class="set-text"><b>ColorGenius app</b><span id="installInfo">${esc(INSTALL_STATUS[installState()])}</span></div>
             ${installState() === 'installed' ? '<span class="badge good">Installed</span>' : '<button type="button" class="btn small primary" data-act="install">Get the app</button>'}</div>
@@ -1095,6 +1203,14 @@
       if (k === 'storeOnly' && on && !settings.storeBrand) toast('Choose a store brand above first');
       saveSettings(); applyTheme(); afterSettingsChange(k);
       return;
+    }
+    if (t.dataset.line) {
+      const on = t.getAttribute('aria-checked') !== 'true';
+      t.setAttribute('aria-checked', on);
+      if (on) delete settings.lines[t.dataset.line]; else settings.lines[t.dataset.line] = false;
+      saveSettings();
+      const grp = t.closest('details'); if (grp) { const all = $$('[data-line]', grp); $('summary .muted', grp).textContent = `${all.filter(x => x.getAttribute('aria-checked') === 'true').length} of ${all.length} on`; }
+      afterSettingsChange('lines'); return;
     }
     if (t.dataset.brand) {
       const on = t.getAttribute('aria-checked') !== 'true';
@@ -1328,8 +1444,21 @@
   }
   $('#installModal').addEventListener('click', e => { if (e.target.id === 'installModal' || (e.target.closest('button') || {}).dataset?.installAct === 'close') $('#installModal').hidden = true; });
   $('#installBtn').addEventListener('click', startInstall);
+  // Updates: every launch loads the newest files (see sw.js). If the app sat open in the background,
+  // it reloads itself when it comes back, but only when nothing is in progress.
+  let swReg = null, updateWaiting = false, reloading = false, hiddenAt = 0;
+  const idleForUpdate = () => !state.results && state.step === 0 && $('#detailSheet').hidden && $('#settingsSheet').hidden && $('#calModal').hidden && $('#present').hidden && $('#infoModal').hidden;
+  const applyUpdate = () => { if (reloading) return; reloading = true; location.reload(); };
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ }); });
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadController) return; updateWaiting = true; if (idleForUpdate()) applyUpdate(); });
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').then(reg => { swReg = reg; }).catch(() => { /* offline support is optional */ }); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+      if (swReg) swReg.update().catch(() => {});
+      const away = hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000;
+      if ((updateWaiting || away) && idleForUpdate()) applyUpdate();
+    });
   }
 
   // ================================================================

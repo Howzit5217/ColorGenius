@@ -223,6 +223,28 @@ test('advantages and disadvantages', () => {
   assert.ok(both.compared.includes('Deepest of these options'));
   assert.ok(E.prosCons(white, { space: 'living' }, {}, [naval, white]).compared.includes('Lightest of these options'));
 });
+test('paint lines: the right line for the job, and switched-off lines are skipped', () => {
+  const white = E.search('white dove')[0].color, navy = E.search('hale navy')[0].color;
+  const pick = (brand, space, color, lines) => E.recommendLines(brand, color, { space }, { lines }).best.line.name;
+  assert.equal(pick('bm', 'bathroom', white), 'Aura Bath & Spa');
+  assert.equal(pick('bm', 'cabinets', navy), 'Advance');
+  assert.equal(pick('bm', 'ceiling', white), 'Waterborne Ceiling Paint');
+  assert.equal(pick('bm', 'kids', white), 'Scuff-X');
+  assert.equal(pick('sw', 'trim', white), 'Emerald Urethane Trim Enamel');
+  assert.equal(pick('sw', 'entry', white), 'Duration Home');
+  assert.notEqual(pick('bm', 'bathroom', white, { 'bm-aura-bath': false }), 'Aura Bath & Spa');
+  const ext = E.recommendLines('sw', white, { space: 'ext_body' }, {});
+  assert.ok(ext.all.every(x => x.line.use === 'exterior'));
+  const walls = E.recommendLines('bm', white, { space: 'living' }, {});
+  assert.ok(walls.byTier.every(x => !x.line.tags.includes('ceiling') && !x.line.tags.includes('enamel') && !x.line.tags.includes('bath')));
+  const cab = E.recommendLines('bm', navy, { space: 'cabinets' }, {});
+  assert.ok(cab.byTier.every(x => x.line.tags.includes('enamel')));
+  for (const [brand, lines] of Object.entries(E.PAINT_LINES)) {
+    assert.ok(window.CG_BRANDS.some(b => b.id === brand), brand);
+    for (const l of lines) assert.ok([1, 2, 3].includes(l.tier) && ['interior', 'exterior'].includes(l.use) && l.note, l.id);
+  }
+  assert.equal(E.recommendLines('dv', white, { space: 'living' }, {}).best, null);
+});
 test('offline file list matches the brand files', () => {
   const files = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/files.json'), 'utf8'));
   assert.deepEqual(files.sort(), window.CG_BRANDS.map(b => `data/colors/${b.id}.js`).sort());

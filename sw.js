@@ -1,6 +1,6 @@
 /* ColorGenius service worker: makes the installed app open instantly and work offline.
-   App files and color data are saved on first visit, then refreshed in the background. */
-const VERSION = 'cg-2026-11-23-2';
+   App files and color data are saved on first visit; when online the newest versions always load. */
+const VERSION = 'cg-2026-11-23-3';
 const SHELL = [
   './', 'index.html', 'css/app.css', 'js/color.js', 'js/engine.js', 'js/app.js',
   'data/brands.js', 'data/files.json', 'manifest.webmanifest',
@@ -36,17 +36,20 @@ self.addEventListener('fetch', event => {
   const sameOrigin = url.origin === self.location.origin;
   const fonts = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   if (!sameOrigin && !fonts) return;
-  // App code: newest version when online, saved copy when offline.
-  // Color data, icons and fonts: saved copy right away, refreshed in the background.
-  const appCode = req.mode === 'navigate' || (sameOrigin && /\.(html|js|css|webmanifest)$/.test(url.pathname) && !url.pathname.includes('/data/'));
+  // Everything from this site (app code and color data): always the newest version when online, so updates
+  // show up the moment the app opens. "no-cache" asks the server whether the file changed, which is a tiny
+  // request when it hasn't. Offline (or on a very slow connection) the saved copy is used instead.
+  // Fonts: saved copy right away, refreshed in the background.
   event.respondWith((async () => {
     const cache = await caches.open(VERSION);
     const key = req.mode === 'navigate' ? 'index.html' : req;
     const save = res => { if (res && (res.ok || res.type === 'opaque')) cache.put(key, res.clone()); return res; };
     const offline = () => new Response('Offline and not saved yet.', { status: 503, headers: { 'Content-Type': 'text/plain' } });
-    if (appCode) {
+    if (sameOrigin) {
       try {
-        const res = await Promise.race([fetch(req), new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 4000))]);
+        const fresh = fetch(req.mode === 'navigate' ? new Request(req.url, { cache: 'no-cache' }) : new Request(req, { cache: 'no-cache' }));
+        const res = await Promise.race([fresh, new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 6000))]);
+        if (!res.ok && res.status !== 304) throw new Error('bad status');
         return save(res);
       } catch (e) {
         return (await cache.match(key, { ignoreSearch: true })) || offline();

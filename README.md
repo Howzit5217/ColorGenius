@@ -27,8 +27,13 @@ It runs in any browser and installs on Android and iPhone as an app with its own
   - Dark colors on vinyl siding.
   - Fading outdoors.
   - Coverage and primer needs.
+- **Paint to use**: suggests the right product line for the job. For example, Benjamin Moore Aura Bath & Spa for a bathroom, Advance for cabinets or Scuff-X for a kids' room. Each suggestion comes with Good / Better / Best options. Lines are listed for Benjamin Moore, Sherwin-Williams, Behr, Valspar, HGTV Home, Dutch Boy, PPG, Glidden and Dunn-Edwards. Every line can be switched off in settings to match what the store carries. With a store brand set, colors from any brand are matched into the store's own paint.
 - **Color details**:
-  - A room preview painted in the color.
+  - A preview that matches the job:
+    - A room with a sofa, bed, bathroom vanity or desk.
+    - A kitchen, for kitchen walls or cabinets.
+    - The front of a house, for siding, exterior trim or a front door.
+  - Advantages and disadvantages for each color, a side-by-side compare, and a sheen comparison (Flat to Gloss) shown on the color itself.
   - A light switcher: daylight, north light, afternoon sun, golden hour, warm, soft white and daylight bulbs, and a dim corner.
   - Undertone, depth and the recommended finish.
   - Pairings for trim, lighter and deeper versions, and an accent.
@@ -86,6 +91,8 @@ The site must be online at an `https://` address. GitHub Pages works and is free
 - **iPhone / iPad**: follow the steps shown. Tap Share, then **Add to Home Screen**, then Add.
 
 The installed app opens full screen without browser bars and works offline. On iPhone it keeps its own settings and saved colors, separate from Safari.
+
+**Updates are automatic.** Every time the app opens online, it loads the newest version of the app and the color data. If the app was left open in the background, it refreshes itself when it comes back, as long as nothing is in progress. Push changes to `main` and GitHub Pages publishes them within a minute or two.
 
 ## Tests
 
