@@ -635,7 +635,7 @@
     if (a.crown) tips.push({ title: 'Crown molding', text: 'Paint crown molding the trim color for a crisp outline, or the ceiling color to make a low ceiling feel taller.' });
     if ((a.fixed || []).includes('trim-wood') && !a.trimPaint) tips.push({ title: 'Stained trim', text: 'Stained wood trim is warm and orange-leaning, so the picks lean toward warm and earthy colors. Cool blue-grays are flagged.' });
     if (s && s.inStoreSamples) tips.push({ title: 'Samples', text: 'Pull the chips from the display and tape them up on two walls, one near the window and one away from it.' });
-    else tips.push({ title: 'Samples', text: 'Suggest a sample pot or peel-and-stick sample and checking it on two walls at different times of day.' });
+    else tips.push({ title: 'Samples', text: 'Get a sample pot or a peel-and-stick sample and check it on two walls at different times of day.' });
     if (sp.wet) tips.push({ title: 'Moisture', text: 'Use a mildew-resistant kitchen and bath paint and allow full cure before showers or cooking steam.' });
     if (lowLight(a) && sp.kind === 'interior') tips.push({ title: 'Low light', text: 'Colors look one to two steps darker here. When torn between two, pick the lighter one.' });
     if (a.bulbs === 'unsure' && sp.kind === 'interior') tips.push({ title: 'Bulbs', text: 'Ask which bulbs are in the room. Warm bulbs and daylight bulbs can make the same color look very different.' });

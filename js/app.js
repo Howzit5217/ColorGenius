@@ -19,7 +19,7 @@
     inStoreSamples: true, showDiscontinued: false,
     askBulbs: true, askFixed: true, showWarnings: true, showLrv: true, showMatches: true, lightPreview: true,
     cal: { enabled: false, warmth: 0, brightness: 0, vividness: 0, ref: '' },
-    theme: 'system', reduceMotion: false, lines: {},
+    theme: 'system', reduceMotion: false, lines: {}, audience: '', onboarded: false,
   };
   function merge(base, over) {
     const out = clone(base);
@@ -103,6 +103,7 @@
     updateShortCount();
     updateInstallUi();
     route(location.hash.replace('#', '') || 'find', true);
+    if (!settings.onboarded) openOnboarding(); // first launch on this device
     if (failed.length) toast(`Couldn’t load: ${failed.join(', ')}`);
   }
   function customMeta(name) {
@@ -1373,6 +1374,7 @@
   function renderSettings() {
     const el = $('#settingsSheet');
     const en = brandsEnabled();
+    const home = settings.audience === 'home';
     const groups = [['us', 'US national brands'], ['us-more', 'More US brands'], ['intl', 'International'], ['custom', 'Imported']];
     const s = state.screen;
     el.innerHTML = `
@@ -1381,15 +1383,15 @@
         <h2 id="settingsTitle">Settings</h2>
       </div>
       <div class="sheet-body">
-        <div class="set-group"><h3>Store</h3><div class="set-card">
-          <div class="set-row"><div class="set-text"><b>Store brand</b><span>Shown first and used for top picks</span></div>
-            ${selectHtml('setStoreBrand', [['', 'None, mix brands']].concat(brandList().map(b => [b.id, b.name])), settings.storeBrand, 'Store brand')}</div>
-          ${sw('storeOnly', settings.storeOnly, 'Only recommend the store brand', 'Other brands still appear as matches')}
+        <div class="set-group"><h3>${home ? 'My brands' : 'Store'}</h3><div class="set-card">
+          <div class="set-row"><div class="set-text"><b>${home ? 'Favorite brand' : 'Store brand'}</b><span>Shown first and used for top picks</span></div>
+            ${selectHtml('setStoreBrand', [['', 'None, mix brands']].concat(brandList().map(b => [b.id, b.name])), settings.storeBrand, home ? 'Favorite brand' : 'Store brand')}</div>
+          ${sw('storeOnly', settings.storeOnly, home ? 'Only recommend my favorite brand' : 'Only recommend the store brand', 'Other brands still appear as matches')}
           <div class="set-row"><div class="set-text"><b>Colors per search</b></div>${seg('resultCount', { 3: '3', 6: '6', 9: '9', 12: '12' }, String(settings.resultCount), 'Colors per search')}</div>
         </div></div>
 
-        <div class="set-group"><h3>In the store</h3><div class="set-card">
-          ${sw('inStoreSamples', settings.inStoreSamples, 'In-store samples', 'Show chip strip locations and display tips')}
+        <div class="set-group"><h3>${home ? 'Samples' : 'In the store'}</h3><div class="set-card">
+          ${sw('inStoreSamples', settings.inStoreSamples, home ? 'Show in-store chip locations' : 'In-store samples', home ? 'Where to find each chip on the store display' : 'Show chip strip locations and display tips')}
           ${sw('showDiscontinued', settings.showDiscontinued, 'Include discontinued colors', 'Older colors many stores can still mix')}
         </div></div>
 
@@ -1424,8 +1426,8 @@
           <div class="set-mini"><span class="btn small file-btn">Choose CSV file<input type="file" id="csvInput" accept=".csv,.tsv,.txt,text/csv"></span>${Object.keys(store.get('custom', {})).length ? '<button type="button" class="btn small ghost" data-act="clear-custom">Remove imported</button>' : ''}</div>
         </div></div>
 
-        <div class="set-group"><h3>Paint lines the store carries</h3>
-          <div class="set-card"><div class="set-note" style="border-top:0">ColorGenius suggests a line for each job (for example Aura Bath &amp; Spa for a bathroom or Advance for cabinets). Switch off lines you don’t stock.${settings.storeBrand ? '' : ' Set a store brand above to always suggest your own paint.'}</div></div>
+        <div class="set-group"><h3>${home ? 'Paint lines I’d buy' : 'Paint lines the store carries'}</h3>
+          <div class="set-card"><div class="set-note" style="border-top:0">ColorGenius suggests a line for each job (for example Aura Bath &amp; Spa for a bathroom or Advance for cabinets). ${home ? 'Switch off lines you don’t want suggested.' : 'Switch off lines you don’t stock.'}${settings.storeBrand ? '' : home ? ' Set a favorite brand above to always suggest its paint.' : ' Set a store brand above to always suggest your own paint.'}</div></div>
           ${Object.keys(E.PAINT_LINES).filter(id => E.getIndex().brandById[id] && (en[id] || id === settings.storeBrand)).sort((x, y) => (y === settings.storeBrand) - (x === settings.storeBrand)).map(id => {
             const lines = E.PAINT_LINES[id]; const on = lines.filter(l => settings.lines[l.id] !== false).length;
             return `<details class="set-card line-group" ${id === settings.storeBrand ? 'open' : ''}><summary><span>${esc(brandName(id))}</span><span class="muted">${on} of ${lines.length} on</span></summary>
@@ -1443,7 +1445,7 @@
           ${sw('reduceMotion', settings.reduceMotion, 'Reduce motion')}
         </div></div>
 
-        <div class="set-group"><div class="set-card"><div class="set-mini"><button type="button" class="btn small ghost" data-act="reset-all">Reset all settings</button></div></div></div>
+        <div class="set-group"><div class="set-card"><div class="set-mini"><button type="button" class="btn small" data-act="run-setup">Run setup again</button><button type="button" class="btn small ghost" data-act="reset-all">Reset all settings</button></div></div></div>
         <p class="muted" style="font-size:12px">${fmt(E.getIndex().colors.length)} colors loaded from ${brandList().length} brands. Settings, shortlist and calibration are saved on this device only.</p>
       </div>`;
     SELECTS.setStoreBrand.onChange = v => {
@@ -1492,13 +1494,14 @@
     }
     const act = t.dataset.act;
     if (act === 'install') startInstall();
+    if (act === 'run-setup') openOnboarding();
     if (act === 'calibrate') openCal();
     if (act === 'reset-cal') { settings.cal = clone(DEFAULT_SETTINGS.cal); saveSettings(); renderSettings(); refreshSwatches(); toast('Calibration reset'); }
     if (act === 'brands-all') { for (const b of brandList()) settings.brands[b.id] = true; saveSettings(); renderSettings(); afterSettingsChange('brands'); }
     if (act === 'brands-us') { for (const b of brandList()) settings.brands[b.id] = b.group === 'us'; saveSettings(); renderSettings(); afterSettingsChange('brands'); }
     if (act === 'clear-custom') { const custom = store.get('custom', {}); store.set('custom', {}); for (const name of Object.keys(custom)) removeBrand(customMeta(name).id); renderSettings(); afterSettingsChange('brands'); toast('Imported colors removed'); }
     if (act === 'reset-all') {
-      if (t.dataset.confirm) { settings = clone(DEFAULT_SETTINGS); saveSettings(); applyTheme(); renderSettings(); afterSettingsChange('all'); toast('Settings reset'); }
+      if (t.dataset.confirm) { settings = clone(DEFAULT_SETTINGS); saveSettings(); applyTheme(); renderSettings(); afterSettingsChange('all'); toast('Settings reset'); openOnboarding(); }
       else { t.dataset.confirm = '1'; t.textContent = 'Tap again to reset everything'; setTimeout(() => { if (document.contains(t)) { delete t.dataset.confirm; t.textContent = 'Reset all settings'; } }, 3000); }
     }
   });
@@ -1634,6 +1637,170 @@
     }
   });
 
+  // ================================================================
+  // FIRST-LAUNCH SETUP: who's using this device, brands, screen tuning
+  // Runs once per device (and once after this update for existing users, with their choices filled in).
+  // ================================================================
+  let ob = null;
+  const OB_STEPS = ['who', 'brands', 'screen', 'done'];
+  const OB_GROUPS = [['us', 'US national brands'], ['us-more', 'More US brands'], ['intl', 'International'], ['custom', 'Imported']];
+  function brandSwatch(id) {
+    const list = (E.getIndex().byBrand[id] || []).filter(c => c.flags & E.F.POPULAR);
+    const pool = list.length >= 4 ? list : (E.getIndex().byBrand[id] || []).filter((_, i, arr) => i % Math.max(1, Math.floor(arr.length / 4)) === 0);
+    const hx = pool.slice(0, 4).map(c => '#' + c.hex);
+    while (hx.length < 4) hx.push('#ddd');
+    return `<span class="msw" style="background:conic-gradient(${hx[0]} 0 25%, ${hx[1]} 0 50%, ${hx[2]} 0 75%, ${hx[3]} 0)"></span>`;
+  }
+  function openOnboarding() {
+    ob = {
+      step: 0, dir: 0, audience: settings.audience || '', brands: Object.assign({}, brandsEnabled()), storeBrand: settings.storeBrand || '',
+      cal: { warmth: settings.cal.warmth || 0, brightness: settings.cal.brightness || 0 }, calTouched: false,
+    };
+    closeSheet($('#detailSheet')); closeSheet($('#settingsSheet'));
+    const el = $('#onboard'); el.hidden = false; el.classList.remove('out');
+    document.documentElement.classList.add('ob-open');
+    renderOnboarding();
+  }
+  function closeOnboarding() {
+    const el = $('#onboard');
+    document.documentElement.classList.remove('ob-open');
+    if (reduced()) el.hidden = true; else { el.classList.add('out'); setTimeout(() => { el.hidden = true; el.classList.remove('out'); }, 320); }
+    ob = null;
+  }
+  function obSlider(key, label, min, max, left, right) {
+    const v = ob.cal[key];
+    return `<div class="slider"><label for="ob-${key}">${label}<span id="obv-${key}">${v > 0 ? '+' : ''}${v}</span></label><input type="range" class="cg-range" id="ob-${key}" min="${min}" max="${max}" step="1" value="${v}" data-obcal="${key}" style="--fill:${((v - min) / (max - min) * 100).toFixed(1)}%"><div class="ends"><span>${left}</span><span>${right}</span></div></div>`;
+  }
+  function renderOnboarding() {
+    const el = $('#onboard');
+    const id = OB_STEPS[ob.step];
+    const home = ob.audience === 'home';
+    const chosen = brandList().filter(b => ob.brands[b.id]);
+    let body = '', next = 'Next', nextOff = false, skip = '';
+    if (id === 'who') {
+      body = `
+        <p class="eyebrow">Welcome</p>
+        <h1 id="obTitle">Let’s set up ColorGenius on this device</h1>
+        <p class="muted">About a minute. Everything can be changed later in Settings.</p>
+        <div class="ob-cards">
+          <button type="button" class="ob-card" data-ob-aud="store" aria-pressed="${ob.audience === 'store'}">
+            <span class="ob-ic" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30"><path d="M5 13l2-7h18l2 7M5 13v13h22V13M5 13h22M13 26v-7h6v7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+            <b>I work at a paint store</b><span>Picks from the brands we carry, with chip locations and paint lines for the counter.</span></button>
+          <button type="button" class="ob-card" data-ob-aud="home" aria-pressed="${ob.audience === 'home'}">
+            <span class="ob-ic" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30"><path d="M5 15L16 6l11 9M8 13v13h16V13M13 26v-7h6v7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+            <b>I’m picking paint for my home</b><span>Picks from the brands I want to buy, with simple tips for testing samples.</span></button>
+        </div>`;
+      nextOff = !ob.audience;
+    }
+    if (id === 'brands') {
+      body = `
+        <p class="eyebrow">Step 2 of 3</p>
+        <h1 id="obTitle">${home ? 'Which brands would you buy?' : 'Which brands does your store carry?'}</h1>
+        <p class="muted">${home ? 'Picks only come from these. Turn on any you can get near you.' : 'Picks only come from these. Colors from other brands can still be matched into them.'}</p>
+        <div class="ob-quick"><button type="button" class="btn small" data-ob="all-us">All US national brands</button><button type="button" class="btn small ghost" data-ob="none">Clear</button></div>
+        ${OB_GROUPS.map(([g, label]) => { const bs = brandList().filter(b => b.group === g); if (!bs.length) return ''; return `<div class="group mgroup"><p class="group-label">${label}</p><div class="mchips">${bs.map(b => `<button type="button" class="mchip" data-ob-brand="${esc(b.id)}" aria-pressed="${!!ob.brands[b.id]}">${brandSwatch(b.id)}${esc(b.name)}</button>`).join('')}</div></div>`; }).join('')}
+        ${chosen.length ? `<div class="group mgroup ob-main"><p class="group-label">${home ? 'Favorite brand' : 'Main store brand'} <span class="hint">optional, shown first</span></p><div class="mchips">
+          <button type="button" class="mchip" data-ob-main="" aria-pressed="${!ob.storeBrand}"><span class="msw flag-sw" aria-hidden="true"><svg viewBox="0 0 20 20" width="14" height="14"><path d="M5 10h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>No ${home ? 'favorite' : 'main brand'}</button>
+          ${chosen.map(b => `<button type="button" class="mchip" data-ob-main="${esc(b.id)}" aria-pressed="${ob.storeBrand === b.id}">${brandSwatch(b.id)}${esc(b.name)}</button>`).join('')}
+        </div></div>` : ''}
+        ${chosen.length ? '' : '<p class="ob-need">Pick at least one brand to continue.</p>'}`;
+      nextOff = !chosen.length;
+    }
+    if (id === 'screen') {
+      const s = state.screen;
+      body = `
+        <p class="eyebrow">Step 3 of 3</p>
+        <h1 id="obTitle">Tune this screen</h1>
+        <p class="muted">Screens show color differently. Hold plain white printer paper against the panel and slide until they look the same.</p>
+        <p class="ob-screen"><span class="badge">${esc(s.gamut)}</span>${s.hdr ? '<span class="badge">HDR</span>' : ''}<span class="badge mono">${s.depth}-bit</span></p>
+        <div class="ob-cal-panel" id="obWhite"><span>Match this to white paper</span></div>
+        ${obSlider('warmth', 'Warmth', -100, 100, 'Panel looks too yellow', 'Panel looks too blue')}
+        ${obSlider('brightness', 'Brightness', -50, 20, 'Panel glows brighter', 'Panel looks dimmer')}
+        <ul class="reasons"><li>Turn off Night Light, True Tone or any blue-light filter first.</li><li>Use your normal screen brightness.</li><li>${home ? 'Do this where you’ll be looking at colors.' : 'Do this under the store’s lights, where colors get picked.'}</li></ul>
+        <p class="muted" style="font-size:13px">You can match a real paint chip too, later in Settings → Calibrate this screen.</p>`;
+      skip = 'Skip';
+    }
+    if (id === 'done') {
+      const st = installState();
+      const names = chosen.map(b => b.name);
+      body = `
+        <div class="ob-done-mark" aria-hidden="true"><span class="fan"><i></i><i></i><i></i></span></div>
+        <h1 id="obTitle">You’re all set</h1>
+        <div class="set-card ob-summary">
+          <div class="set-row"><div class="set-text"><b>${home ? 'Picking paint for a home' : 'Paint store'}</b><span>${home ? 'Tips for buying and testing samples' : 'Chip locations and paint lines for the counter'}</span></div></div>
+          <div class="set-row"><div class="set-text"><b>${names.length} brand${names.length > 1 ? 's' : ''}</b><span>${esc(names.slice(0, 4).join(', '))}${names.length > 4 ? ` and ${names.length - 4} more` : ''}</span></div></div>
+          <div class="set-row"><div class="set-text"><b>${ob.storeBrand ? esc(brandName(ob.storeBrand)) : home ? 'No favorite brand' : 'No main brand'}</b><span>${ob.storeBrand ? (home ? 'Your favorite, shown first' : 'Your main brand, shown first') : 'Picks mix all your brands'}</span></div></div>
+          <div class="set-row"><div class="set-text"><b>${ob.calTouched && (ob.cal.warmth || ob.cal.brightness) ? 'Screen tuned' : 'Screen not tuned'}</b><span>${ob.calTouched && (ob.cal.warmth || ob.cal.brightness) ? `Warmth ${ob.cal.warmth}, brightness ${ob.cal.brightness}` : 'You can tune it any time in Settings'}</span></div></div>
+        </div>
+        ${st === 'prompt' || st === 'ios' || st === 'android' ? `<div class="sample-note ob-install"><img src="icons/icon-192.png" width="44" height="44" alt="" style="border-radius:11px"><div><b>Put ColorGenius on your home screen</b><br><span class="muted">Opens full screen like an app and works offline.</span></div><button type="button" class="btn small" data-ob="install">Get the app</button></div>` : ''}`;
+      next = 'Start finding colors';
+    }
+    el.innerHTML = `
+      <div class="ob-shell">
+        <div class="ob-top">
+          <span class="wordmark ob-mark" aria-hidden="true"><span class="fan"><i></i><i></i><i></i></span><span class="wordmark-text">ColorGenius</span></span>
+          <div class="ob-dots" aria-hidden="true">${OB_STEPS.map((s, i) => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</div>
+          ${id !== 'done' ? '<button type="button" class="btn small ghost" data-ob="skip-setup">Skip setup</button>' : '<span></span>'}
+        </div>
+        <div class="ob-body" id="obBody">${body}</div>
+      </div>
+      <nav class="wizard-nav ob-nav" aria-label="Setup navigation"><div class="wizard-nav-inner">
+        <button type="button" class="btn ghost nav-back" data-ob="back" ${ob.step === 0 ? 'disabled style="visibility:hidden"' : ''}>
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost nav-skip" data-ob="skip" ${skip ? '' : 'disabled aria-hidden="true" tabindex="-1" style="visibility:hidden"'}>${skip || 'Skip'}</button>
+        <button type="button" class="btn primary nav-next" data-ob="next" ${nextOff ? 'disabled' : ''}>${next}
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div></nav>`;
+    const b = $('#obBody');
+    if (ob.dir && !reduced()) b.animate([{ opacity: 0, transform: `translateX(${ob.dir * 28}px)` }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    ob.dir = 0;
+    el.scrollTo(0, 0);
+    if (id === 'screen') paintObPanel();
+  }
+  function paintObPanel() {
+    const p = $('#obWhite'); if (!p) return;
+    p.style.backgroundColor = C.displayCss('FFFFFF', { cal: { enabled: true, warmth: ob.cal.warmth, brightness: ob.cal.brightness, vividness: 0 }, p3: state.screen.p3 });
+  }
+  function obGo(delta) { ob.step = Math.max(0, Math.min(OB_STEPS.length - 1, ob.step + delta)); ob.dir = delta > 0 ? 1 : -1; renderOnboarding(); }
+  function finishOnboarding(skipped) {
+    if (!skipped) {
+      settings.audience = ob.audience || 'store';
+      for (const b of brandList()) settings.brands[b.id] = !!ob.brands[b.id];
+      settings.storeBrand = ob.storeBrand && ob.brands[ob.storeBrand] ? ob.storeBrand : '';
+      if (!settings.storeBrand) settings.storeOnly = false;
+      settings.inStoreSamples = settings.audience !== 'home';
+      if (ob.calTouched) settings.cal = Object.assign({}, settings.cal, { warmth: ob.cal.warmth, brightness: ob.cal.brightness, enabled: !!(ob.cal.warmth || ob.cal.brightness || settings.cal.vividness) });
+    } else if (!settings.audience) settings.audience = 'store';
+    settings.onboarded = true;
+    saveSettings(); applyTheme(); afterSettingsChange('all');
+    closeOnboarding();
+    if (!skipped) toast(settings.audience === 'home' ? 'All set. Happy painting!' : 'All set for the counter');
+  }
+  $('#onboard').addEventListener('click', e => {
+    const t = e.target.closest('button'); if (!t || !ob) return;
+    if (t.dataset.obAud) { ob.audience = t.dataset.obAud; $$('[data-ob-aud]').forEach(x => x.setAttribute('aria-pressed', x.dataset.obAud === ob.audience)); const n = $('[data-ob="next"]'); n.disabled = false; setTimeout(() => { if (ob && OB_STEPS[ob.step] === 'who') obGo(1); }, 260); return; }
+    if (t.dataset.obBrand) { const id = t.dataset.obBrand; ob.brands[id] = !ob.brands[id]; if (!ob.brands[id] && ob.storeBrand === id) ob.storeBrand = ''; const y = $('#onboard').scrollTop; renderOnboarding(); $('#onboard').scrollTop = y; return; }
+    if (t.dataset.obMain != null) { ob.storeBrand = t.dataset.obMain; $$('[data-ob-main]').forEach(x => x.setAttribute('aria-pressed', x.dataset.obMain === ob.storeBrand)); return; }
+    const a = t.dataset.ob;
+    if (a === 'next') { if (ob.step === OB_STEPS.length - 1) finishOnboarding(false); else obGo(1); }
+    if (a === 'back') obGo(-1);
+    if (a === 'skip') { ob.cal = { warmth: settings.cal.warmth || 0, brightness: settings.cal.brightness || 0 }; ob.calTouched = false; obGo(1); }
+    if (a === 'skip-setup') finishOnboarding(true);
+    if (a === 'install') startInstall();
+    if (a === 'all-us' || a === 'none') {
+      for (const b of brandList()) ob.brands[b.id] = a === 'all-us' ? b.group === 'us' : false;
+      if (ob.storeBrand && !ob.brands[ob.storeBrand]) ob.storeBrand = '';
+      const y = $('#onboard').scrollTop; renderOnboarding(); $('#onboard').scrollTop = y;
+    }
+  });
+  $('#onboard').addEventListener('input', e => {
+    const k = e.target.dataset.obcal; if (!k || !ob) return;
+    ob.cal[k] = +e.target.value; ob.calTouched = true;
+    e.target.style.setProperty('--fill', ((ob.cal[k] - +e.target.min) / (+e.target.max - +e.target.min) * 100).toFixed(1) + '%');
+    const v = $('#obv-' + k); if (v) v.textContent = (ob.cal[k] > 0 ? '+' : '') + ob.cal[k];
+    paintObPanel();
+  });
   // ================================================================
   // PHONE APP: install from the website itself
   // ================================================================

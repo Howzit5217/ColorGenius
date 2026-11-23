@@ -8,6 +8,12 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 
 ## What it does
 
+- **First-launch setup** runs once on each device. It takes about a minute and can be rerun from Settings → Run setup again.
+  1. **Who's using it:** paint store staff or a homeowner. This sets the wording and defaults; for example, in-store chip locations are on for staff and off for homeowners.
+  2. **Brands:** the brands the store carries, or the brands a homeowner would buy, plus an optional main or favorite brand.
+  3. **Screen tuning:** match the screen to white printer paper.
+  4. **Done:** a summary, with an option to install the app.
+
 - **Five quick questions**
   1. What's being painted: a room, a surface or an exterior.
   2. Which way the windows face, using a compass picker, plus how much daylight and what bulbs.
