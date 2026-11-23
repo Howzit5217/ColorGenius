@@ -574,6 +574,7 @@
   function updateWizardNav(show, o) {
     const nav = $('#wizardNav');
     nav.hidden = !show;
+    document.documentElement.classList.toggle('nav-on', !!show); // keeps the page scrollbar above the bar
     if (!show) return;
     const back = $('.nav-back', nav), skip = $('.nav-skip', nav), next = $('.nav-next', nav);
     back.disabled = o.first;
