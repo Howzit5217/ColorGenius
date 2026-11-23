@@ -54,6 +54,13 @@
   </main>
 </div>
 
+<nav class="wizard-nav" id="wizardNav" aria-label="Question navigation" hidden><div class="wizard-nav-inner">
+  <button type="button" class="btn ghost nav-back" data-act="back" disabled><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
+  <span class="spacer"></span>
+  <button type="button" class="btn ghost nav-skip" data-act="skip">Skip</button>
+  <button type="button" class="btn primary nav-next" data-act="next"><span class="nav-next-label">Next</span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+</div></nav>
+
 <div class="scrim" id="scrim" hidden></div>
 <aside class="sheet" id="detailSheet" role="dialog" aria-modal="true" aria-labelledby="detailTitle" hidden></aside>
 <aside class="sheet sheet-settings" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden></aside>

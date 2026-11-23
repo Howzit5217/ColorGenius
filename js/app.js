@@ -117,10 +117,11 @@
     $$('.tab').forEach(t => t.setAttribute('aria-current', t.dataset.view === view ? 'page' : 'false'));
     $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + view; });
     if (location.hash.replace('#', '') !== view && !first) history.replaceState(null, '', '#' + view);
+    if (view !== 'find') updateWizardNav(false);
     if (view === 'find') renderFind();
     if (view === 'lookup') renderLookup();
     if (view === 'shortlist') renderShortlist();
-    window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
+    if (window.scrollY > 0) window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', () => { if (state.ready) route(location.hash.replace('#', '')); });
 
@@ -365,15 +366,9 @@
           ${list.map((s, i) => `<button type="button" class="progress-step ${i < state.step ? 'done' : ''} ${i === state.step ? 'current' : ''}" data-goto="${i}" ${i > state.step ? 'disabled' : ''}><span class="bar"></span><span class="lbl">${i + 1}. ${s === 'room' && (E.SPACES[state.answers.space] || {}).kind === 'exterior' ? 'House' : STEP_LABEL[s]}</span></button>`).join('')}
         </div>
         <div class="step-stage"><div class="step" id="stepBody">${stepHtml(id)}</div></div>
-      </div>
-      <nav class="wizard-nav" aria-label="Question navigation"><div class="wizard-nav-inner">
-          <button type="button" class="btn ghost nav-back" data-act="back" ${state.step === 0 ? 'disabled' : ''}>
-            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
-          <span class="spacer"></span>
-          <button type="button" class="btn ghost nav-skip" data-act="${last ? 'skipall' : 'skip'}" ${optional ? '' : 'disabled aria-hidden="true" tabindex="-1" style="visibility:hidden"'}>Skip</button>
-          <button type="button" class="btn primary nav-next" data-act="next">${last ? 'Show colors' : 'Next'}
-            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      </div></nav>`;
+      </div>`;
+    // the bottom bar is one permanent element: only its labels change, so it never jumps between questions
+    updateWizardNav(true, { first: state.step === 0, last, optional });
     const body = $('#stepBody');
     if (dir && !reduced()) body.animate([{ opacity: 0, transform: `translateX(${dir * 28}px)` }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
     if (id === 'look') fillStylePalettes();
@@ -492,8 +487,11 @@
     setTimeout(() => one(0), 30);
   }
 
-  function goStep(i, dir) { state.step = i; renderWizard(dir); window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' }); }
-  function finishWizard() { state.results = E.recommend(state.answers, engineSettings()); state.gridLight = 'none'; state.roomLight = E.lightForAnswers(state.answers); renderResults(true); window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' }); }
+  // Jump to the top instantly: a smooth scroll makes phone browsers slide their toolbar in and out,
+  // which drags anything pinned to the bottom of the screen with it.
+  const toTop = () => { if (window.scrollY > 0) window.scrollTo(0, 0); };
+  function goStep(i, dir) { state.step = i; renderWizard(dir); toTop(); }
+  function finishWizard() { state.results = E.recommend(state.answers, engineSettings()); state.gridLight = 'none'; state.roomLight = E.lightForAnswers(state.answers); renderResults(true); toTop(); }
 
   $('#view-find').addEventListener('click', e => {
     const t = e.target.closest('button'); if (!t) return;
@@ -561,7 +559,10 @@
     }
     if (t.dataset.removeCustom != null) { a.customFixed.splice(+t.dataset.removeCustom, 1); rerenderStep(); return; }
     if (t.dataset.goto != null && !t.disabled) { const i = +t.dataset.goto; if (i !== state.step) goStep(i, i < state.step ? -1 : 1); return; }
-    const act = t.dataset.act;
+    if (t.dataset.act) wizardAct(t.dataset.act);
+  });
+  function wizardAct(act) {
+    const a = state.answers;
     if (act === 'back' && state.step > 0) goStep(state.step - 1, -1);
     if (act === 'next' || act === 'skip') {
       const id = steps()[state.step];
@@ -569,7 +570,19 @@
       if (state.step < steps().length - 1) goStep(state.step + 1, 1); else finishWizard();
     }
     if (act === 'skipall') { a.fixed = []; a.customFixed = []; a.trimPaint = false; a.crown = false; finishWizard(); }
-  });
+  }
+  function updateWizardNav(show, o) {
+    const nav = $('#wizardNav');
+    nav.hidden = !show;
+    if (!show) return;
+    const back = $('.nav-back', nav), skip = $('.nav-skip', nav), next = $('.nav-next', nav);
+    back.disabled = o.first;
+    skip.dataset.act = o.last ? 'skipall' : 'skip';
+    skip.disabled = !o.optional; skip.style.visibility = o.optional ? '' : 'hidden'; skip.tabIndex = o.optional ? 0 : -1;
+    skip.setAttribute('aria-hidden', o.optional ? 'false' : 'true');
+    $('.nav-next-label', next).textContent = o.last ? 'Show colors' : 'Next';
+  }
+  $('#wizardNav').addEventListener('click', e => { const t = e.target.closest('button'); if (t && !t.disabled && state.view === 'find' && !state.results) wizardAct(t.dataset.act); });
   function rerenderStep() {
     const id = steps()[state.step];
     const body = $('#stepBody'); if (!body) return;
@@ -647,6 +660,7 @@
   }
 
   function renderResults(animate) {
+    updateWizardNav(false);
     const host = $('#view-find');
     const R = state.results;
     const a = R.answers;
@@ -1657,7 +1671,7 @@
       cal: { warmth: settings.cal.warmth || 0, brightness: settings.cal.brightness || 0 }, calTouched: false,
     };
     closeSheet($('#detailSheet')); closeSheet($('#settingsSheet'));
-    const el = $('#onboard'); el.hidden = false; el.classList.remove('out');
+    const el = $('#onboard'); el.innerHTML = ''; el.hidden = false; el.classList.remove('out');
     document.documentElement.classList.add('ob-open');
     renderOnboarding();
   }
@@ -1735,23 +1749,25 @@
         ${st === 'prompt' || st === 'ios' || st === 'android' ? `<div class="sample-note ob-install"><img src="icons/icon-192.png" width="44" height="44" alt="" style="border-radius:11px"><div><b>Put ColorGenius on your home screen</b><br><span class="muted">Opens full screen like an app and works offline.</span></div><button type="button" class="btn small" data-ob="install">Get the app</button></div>` : ''}`;
       next = 'Start finding colors';
     }
-    el.innerHTML = `
-      <div class="ob-shell">
+    // the bottom bar is built once and only updated, so it stays put between steps
+    if (!$('.ob-nav', el)) el.innerHTML = `<div class="ob-shell" id="obShell"></div>
+      <nav class="wizard-nav ob-nav" aria-label="Setup navigation"><div class="wizard-nav-inner">
+        <button type="button" class="btn ghost nav-back" data-ob="back"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost nav-skip" data-ob="skip">Skip</button>
+        <button type="button" class="btn primary nav-next" data-ob="next"><span class="nav-next-label">Next</span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div></nav>`;
+    $('#obShell').innerHTML = `
         <div class="ob-top">
           <span class="wordmark ob-mark" aria-hidden="true"><span class="fan"><i></i><i></i><i></i></span><span class="wordmark-text">ColorGenius</span></span>
           <div class="ob-dots" aria-hidden="true">${OB_STEPS.map((s, i) => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</div>
           ${id !== 'done' ? '<button type="button" class="btn small ghost" data-ob="skip-setup">Skip setup</button>' : '<span></span>'}
         </div>
-        <div class="ob-body" id="obBody">${body}</div>
-      </div>
-      <nav class="wizard-nav ob-nav" aria-label="Setup navigation"><div class="wizard-nav-inner">
-        <button type="button" class="btn ghost nav-back" data-ob="back" ${ob.step === 0 ? 'disabled style="visibility:hidden"' : ''}>
-          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
-        <span class="spacer"></span>
-        <button type="button" class="btn ghost nav-skip" data-ob="skip" ${skip ? '' : 'disabled aria-hidden="true" tabindex="-1" style="visibility:hidden"'}>${skip || 'Skip'}</button>
-        <button type="button" class="btn primary nav-next" data-ob="next" ${nextOff ? 'disabled' : ''}>${next}
-          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      </div></nav>`;
+        <div class="ob-body" id="obBody">${body}</div>`;
+    const nb = $('.ob-nav [data-ob="back"]'), ns = $('.ob-nav [data-ob="skip"]'), nn = $('.ob-nav [data-ob="next"]');
+    nb.disabled = ob.step === 0; nb.style.visibility = ob.step === 0 ? 'hidden' : '';
+    ns.disabled = !skip; ns.style.visibility = skip ? '' : 'hidden'; ns.tabIndex = skip ? 0 : -1; ns.textContent = skip || 'Skip';
+    nn.disabled = nextOff; $('.nav-next-label', nn).textContent = next;
     const b = $('#obBody');
     if (ob.dir && !reduced()) b.animate([{ opacity: 0, transform: `translateX(${ob.dir * 28}px)` }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
     ob.dir = 0;
@@ -1883,7 +1899,7 @@
   // Updates: every launch loads the newest files (see sw.js). If the app sat open in the background,
   // it reloads itself when it comes back, but only when nothing is in progress.
   let swReg = null, updateWaiting = false, reloading = false, hiddenAt = 0;
-  const idleForUpdate = () => !state.results && state.step === 0 && $('#detailSheet').hidden && $('#settingsSheet').hidden && $('#calModal').hidden && $('#present').hidden && $('#infoModal').hidden;
+  const idleForUpdate = () => !state.results && state.step === 0 && $('#detailSheet').hidden && $('#settingsSheet').hidden && $('#calModal').hidden && $('#present').hidden && $('#infoModal').hidden && $('#onboard').hidden;
   const applyUpdate = () => { if (reloading) return; reloading = true; location.reload(); };
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     const hadController = !!navigator.serviceWorker.controller;
