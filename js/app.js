@@ -129,7 +129,7 @@
   function steps() {
     const sp = E.SPACES[state.answers.space] || E.SPACES.living;
     const list = ['space', 'light', 'look', 'color'];
-    if (sp.kind === 'interior' && settings.askFixed) list.push('room');
+    if (settings.askFixed) list.push('room');
     return list;
   }
   const STEP_LABEL = { space: 'Space', light: 'Light', look: 'Style', color: 'Color', room: 'Room' };
@@ -150,11 +150,23 @@
     green: ['C9D3BE', '8FA588', '4E6650'], blue: ['C9D6E0', '7F9BB2', '2F4A66'], earthy: ['D9A783', 'B5653F', '7A4A33'],
     'pink-purple': ['EBCFCF', 'C79AA6', '6E4D6A'], dark: ['3A3D42', '2B3A36', '1F2329'], bold: ['D8443A', 'E3A02B', '1F6F8B'],
   };
-  const FIXED_SAMPLE = {
-    'warm-wood': 'linear-gradient(100deg,#b27a46,#93602f 45%,#b98652)', 'cool-tile': 'linear-gradient(90deg,#a7acaf 0 49%,#e4e6e7 49% 51%,#bfc3c5 51%)',
-    'white-cabinets': 'linear-gradient(180deg,#fbfbf9,#efefec)', 'dark-furniture': 'linear-gradient(180deg,#34302c,#201d1b)',
-    brick: 'repeating-linear-gradient(0deg,#9b4a35 0 9px,#d9cfc4 9px 11px)', brass: 'linear-gradient(110deg,#a8812f,#e2c56f 50%,#a8812f)',
-  };
+  // A small material sample for each "what's staying" option: planks, tile joints, stone speckle, shingles, metal sheen.
+  function matBg(f) {
+    const c = '#' + f.hex;
+    const label = f.label.toLowerCase();
+    if (/brick/.test(label)) return `repeating-linear-gradient(0deg, ${c} 0 9px, #d9cfc4 9px 11px)`;
+    if (f.kind === 'floor' && /wood|oak|cherry|walnut|lvp/.test(label)) return `repeating-linear-gradient(90deg, rgba(0,0,0,.14) 0 1px, transparent 1px 25%), linear-gradient(100deg, rgba(255,255,255,.14), rgba(0,0,0,.10)), ${c}`;
+    if (f.kind === 'floor' && /tile|travertine/.test(label)) return `repeating-linear-gradient(90deg, transparent 0 32%, rgba(255,255,255,.5) 32% 33.5%), ${c}`;
+    if (f.kind === 'floor') return `linear-gradient(180deg, rgba(255,255,255,.10), rgba(0,0,0,.08)), ${c}`;
+    if (f.kind === 'counter' && f.L > 85) return `linear-gradient(125deg, transparent 38%, rgba(0,0,0,.10) 41%, transparent 45%, transparent 70%, rgba(0,0,0,.06) 72%, transparent 75%), ${c}`;
+    if (f.kind === 'counter' && /butcher/.test(label)) return `repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 1px, transparent 1px 12%), ${c}`;
+    if (f.kind === 'counter' || f.kind === 'stone') return `radial-gradient(rgba(0,0,0,.22) 1px, transparent 1.6px) 0 0 / 7px 7px, radial-gradient(rgba(255,255,255,.25) 1px, transparent 1.6px) 3px 3px / 9px 9px, ${c}`;
+    if (f.kind === 'cabinet') return `linear-gradient(90deg, transparent 48.5%, rgba(0,0,0,.18) 48.5% 51.5%, transparent 51.5%), linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.06)), ${c}`;
+    if (f.kind === 'fixture') return `linear-gradient(110deg, rgba(0,0,0,.12), rgba(255,255,255,.5) 50%, rgba(0,0,0,.12)), ${c}`;
+    if (f.kind === 'roof') return `repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 8px), ${c}`;
+    if (f.kind === 'window') return `linear-gradient(180deg, #9fb6c8, #dbe6ee) center / 70% 58% no-repeat, ${c}`;
+    return `linear-gradient(180deg, rgba(255,255,255,.12), rgba(0,0,0,.12)), ${c}`;
+  }
   const LIGHT_NOTE = {
     north: 'Cool, even, indirect light all day. Colors look cooler and a little darker, so warm undertones help.',
     south: 'Bright, warm light most of the day. Colors look lighter and warmer; cool and deeper colors hold up well.',
@@ -184,19 +196,18 @@
     host.innerHTML = `
       <div class="wizard">
         <div class="progress" style="--steps:${list.length}">
-          ${list.map((s, i) => `<button type="button" class="progress-step ${i < state.step ? 'done' : ''} ${i === state.step ? 'current' : ''}" data-goto="${i}" ${i > state.step ? 'disabled' : ''}><span class="bar"></span><span class="lbl">${i + 1}. ${STEP_LABEL[s]}</span></button>`).join('')}
+          ${list.map((s, i) => `<button type="button" class="progress-step ${i < state.step ? 'done' : ''} ${i === state.step ? 'current' : ''}" data-goto="${i}" ${i > state.step ? 'disabled' : ''}><span class="bar"></span><span class="lbl">${i + 1}. ${s === 'room' && (E.SPACES[state.answers.space] || {}).kind === 'exterior' ? 'House' : STEP_LABEL[s]}</span></button>`).join('')}
         </div>
         <div class="step-stage"><div class="step" id="stepBody">${stepHtml(id)}</div></div>
-        <div class="step-foot">
-          <button type="button" class="btn ghost" data-act="back" ${state.step === 0 ? 'disabled' : ''}>
+      </div>
+      <nav class="wizard-nav" aria-label="Question navigation"><div class="wizard-nav-inner">
+          <button type="button" class="btn ghost nav-back" data-act="back" ${state.step === 0 ? 'disabled' : ''}>
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
           <span class="spacer"></span>
-          ${optional && !last ? '<button type="button" class="btn ghost" data-act="skip">Skip</button>' : ''}
-          ${last ? '<button type="button" class="btn ghost" data-act="skipall">Skip</button>' : ''}
-          <button type="button" class="btn primary" data-act="next">${last ? 'Show colors' : 'Next'}
+          <button type="button" class="btn ghost nav-skip" data-act="${last ? 'skipall' : 'skip'}" ${optional ? '' : 'disabled aria-hidden="true" tabindex="-1" style="visibility:hidden"'}>Skip</button>
+          <button type="button" class="btn primary nav-next" data-act="next">${last ? 'Show colors' : 'Next'}
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        </div>
-      </div>`;
+      </div></nav>`;
     const body = $('#stepBody');
     if (dir && !reduced()) body.animate([{ opacity: 0, transform: `translateX(${dir * 28}px)` }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
     if (id === 'look') fillStylePalettes();
@@ -256,10 +267,22 @@
         <div class="group"><p class="group-label">How light or dark?</p>${seg('depth', E.DEPTHS, a.depth, 'Depth')}</div>`;
     }
     if (id === 'room') {
+      const ext = sp.kind === 'exterior';
+      const items = E.FIXED_ITEMS.filter(f => f.where === (ext ? 'exterior' : 'interior'));
+      const groups = items.map(f => f.group).filter((g, i, arr) => arr.indexOf(g) === i);
+      const custom = a.customFixed || [];
+      const kinds = Object.entries(E.FIXED_KINDS).filter(([k]) => (ext ? ['roof', 'stone', 'window', 'custom'] : ['floor', 'counter', 'cabinet', 'furniture', 'fixture', 'stone', 'custom']).includes(k));
       return `
-        <div class="step-head"><p class="eyebrow">Question 5</p><h1>Anything staying in the room?</h1><p>Floors, tile and fixtures change which undertones work. Pick any that apply.</p></div>
-        <div class="options">
-          ${Object.entries(E.FIXED).map(([k, v]) => `<button type="button" class="opt material" data-fixed="${k}" aria-pressed="${a.fixed.includes(k)}">${check}<span class="mat" style="background:${FIXED_SAMPLE[k]}"></span><span class="opt-title">${esc(v)}</span></button>`).join('')}
+        <div class="step-head"><p class="eyebrow">Question 5</p><h1>${ext ? 'What else is on the house?' : 'Anything staying in the room?'}</h1><p>${ext ? 'The roof, brick or stone, and window colors change which body and trim colors work. Pick any that apply.' : 'Floors, counters, furniture and fixtures change which undertones work. Pick any that apply.'}</p></div>
+        ${groups.map(g => `<div class="group"><p class="section-title">${esc(g)}</p><div class="options">${items.filter(f => f.group === g).map(f => `<button type="button" class="opt material" data-fixed="${f.id}" aria-pressed="${a.fixed.includes(f.id)}">${check}<span class="mat" style="background:${matBg(f)}"></span><span class="opt-title">${esc(f.label)}</span></button>`).join('')}</div></div>`).join('')}
+        <div class="group"><p class="section-title">Something else</p>
+          <div class="custom-add">
+            <input type="text" id="cfLabel" maxlength="40" placeholder="Name it, e.g. area rug" aria-label="Item name" autocomplete="off">
+            <select id="cfKind" aria-label="What it is">${kinds.map(([k, v]) => `<option value="${k}" ${k === 'custom' ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>
+            <input type="color" id="cfColor" value="#8a6f55" aria-label="Its color">
+            <button type="button" class="btn small" data-act="add-custom">Add</button>
+          </div>
+          ${custom.length ? `<div class="custom-list">${custom.map((x, i) => `<span class="custom-chip"><i style="background:#${esc(x.hex)}"></i>${esc(x.label)}<button type="button" data-remove-custom="${i}" aria-label="Remove ${esc(x.label)}">×</button></span>`).join('')}</div>` : ''}
         </div>`;
     }
     return '';
@@ -295,6 +318,8 @@
     if (t.dataset.space) {
       a.space = t.dataset.space;
       const sp = E.SPACES[a.space];
+      // inside and outside have different "what's staying" lists
+      a.fixed = a.fixed.filter(id => (E.FIXED_ITEMS.find(f => f.id === id) || {}).where === sp.kind);
       if (sp.dimByNature && a.amount === 'medium') a.amount = 'low';
       if (sp.kind === 'exterior' && (a.facing === 'none')) a.facing = 'unsure';
       rerenderStep();
@@ -310,15 +335,22 @@
     }
     if (t.dataset.family) { toggleIn(a.families, t.dataset.family); t.setAttribute('aria-pressed', a.families.includes(t.dataset.family)); return; }
     if (t.dataset.fixed) { toggleIn(a.fixed, t.dataset.fixed); t.setAttribute('aria-pressed', a.fixed.includes(t.dataset.fixed)); return; }
+    if (t.dataset.act === 'add-custom') {
+      const label = ($('#cfLabel').value || '').trim() || 'Custom item';
+      const hex = ($('#cfColor').value || '#8a6f55').replace('#', '').toUpperCase();
+      a.customFixed = (a.customFixed || []).concat([{ label: label.slice(0, 40), hex, kind: $('#cfKind').value }]);
+      rerenderStep(); return;
+    }
+    if (t.dataset.removeCustom != null) { a.customFixed.splice(+t.dataset.removeCustom, 1); rerenderStep(); return; }
     if (t.dataset.goto != null && !t.disabled) { const i = +t.dataset.goto; if (i !== state.step) goStep(i, i < state.step ? -1 : 1); return; }
     const act = t.dataset.act;
     if (act === 'back' && state.step > 0) goStep(state.step - 1, -1);
     if (act === 'next' || act === 'skip') {
       const id = steps()[state.step];
-      if (act === 'skip') { if (id === 'look') a.styles = []; if (id === 'color') { a.families = []; a.depth = 'any'; } if (id === 'room') a.fixed = []; }
+      if (act === 'skip') { if (id === 'look') a.styles = []; if (id === 'color') { a.families = []; a.depth = 'any'; } if (id === 'room') { a.fixed = []; a.customFixed = []; } }
       if (state.step < steps().length - 1) goStep(state.step + 1, 1); else finishWizard();
     }
-    if (act === 'skipall') { a.fixed = []; finishWizard(); }
+    if (act === 'skipall') { a.fixed = []; a.customFixed = []; finishWizard(); }
   });
   function rerenderStep() {
     const id = steps()[state.step];
@@ -358,7 +390,7 @@
     out.push([idx('light'), lightBits.join(' · ')]);
     out.push([idx('look'), a.styles.length ? a.styles.map(s => E.STYLES[s].label).join(' + ') : 'Any style']);
     out.push([idx('color'), (a.families.length ? a.families.map(f => E.FAMILY_CHOICES[f]).join(', ') : 'Any color') + (a.depth !== 'any' ? ` · ${E.DEPTHS[a.depth]}` : '')]);
-    if (idx('room') >= 0 && a.fixed.length) out.push([idx('room'), a.fixed.map(f => E.FIXED[f]).join(', ')]);
+    if (idx('room') >= 0 && (a.fixed.length || (a.customFixed || []).length)) out.push([idx('room'), a.fixed.map(f => E.FIXED[f]).concat((a.customFixed || []).map(x => x.label)).join(', ')]);
     return out;
   }
   function flagsFor(r) {
@@ -596,12 +628,22 @@
     if (space === 'kitchen') Object.assign(p, { cab: c.lrv > 82 ? '3F4A52' : white, counter: 'ECEAE5', tile: 'F6F5F1', hood: 'B9BDBF' });
     if (space === 'bathroom') Object.assign(p, { floor: 'CFCBC4', vanity: c.lrv > 82 ? '5B6770' : white, counter: 'ECEAE5' });
     p.duvet = 'F1F0EC'; p.wood = 'A27B55';
+    // show what's staying: the chosen floor, counters, cabinets, furniture and roof
+    const items = E.fixedItems(answers);
+    const first = kind => items.find(f => f.kind === kind);
+    const shadeHex = (hex, k) => C.linearToHex(C.hexToLinear(hex).map(v => Math.min(1, v * k)));
+    const fl = first('floor'); if (fl) p.floor = fl.hex;
+    const ct = first('counter'); if (ct) p.counter = ct.hex;
+    const cb = first('cabinet'); if (cb && space !== 'cabinets') { p.cab = cb.hex; if (space === 'bathroom') p.vanity = cb.hex; }
+    const fu = first('furniture'); if (fu) { p.sofa = fu.hex; p['sofa-d'] = shadeHex(fu.hex, 0.82); p['sofa-l'] = shadeHex(fu.hex, 1.16); }
     if (sceneKind(space) === 'house') {
       Object.assign(p, { roof: '45484C', lawn: '6E8A4F', shrub: '4E6A3B', walk: 'CFCAC0', step: 'BEB9B0', glass: '33404B', tree: '5D7649' });
       if (space === 'front_door') Object.assign(p, { xdoor: c.hex, body: c.lrv > 55 ? '6B6F72' : 'D9D5CC', xtrim: 'F2F1EC' });
       if (space === 'ext_body') Object.assign(p, { body: c.hex, xtrim: c.lrv > 80 ? '2E3134' : white, xdoor: acc });
       if (space === 'ext_trim') Object.assign(p, { xtrim: c.hex, body: c.lrv > 55 ? '6B6F72' : 'DCD7CE', xdoor: acc });
+      const stone = first('stone'); if (stone) p.step = stone.hex; // stone or brick shows on the front steps
     }
+    const rf = first('roof'); if (rf) p.roof = rf.hex;
     return p;
   }
 

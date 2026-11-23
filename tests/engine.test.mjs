@@ -245,6 +245,28 @@ test('paint lines: the right line for the job, and switched-off lines are skippe
   }
   assert.equal(E.recommendLines('dv', white, { space: 'living' }, {}).best, null);
 });
+test('what is staying: floors, counters, furniture, roof and custom items change the advice', () => {
+  const sw = E.getIndex().byBrand.sw.filter(c => !(c.flags & E.F.DISC));
+  const coolGray = sw.find(c => c.neutral && c.fam === 'gray' && c.ut === 'blue' && c.C > 3);
+  const yellowBeige = sw.find(c => c.fam === 'beige' && c.ut === 'yellow' && c.C > 11);
+  const creamy = sw.find(c => c.fam === 'white' && c.ut === 'yellow' && c.C > 5);
+  const blue = sw.find(c => c.fam === 'blue' && c.C > 20);
+  const titles = (c, a) => E.warningsFor(c, a).map(w => w.level + ':' + w.title);
+  assert.ok(titles(coolGray, { fixed: ['warm-wood'] }).some(t => t.startsWith('caution:') && /wood/i.test(t)));
+  assert.ok(titles(yellowBeige, { fixed: ['warm-wood'] }).some(t => /too much yellow/i.test(t)));
+  assert.ok(titles(creamy, { space: 'kitchen', fixed: ['counter-white'] }).some(t => /creamy/i.test(t)));
+  assert.ok(titles(yellowBeige, { fixed: ['cool-tile'] }).some(t => /yellow next to/i.test(t)));
+  assert.ok(E.fixedEffects(blue, { fixed: ['warm-wood'] }).reasons.some(r => /complements/i.test(r)));
+  assert.ok(E.fixedEffects(coolGray, { fixed: ['warm-wood'] }).score < 0);
+  const custom = E.fixedItems({ customFixed: [{ label: 'Rust rug', hex: '#A0522D', kind: 'furniture' }, { label: 'bad', hex: 'zz' }] });
+  assert.equal(custom.length, 1);
+  assert.equal(custom[0].kind, 'furniture');
+  assert.ok(titles(coolGray, { space: 'ext_body', fixed: ['roof-brown'] }).some(t => /roof/i.test(t)));
+  const plain = rec({ space: 'living', families: ['warm-neutral'] });
+  const withOak = rec({ space: 'living', families: ['warm-neutral'], fixed: ['warm-wood'] });
+  assert.notDeepEqual(plain.results.map(r => r.color.id), withOak.results.map(r => r.color.id), 'materials change the picks');
+  assert.ok(E.FIXED_ITEMS.length >= 40 && E.FIXED_ITEMS.every(f => /^[0-9A-F]{6}$/.test(f.hex) && f.label && f.kind));
+});
 test('offline file list matches the brand files', () => {
   const files = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/files.json'), 'utf8'));
   assert.deepEqual(files.sort(), window.CG_BRANDS.map(b => `data/colors/${b.id}.js`).sort());

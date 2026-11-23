@@ -54,6 +54,8 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
+/* keep room for the scrollbar on every screen so pinned buttons never shift sideways */
+html { scrollbar-gutter: stable; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; overflow-x: hidden;
@@ -165,6 +167,23 @@ p { margin: 0; }
 .compass-btn[aria-pressed="true"] { background: var(--ink); color: var(--on-primary); border-color: var(--ink); }
 .compass-btn[aria-pressed="true"] small { color: inherit; opacity: .7; }
 .light-note { font-size: 13.5px; color: var(--ink-2); min-height: 3.2em; transition: opacity var(--t-fast); }
+
+/* question navigation: pinned to the bottom of the screen so Back, Skip and Next never move */
+.wizard { padding-bottom: 96px; }
+.wizard-nav { position: fixed; z-index: 18; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.2) blur(14px); -webkit-backdrop-filter: saturate(1.2) blur(14px); border-top: 1px solid var(--line); padding-block: 12px calc(12px + env(safe-area-inset-bottom, 0px)); padding-left: var(--gutter-l); padding-right: var(--gutter-r); }
+.wizard-nav-inner { max-width: 860px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+.wizard-nav .spacer { flex: 1; }
+.wizard-nav .nav-back, .wizard-nav .nav-skip { min-width: 92px; justify-content: center; }
+.wizard-nav .nav-next { min-width: 156px; justify-content: center; }
+/* custom "something else" items */
+.custom-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px; }
+.custom-add input[type="text"] { flex: 1 1 180px; min-width: 0; border: 1px solid var(--line-2); background: var(--surface); border-radius: 9px; padding: 9px 11px; font-size: 15px; }
+.custom-add select { border: 1px solid var(--line-2); background: var(--surface); border-radius: 9px; padding: 9px 10px; font-size: 14px; max-width: 100%; }
+.custom-add input[type="color"] { width: 44px; height: 40px; border: 1px solid var(--line-2); border-radius: 9px; padding: 2px; background: var(--surface); cursor: pointer; }
+.custom-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.custom-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 4px 4px 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 13.5px; animation: rowIn var(--t-med) var(--ease); }
+.custom-chip i { width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .1); }
+.custom-chip button { border: 0; background: var(--surface-2); width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; line-height: 1; color: var(--ink-2); }
 
 /* wizard footer */
 .step-foot { display: flex; align-items: center; gap: 10px; margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--line); }
