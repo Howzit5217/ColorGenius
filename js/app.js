@@ -2001,7 +2001,7 @@
       <ol class="cam-steps"><li>Lay the chip or sample on a sheet of plain white paper, or hold the paper flat against the wall right beside the color.</li>
         <li>Line up the paper in the <b>Paper</b> box and the color in the <b>Color</b> box, in even light with no glare or shadow. Drag a box to move it, or its corner to make it bigger or smaller.</li>
         <li>Tap <b>Read Color</b>. It gets close, not exact, so check the match against a real chip.</li></ol>
-      <div class="cam-live" aria-live="polite"><span class="sw" id="camSw"></span><span id="camNote">Getting ready…</span></div>
+      <div class="cam-live"><span class="sw" id="camSw"></span><span id="camNote" aria-live="polite">Getting ready…</span><span class="grow"></span><button type="button" class="btn small ghost" data-cam-reset="1">Reset Boxes</button></div>
       <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big" data-cam-light="1" aria-pressed="false" hidden>${ic('bulb', 22)}Light</button><button type="button" class="btn big primary" data-cam-read="1" disabled>${ic('camera', 22)}Read Color</button></div>`, { wide: true });
     camLayout();
     let stream;
@@ -2069,6 +2069,14 @@
   });
   const camDragEnd = e => { if (!camDrag || (e && e.pointerId !== camDrag.id)) return; camDrag.el.classList.remove('moving'); camDrag = null; store.set('camBoxes', camBoxes); };
   document.addEventListener('pointerup', camDragEnd); document.addEventListener('pointercancel', camDragEnd);
+  // Reset Boxes: both back to where they start, and the saved layout forgotten
+  document.addEventListener('click', e => {
+    if (!e.target.closest('[data-cam-reset]') || !$('#camWrap')) return;
+    camBoxes = clone(CAM_BOX0); store.set('camBoxes', null);
+    $$('#camWrap .cam-box').forEach(b => b.classList.add('resetting'));
+    camLayout();
+    setTimeout(() => $$('#camWrap .cam-box').forEach(b => b.classList.remove('resetting')), 320);
+  });
   document.addEventListener('click', async e => {
     const t = e.target.closest('[data-cam-light]'); if (!t || !cam || !cam.torch) return;
     const on = !cam.light;

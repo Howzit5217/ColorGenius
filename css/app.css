@@ -853,6 +853,10 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 .cam-live[hidden] { display: none; }
 .cam-steps { margin: 0; padding-left: 1.3em; display: grid; gap: 4px; }
 .cam-live { display: flex; align-items: center; gap: 12px; font-weight: 700; min-height: 44px; }
+.cam-live .grow { flex: 1; }
+/* Reset Boxes slides them back instead of jumping */
+.cam-box.resetting { transition: left 280ms var(--ease), top 280ms var(--ease), width 280ms var(--ease), height 280ms var(--ease); }
+@media (prefers-reduced-motion: reduce) { .cam-box.resetting { transition: none; } }
 .cam-live .sw { flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--surface-2); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
 .cam-live .bad { color: var(--caution); }
 
