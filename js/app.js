@@ -2931,9 +2931,11 @@
   }
   const sw = (key, on, label, sub) => `<div class="set-row"><div class="set-text"><b id="lbl-${key}">${esc(label)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</div><button type="button" class="switch" role="switch" aria-checked="${!!on}" aria-labelledby="lbl-${key}" data-set="${key}"></button></div>`;
   const segRow = (key, label, sub, map, value) => `<div class="set-row"><div class="set-text"><b>${esc(label)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</div><div class="seg" role="group" aria-label="${esc(label)}">${Object.entries(map).map(([k, v]) => `<button type="button" data-seg="${key}" data-val="${k}" aria-pressed="${String(value) === k}">${esc(v)}</button>`).join('')}</div></div>`;
-  // Each brand's own icon, from its own website (img/brands). RAL and Colorhouse have none worth showing, so they
-  // keep a few of their colors; a stain brand without one gets its first letter.
+  // Each brand's own icon, from its own website (img/brands). RAL, Colorhouse, Dulux Australia (a 16-pixel icon only)
+  // and Nerolac (a wide wordmark only) have none worth showing, so they keep a few of their colors; a stain brand
+  // without one gets its first letter.
   const BRAND_LOGO = { behr: 'behr.png', bm: 'bm.ico', ck: 'ck.png', de: 'de.png', dutchboy: 'dutchboy.png', dv: 'dv.png', fb: 'fb.jpg', glidden: 'glidden.png', hgsw: 'hgsw.png', hl: 'hl.png', kilz: 'kilz.png', magnolia: 'magnolia.png', ppg: 'ppg.png', resene: 'resene.ico', sw: 'sw.png', valspar: 'valspar.png', vista: 'vista.png',
+    plascon: 'plascon.png', sico: 'sico.png',
     minwax: 'minwax.png', cabot: 'cabot.png', olympic: 'olympic.png', swstain: 'sw.png' };
   const logoImg = id => `<span class="brand-logo"><img src="img/brands/${BRAND_LOGO[id]}" alt="" width="40" height="40" loading="lazy" decoding="async"></span>`;
   const brandMark = id => BRAND_LOGO[id] ? logoImg(id) : brandDots(id);

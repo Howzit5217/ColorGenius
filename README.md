@@ -38,7 +38,7 @@ The quick questions (about six):
 
 **Results:** the room picture sits on top, with the colors right under it. Tap a color and the room repaints, rolling the new color across the walls like a paint roller. On phones the colors are one swipeable row so the room stays in view. **Help Me Pick One** plays a few "Which do you like better?" rounds and marks your pick.
 
-Colors come from about 34,700 colors across 19 brands, spread out so you don't get six versions of the same beige. Each has reasons it fits and its Light Reflectance (LRV: how much light the color bounces back, from 0 for black to 100 for white).
+Colors come from about 45,000 colors across 23 brands from the US, Canada, Australia and New Zealand, the UK, South Africa and India, spread out so you don't get six versions of the same beige. Each has reasons it fits and its Light Reflectance (LRV: how much light the color bounces back, from 0 for black to 100 for white).
 
 ## Stain Colors
 
@@ -188,7 +188,15 @@ The Email buttons can send from the site's own do-not-reply address. It uses [Em
 | Colorhouse | 128 | Calculated | Older public list |
 | Resene | 2,041 | Calculated | Resene official swatch file |
 | Farrow & Ball | 132 | Calculated | Older public list |
+| Dulux Australia (also New Zealand) | 4,974 | Brand | dulux.com.au Colour Atlas |
+| Plascon (South Africa) | 1,775 | Calculated | plascon.co.za colour list |
+| Sico (Canada) | 1,707 | Calculated | sico.ca colour families |
+| Nerolac (India) | 1,846 | Calculated | nerolac.com colour catalogue |
 | RAL Classic (color standard) | 213 | Calculated | Public list of the RAL Classic chart |
+
+Brands from outside the US are in Settings → Brands → International, switched off until a store turns them on. Search also knows every brand by name (`plascon moody blue`, `sico london cab`, `dulux vivid white`).
+
+Also looked at, but not included because their websites don't show the whole palette in a form that can be read (or block automated reading): Jotun, Tikkurila, Little Greene, Asian Paints, Berger, Nippon Paint, Haymes, Taubmans, Wattyl, Comex, Suvinil, and the AkzoNobel sites (Dulux UK, Dulux Valentine, Coral, Flexa, Sikkens), which show only part of each palette on the page.
 
 **Wood stains** (753 stain colors; each brand can be switched off in setup or Settings):
 
@@ -208,7 +216,7 @@ Varathane's chip photos can't be read by a browser, so they're averaged with Win
 
 Not included, because the brands don't publish color values in a form that can be read: Behr stains (behr.com blocks automated access), Valspar stains (loaded only through a third-party search service; the PDF color card has no readable names), Thompson's, Ready Seal and Benjamin Moore Arborcoat/Woodluxe (beyond the handful of exterior stain colors in its paint data).
 
-All colors were collected on 2026-11-23. "Calculated" LRV comes from the color value and is usually within a couple of points of the printed number; the app marks it with an asterisk. Screen colors are each brand's own digital values. Always confirm with a physical chip.
+All colors were collected on 2026-11-23, and Dulux Australia, Plascon, Sico and Nerolac on 2026-11-24. "Calculated" LRV comes from the color value and is usually within a couple of points of the printed number; the app marks it with an asterisk. Screen colors are each brand's own digital values. Always confirm with a physical chip.
 
 ## Run it
 
@@ -253,7 +261,7 @@ The tests check the color math against published reference values. They also che
 
 ## Updating the colors
 
-`tools/fetch/` has the scripts used to download each brand's public color list. `tools/build-data.mjs` turns those downloads into the files in `data/`:
+`tools/fetch/` has the scripts used to download each brand's public color list (`world_fetch.mjs` reads Dulux Australia, Plascon, Sico and Nerolac). A brand with no new download keeps the file it has, so one brand can be added or refreshed on its own. `tools/build-data.mjs` turns those downloads into the files in `data/`:
 
 ```
 node tools/build-data.mjs <folder-with-downloads>

@@ -648,3 +648,19 @@ test('stains can be looked up by name, number, brand word or color', () => {
   assert.ok(near.every((r, i) => i === 0 || r.dE >= near[i - 1].dE));
   assert.deepEqual(ST.search(''), []);
 });
+
+// ---------------- brands from around the world ----------------
+test('brands from other countries: searchable by name, number and brand word', () => {
+  for (const id of ['duluxau', 'plascon', 'sico', 'nerolac']) assert.ok((E.getIndex().byBrand[id] || []).length > 1000, id);
+  assert.equal(E.search('SW1G1')[0].color.brand, 'duluxau');
+  assert.equal(E.search('dulux vivid white')[0].color.code, 'SW1G1');
+  assert.equal(E.search('plascon moody blue')[0].color.brand, 'plascon');
+  assert.equal(E.search('sico london cab')[0].color.code, '6242-83');
+  assert.equal(E.search('nerolac cannon ball')[0].color.brand, 'nerolac');
+  // a first word that happens to be a brand's isn't taken as that brand
+  assert.ok(E.search('diamond white').some(r => r.color.brand !== 'dv'));
+  // Dulux publishes its own LRV; the others' is worked out from the color
+  const vivid = E.findColor('duluxau:SW1G1');
+  assert.equal(vivid.lrv, 94);
+  assert.ok(!(vivid.flags & E.F.LRV_EST));
+});

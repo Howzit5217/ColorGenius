@@ -1398,7 +1398,10 @@
     let nq = normalize(q);
     // strip a leading brand word or prefix ("sw 7029", "bm oc 17", "behr swiss coffee")
     let brandHint = null;
-    const hints = { sw: 'sw', sherwin: 'sw', 'sherwin williams': 'sw', bm: 'bm', benjamin: 'bm', 'benjamin moore': 'bm', behr: 'behr', valspar: 'valspar', glidden: 'glidden', ppg: 'ppg', pittsburgh: 'ppg', hgsw: 'hgsw', hgtv: 'hgsw', 'dutch boy': 'dutchboy', dunn: 'de', 'dunn edwards': 'de', de: 'de', 'diamond vogel': 'dv', clark: 'ck', 'clark kensington': 'ck', 'clark and kensington': 'ck', ck: 'ck', 'c k': 'ck', magnolia: 'magnolia', 'magnolia home': 'magnolia', kilz: 'kilz', vista: 'vista', resene: 'resene', farrow: 'fb', 'farrow ball': 'fb', 'f b': 'fb', hallman: 'hl', 'hallman lindsay': 'hl', colorhouse: 'colorhouse', yolo: 'colorhouse', ral: 'ral' };
+    const hints = { sw: 'sw', sherwin: 'sw', 'sherwin williams': 'sw', bm: 'bm', benjamin: 'bm', 'benjamin moore': 'bm', behr: 'behr', valspar: 'valspar', glidden: 'glidden', ppg: 'ppg', pittsburgh: 'ppg', hgsw: 'hgsw', hgtv: 'hgsw', 'dutch boy': 'dutchboy', dunn: 'de', 'dunn edwards': 'de', de: 'de', 'diamond vogel': 'dv', clark: 'ck', 'clark kensington': 'ck', 'clark and kensington': 'ck', ck: 'ck', 'c k': 'ck', magnolia: 'magnolia', 'magnolia home': 'magnolia', kilz: 'kilz', vista: 'vista', resene: 'resene', farrow: 'fb', 'farrow ball': 'fb', 'f b': 'fb', hallman: 'hl', 'hallman lindsay': 'hl', colorhouse: 'colorhouse', yolo: 'colorhouse', ral: 'ral', dulux: 'duluxau', 'kansai nerolac': 'nerolac' };
+    // every other brand by its full name and its short id ("plascon moody blue", "sico london cab"). Not by a first
+    // word alone: "diamond white" is a color, not Diamond Vogel.
+    for (const b of INDEX.brands) for (const k of [normalize(b.name), normalize(b.id)]) if (k && k.length >= 2 && !hints[k]) hints[k] = b.id;
     for (const k of Object.keys(hints).sort((x, y) => y.length - x.length)) {
       if (nq === k || nq.startsWith(k + ' ')) { brandHint = hints[k]; nq = nq.slice(k.length).trim(); break; }
     }
