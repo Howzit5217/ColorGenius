@@ -75,6 +75,23 @@
 <div id="printArea" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+<script>
+/* A browser too old to run ColorGenius (Internet Explorer, or a phone or computer that hasn't been updated
+   since about 2018) gets a clear note instead of a loading screen that never ends. Written in old-style
+   JavaScript on purpose, so every browser can run this part. */
+(function () {
+  var ok = true;
+  try { new Function('async function f() { const [a, ...b] = [1]; for (const x of b) {} return `${a}`; } return f;'); } catch (e) { ok = false; }
+  ok = ok && !!(window.Promise && window.fetch && window.CSS && CSS.supports && CSS.supports('display', 'grid') && CSS.supports('--a', '0') && Object.entries && Object.fromEntries && Array.prototype.includes && Array.prototype.flat && Element.prototype.closest);
+  function note(html) { var t = document.getElementById('loadingText'); if (t) t.innerHTML = html; }
+  if (!ok) { note('ColorGenius needs a newer web browser.<br>Please open it in an up-to-date Chrome, Safari, Edge, Firefox or Samsung Internet.'); return; }
+  // something broke before the app could start: say so, rather than loading forever
+  window.addEventListener('error', function () {
+    if (window.ColorGenius) return;
+    note('ColorGenius couldn’t start. Please reload the page.<br>If it keeps happening, update this browser or try Chrome, Safari, Edge or Firefox.');
+  });
+})();
+</script>
 <script src="data/brands.js"></script>
 <script src="js/color.js"></script>
 <script src="data/stains.js"></script>
@@ -85,6 +102,7 @@
 <script src="js/scenes.js"></script>
 <script src="js/room3d.js"></script>
 <script src="js/qr.js"></script>
+<script src="js/inflate.js"></script>
 <script src="js/config.js"></script>
 <script src="js/app.js"></script>
 </body>

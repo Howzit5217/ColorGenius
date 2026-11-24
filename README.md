@@ -85,6 +85,8 @@ Every paint color's page has the same "What You'll Need" summary, with a button 
 
 **Popular colors** come from the paint companies themselves, not a typed-in list. Every Monday a GitHub job (`.github/workflows/popular.yml`) runs `tools/popular/find.mjs`, which opens each brand's own website, follows its links to this year's and next year's **Color of the Year** pages and to its **most popular colors** page, and reads the colors off them. A color only counts when the page shows its name and its color number together, checked against that brand's own colors (names repeat across brands). The results go in `data/popular.js`, which the app loads at start. A color's page then shows a **2027 Color of the Year** or **Popular** tag with the reason ("On Sherwin-Williams' “Top 50 Colors” list"), and Look Up shows **Colors of the Year** and **Popular Right Now** before you type. The starting page for each brand is in `tools/popular/sources.json`; no colors are listed there. If a site can't be reached one week, what it showed before is kept (a Color of the Year until its year ends, popular lists for 120 days). Some sites turn automated visitors away (Behr and Ace Hardware for Clark+Kensington right now) or load their lists only inside a browser (Valspar's popular colors), so those show nothing until that changes. Run it by hand with `node tools/popular/find.mjs` (or `--dry` to just print what it finds), or from GitHub's Actions tab with **Run workflow**.
 
+**Match With the Camera** (under the search box on Look Up a Color) when the store's color-matching machine is down: plain white paper goes in the Paper box and the color in the Color box, and the app reads the color against the paper. If the light bounces straight back off the paper or a shiny color, a dashed circle marks the shiny spot and the note says to hold the phone at a slight angle, not flat over the surface, until the circle is out of the box. A small picture of a phone tipping over a surface shows the move.
+
 ## Projects
 
 A project keeps everything for one job in one place (one customer, one room, one deck), so it can be printed or emailed all at once.
@@ -228,6 +230,18 @@ The site must be online at an `https://` address. GitHub Pages works and is free
 The installed app opens full screen without browser bars and works offline. On iPhone it keeps its own settings and lists, separate from Safari.
 
 **Updates are automatic.** Every time the app opens online, it loads the newest version of the app and the color data. If the app was left open in the background, it refreshes itself when it comes back, as long as nothing is in progress. Push changes to `main` and GitHub Pages publishes them within a minute or two.
+
+## Browsers
+
+ColorGenius works in Chrome, Edge, Safari (iPhone, iPad and Mac), Firefox, Samsung Internet and Opera, and in versions back to about 2021: Safari 14.1 and iPhones on iOS 14.5, Chrome and Edge 84, Firefox 78, Samsung Internet 14. Newer features only add polish, and each has a fallback written next to it:
+
+- Shared project links are squeezed with the browser's own compression where it has it. Browsers without it (Safari before 16.4, Firefox before 113, Chrome before 103) open them with the app's own decoder (`js/inflate.js`).
+- 3D rooms need WebGL 2 (Safari 15 and up); without it the rooms show as flat pictures. Full screen uses Safari's older name for it where needed; iPhones don't allow pages to go full screen, so the colors fill the window instead.
+- The camera needs a browser that allows it (any current phone browser); otherwise the button says so.
+- Stylesheet: plain colors before every mixed color, a spacer for boxes that keep their shape where `aspect-ratio` is missing, and classes set by the app instead of `:has()`.
+- A browser too old to run the app at all (Internet Explorer, or a device not updated since about 2018) shows a clear note asking for an up-to-date browser, instead of a loading screen that never ends.
+
+`tests/compat.test.mjs` checks all of this, so a change that would break an older browser fails the tests.
 
 ## Tests
 

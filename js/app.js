@@ -236,7 +236,9 @@
     el.style.transformOrigin = up ? 'bottom left' : 'top left';
   }
   // where a menu goes: inside whatever is full screen right now (anything outside it isn't shown), or the page
-  const popHost = () => document.fullscreenElement || document.body;
+  // (older Safari only has the webkit-named version of full screen)
+  const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+  const popHost = () => fsElement() || document.body;
   function openSelect(anchor) {
     const id = anchor.dataset.select, cfg = SELECTS[id]; if (!cfg) return;
     if (pop && popAnchor === anchor) { closePop(true); return; }
@@ -790,7 +792,7 @@
     },
     style: {
       title: () => 'What style do you like?', sub: () => 'Pick up to two, or keep Any Style.',
-      html: a => `<div class="choices">${choice('data-style="any"', !a.styles.length, 'Any Style', 'Show me a mix of popular colors', ic('sparkle'))}${Object.entries(E.STYLES).map(([k, s]) => `<button type="button" class="choice tall" data-style="${k}" aria-pressed="${a.styles.includes(k)}">${tick}<span class="art"><span class="swatches3" data-palette="${k}"><span></span><span></span><span></span><span></span></span></span><b>${esc(s.label)}</b><span class="sub">${esc(STYLE_SUB[k])}</span></button>`).join('')}</div>`,
+      html: a => `<div class="choices has-tall">${choice('data-style="any"', !a.styles.length, 'Any Style', 'Show me a mix of popular colors', ic('sparkle'))}${Object.entries(E.STYLES).map(([k, s]) => `<button type="button" class="choice tall" data-style="${k}" aria-pressed="${a.styles.includes(k)}">${tick}<span class="art"><span class="swatches3" data-palette="${k}"><span></span><span></span><span></span><span></span></span></span><b>${esc(s.label)}</b><span class="sub">${esc(STYLE_SUB[k])}</span></button>`).join('')}</div>`,
       after: a => { fillStylePalettes(); markFits(a, 'styles'); },
       click: (a, t) => {
         const k = t.dataset.style; if (!k) return false;
@@ -818,8 +820,8 @@
       auto: a => !!E.WHITE_TYPES[(E.SPACES[a.space] || {}).surface],
       html: a => {
         const wt = E.WHITE_TYPES[(E.SPACES[a.space] || {}).surface];
-        if (wt) return `<div class="choices">${choice('data-white=""', !a.whiteType, 'The Most Popular Whites', 'A handful of best sellers', ic('star'))}${Object.entries(wt).map(([k, v]) => `<button type="button" class="choice tall" data-white="${k}" aria-pressed="${a.whiteType === k}">${tick}<span class="art">${swatchPic(WHITE_SAMPLE[k])}</span><b>${esc(v)}</b></button>`).join('')}</div>`;
-        return `<div class="choices">${choice('data-family="any"', !a.families.length, 'Any Color', 'Show me the best fits', ic('sparkle'))}${Object.entries(E.FAMILY_CHOICES).map(([k, v]) => `<button type="button" class="choice tall" data-family="${k}" aria-pressed="${a.families.includes(k)}">${tick}<span class="art">${swatchPic(FAMILY_SAMPLE[k])}</span><b>${esc(v)}</b></button>`).join('')}</div>`;
+        if (wt) return `<div class="choices has-tall">${choice('data-white=""', !a.whiteType, 'The Most Popular Whites', 'A handful of best sellers', ic('star'))}${Object.entries(wt).map(([k, v]) => `<button type="button" class="choice tall" data-white="${k}" aria-pressed="${a.whiteType === k}">${tick}<span class="art">${swatchPic(WHITE_SAMPLE[k])}</span><b>${esc(v)}</b></button>`).join('')}</div>`;
+        return `<div class="choices has-tall">${choice('data-family="any"', !a.families.length, 'Any Color', 'Show me the best fits', ic('sparkle'))}${Object.entries(E.FAMILY_CHOICES).map(([k, v]) => `<button type="button" class="choice tall" data-family="${k}" aria-pressed="${a.families.includes(k)}">${tick}<span class="art">${swatchPic(FAMILY_SAMPLE[k])}</span><b>${esc(v)}</b></button>`).join('')}</div>`;
       },
       after: a => { if (!E.WHITE_TYPES[(E.SPACES[a.space] || {}).surface]) markFits(a, 'families'); },
       click: (a, t) => {
@@ -2020,6 +2022,7 @@
       <div class="cam-wrap" id="camWrap"><video id="camVideo" playsinline muted autoplay></video>
         <div class="cam-box cam-p" data-cam-box="p"><span>Paper</span><i class="cam-size" aria-hidden="true"></i></div>
         <div class="cam-box cam-c" data-cam-box="c"><span>Color</span><i class="cam-size" aria-hidden="true"></i></div>
+        <i class="cam-glare" id="camGlare" aria-hidden="true" hidden></i>
         <p class="cam-wait" id="camWait">Starting the camera…</p></div>
       <div class="cam-top">
         <button type="button" class="cam-icon" data-cam-close="1" aria-label="Close">${xIcon}</button>
@@ -2033,7 +2036,7 @@
         <span>Lay the chip on plain white paper, or hold the paper against the wall beside the color.</span>
         <span>Green edge: a good height. Yellow or red: move the phone back a little.</span>
         <span>Drag a box to move it. Drag its corner to resize it.</span>
-        <span>Glossy or curved? Tilt a little so there’s no shine.</span>
+        <span>Shiny paint? Hold the phone at a slight angle, not flat over it, so the light doesn’t bounce straight back. A circle marks any shiny spot.</span>
         <span>It gets close, not exact. Check against a real chip.</span>
       </div>
       <div class="cam-meter" id="camMeter" hidden aria-hidden="true"><span class="track"></span><i class="mark"></i><b class="lbl"></b></div>
@@ -2127,14 +2130,21 @@
     const g = cv.getContext('2d', { willReadFrequently: true });
     g.drawImage(v, sx + sw * 0.1, sy + sh * 0.1, sw * 0.8, sh * 0.8, 0, 0, N, N);
     const d = g.getImageData(0, 0, N, N).data, px = [];
-    for (let i = 0; i < d.length; i += 4) { const c = [toLin(d[i]), toLin(d[i + 1]), toLin(d[i + 2])]; px.push({ c, y: lumOf(c), hot: Math.max(d[i], d[i + 1], d[i + 2]) >= 252 }); }
+    let hx = 0, hy = 0, hn = 0;   // where the shiny (washed-out) pixels are, to circle them on screen
+    for (let i = 0; i < d.length; i += 4) {
+      const c = [toLin(d[i]), toLin(d[i + 1]), toLin(d[i + 2])], hot = Math.max(d[i], d[i + 1], d[i + 2]) >= 252;
+      px.push({ c, y: lumOf(c), hot });
+      if (hot) { hx += (i / 4) % N; hy += Math.floor(i / 4 / N); hn++; }
+    }
+    // the shiny spot as fractions of the box: its middle, and how wide it is
+    const hotAt = hn ? { x: 0.1 + 0.8 * (hx / hn + 0.5) / N, y: 0.1 + 0.8 * (hy / hn + 0.5) / N, r: 0.8 * Math.sqrt(hn / Math.PI) / N } : null;
     px.sort((p, q) => p.y - q.y);
     const [lo, hi] = part === 'p' ? [0.5, 0.92] : [0.25, 0.75];
     const keep = px.slice(Math.floor(px.length * lo), Math.ceil(px.length * hi));
     const avg = [0, 1, 2].map(i => keep.reduce((s, p) => s + p.c[i], 0) / keep.length);
     const mean = lumOf(avg) || 1e-4;
     const spread = Math.sqrt(keep.reduce((s, p) => s + (p.y - mean) * (p.y - mean), 0) / keep.length) / mean;
-    return { avg, spread, hot: px.filter(p => p.hot).length / px.length, shade: px.filter(p => p.y < mean * 0.7).length / px.length };
+    return { avg, spread, hot: hn / px.length, hotAt, shade: px.filter(p => p.y < mean * 0.7).length / px.length };
   }
   // How the light runs across the plain paper. Up close the phone's light makes a bright spot, so the paper and the
   // color get different amounts of it, which changes the color; farther away it evens out. A flat slope is fitted
@@ -2232,15 +2242,19 @@
     const pos = fd != null ? fdPos(fd) : Math.max(0.05, Math.min(0.78, 0.62 - D * (s.ring ? 2.2 : 5)));
     return { level, pos, text: fd != null ? `${text} · about ${Math.round(fd * 39.37)} in` : text };
   }
+  // a phone seen from the side, rocking from flat to a slight angle (shown with the glare message)
+  const TILT_ICON = '<svg class="tilt-ic" viewBox="0 0 40 32" width="44" height="35" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 28h34" opacity=".6"/><g class="tilt-phone"><rect x="8" y="8" width="24" height="5" rx="2"/><path d="M20 16v7" stroke-dasharray="1.5 3"/></g></svg>';
   // what needs fixing, in a few words (nothing when it's ready to read)
   function camProblem(s) {
     const pl = lumOf(s.P.avg), tint = Math.max(...s.P.avg) / Math.max(1e-4, Math.min(...s.P.avg)), lit = cam && cam.light;
     if (pl < 0.03) return cam && cam.torch && !lit ? 'Too dark. Turn on the light.' : 'Too dark. Add more light.';
-    if (s.P.hot > 0.3) return 'Glare on the paper. Tilt a little.';
+    // shine: the light bouncing straight back into the camera. It stays put on the surface, so angling the phone
+    // moves the box off it. The spot is circled on screen.
+    if (s.P.hot > 0.3) { s.glare = 'p'; return 'Glare on the paper (circled). Hold the phone at a slight angle, not flat over the paper, until the circle is out of the box.'; }
     if (s.P.shade > 0.5) return 'Shadow on the paper. Move the Paper box.';   // it reads the brighter half, so up to half in shadow is fine
     if (s.P.spread > 0.12) return 'Put plain paper in the Paper box.';
     if (tint > 2.2) return 'Use plain white paper.';
-    if (s.C.hot > 0.3) return 'Shine on the color. Tilt a little.';
+    if (s.C.hot > 0.3) { s.glare = 'c'; return 'Shine on the color (circled). Hold the phone at a slight angle, not flat over the color, until the circle is out of the box.'; }
     if (s.C.spread > 0.2) return 'Fill the Color box with one color.';
     if (Math.abs(s.D) > (s.ring ? 0.15 : 0.08)) return lit ? 'Too close. Move the phone back a little.' : 'The light is uneven. Move the boxes closer together.';
     if (lumOf(s.C.avg) > pl * 1.1) return 'Check the paper is in the Paper box.';
@@ -2259,15 +2273,32 @@
     const sw = $('#camSw'), hx = $('#camHex'), note = $('#camNote'), btn = $('[data-cam-read]');
     if (sw) sw.style.background = '#' + hex;
     if (hx) hx.textContent = '#' + hex;
-    if (note) { note.hidden = !bad; if (bad) note.textContent = bad; }
+    if (note) {
+      note.hidden = !bad;
+      // only rewritten when it changes, so screen readers say it once and the picture keeps moving
+      if (bad && note.dataset.msg !== bad) { note.dataset.msg = bad; note.innerHTML = (s.glare ? TILT_ICON : '') + esc(bad); }
+      if (!bad) note.dataset.msg = '';
+      note.classList.toggle('tilt', !!s.glare);
+    }
     if (btn) btn.disabled = !!bad;
+    // the circle around the shiny spot
+    const ring = $('#camGlare'), at = s.glare && (s.glare === 'p' ? s.P : s.C).hotAt, wrap = $('#camWrap');
+    if (ring && wrap) {
+      ring.hidden = !at;
+      if (at) {
+        const w = wrap.getBoundingClientRect(), b = $(`#camWrap .cam-${s.glare}`).getBoundingClientRect();
+        const size = Math.max(48, Math.min(Math.max(b.width, b.height) * 1.1, at.r * 2 * Math.min(b.width, b.height) + 28));
+        ring.style.left = (b.left - w.left + at.x * b.width) + 'px'; ring.style.top = (b.top - w.top + at.y * b.height) + 'px';
+        ring.style.width = ring.style.height = size + 'px';
+      }
+    }
   }
   document.addEventListener('click', async e => {
     if (e.target.closest('[data-camera]')) { openCamera(); return; }
     const t = e.target.closest('#camera button'); if (!t) return;
     const d = t.dataset;
     if (d.camClose) { closeCamera(); return; }
-    if (d.camHelp) { const tips = $('#camTips'), open = tips.hidden; tips.hidden = !open; t.setAttribute('aria-expanded', String(open)); return; }
+    if (d.camHelp) { const tips = $('#camTips'), open = tips.hidden; tips.hidden = !open; t.setAttribute('aria-expanded', String(open)); $('#camera').classList.toggle('tips-open', open); return; }
     if (d.camLight) { if (!(await camSetLight(!(cam && cam.light)))) toast('The light couldn’t change here'); return; }
     if (d.camReset) {
       const wrap = $('#camWrap'); if (!wrap) return;
@@ -2284,7 +2315,7 @@
       for (let i = 0; i < 10; i++) { const s = camSample(); if (s && !camProblem(s)) got.push(s); await new Promise(r => setTimeout(r, 60)); }
       if (!cam) return;
       cam.busy = false; t.classList.remove('busy');
-      if (got.length < 4) { t.disabled = false; const n = $('#camNote'); if (n) { n.hidden = false; n.textContent = 'Hold still and try again.'; } return; }
+      if (got.length < 4) { t.disabled = false; const n = $('#camNote'); if (n) { n.hidden = false; n.classList.remove('tilt'); n.dataset.msg = ''; n.textContent = 'Hold still and try again.'; } return; }
       const mean = part => ({ avg: [0, 1, 2].map(i => got.reduce((s, x) => s + x[part].avg[i], 0) / got.length) });
       const hex = camHex({ P: mean('P'), C: mean('C'), W: [0, 1, 2].map(i => got.reduce((sum, x) => sum + x.W[i], 0) / got.length) });
       closeCamera();
@@ -2534,10 +2565,15 @@
     return 'j' + toB64u(raw);
   }
   const shareLink = async s => `${siteUrl()}#/p/${await packProject(s)}`;
+  // the browser's own un-squeezing where it has it, the app's (js/inflate.js) where it doesn't
+  async function unsqueeze(bytes) {
+    if (typeof DecompressionStream === 'function') { try { return await squeeze(bytes, new DecompressionStream('deflate-raw')); } catch (e) { /* below */ } }
+    return window.CG.inflate(bytes);
+  }
   // anyone can make a link, so everything read from one is checked and kept short
   async function unpackProject(code) {
     const bytes = fromB64u(code.slice(1));
-    const raw = code[0] === 'z' ? await squeeze(bytes, new DecompressionStream('deflate-raw')) : code[0] === 'j' ? bytes : null;
+    const raw = code[0] === 'z' ? await unsqueeze(bytes) : code[0] === 'j' ? bytes : null;
     const o = JSON.parse(new TextDecoder().decode(raw));
     if (!o || o.v !== 1 || !Array.isArray(o.i)) throw new Error('not a project');
     const str = (v, n) => String(v == null ? '' : v).slice(0, n);
@@ -2798,9 +2834,14 @@
     el.hidden = false;
     $('[data-present-close]', el).focus();
     el.onclick = e => { if (e.target.closest('[data-present-close]')) closePresent(); };
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    // full screen where the browser allows it (iPhones don't for pages; the colors still fill the window)
+    const enter = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (enter) { try { const p = enter.call(el); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not allowed here */ } }
   }
-  function closePresent() { closePop(); $('#present').hidden = true; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
+  function closePresent() {
+    closePop(); $('#present').hidden = true;
+    if (fsElement()) { const leave = document.exitFullscreen || document.webkitExitFullscreen; try { const p = leave && leave.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) { /* already out */ } }
+  }
   // leaving full screen some other way (the Esc key, the browser's own button) shouldn't leave a menu stranded
   document.addEventListener('fullscreenchange', () => { if (pop && !popHost().contains(pop)) closePop(); });
   function openCompare() {
