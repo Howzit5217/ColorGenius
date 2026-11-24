@@ -446,7 +446,7 @@
       }
     }
     INDEX = { colors, byBrand, brands, brandById: Object.fromEntries(brands.map(b => [b.id, b])) };
-    POP = null; POP_TOP = null;
+    POP = null;
     return INDEX;
   }
   function addBrand(meta, rows) {
@@ -461,93 +461,83 @@
     }
     INDEX.colors = INDEX.colors.filter(c => c.brand !== meta.id).concat(list);
     INDEX.byBrand[meta.id] = list;
-    POP = null; POP_TOP = null;
+    POP = null;
     return list.length;
   }
   const getIndex = () => INDEX;
   const findColor = id => INDEX.colors.find(c => c.id === id) || null;
 
   // ---------------- popular colors ----------------
-  // Nothing here is a hand-typed list of names. "Popular" is worked out from:
-  //  - what people actually pick in this app on this device (opening a color, adding it to a project, printing
-  //    it). That counts most, so a store's own favorites rise as it's used. The picks stay on the device.
-  //  - the kinds of color that sell most: soft, light neutrals for walls and trim; deep, quiet classics (black,
-  //    charcoal, navy, deep green) for doors and cabinets; then muted mid-tones like sage and greige,
-  //  - and whether its chip is on the store's display.
-  let POP = null, PICKS = {}, POP_TOP = null;
-  const popBrand = c => { const b = INDEX.brandById[c.brand]; return b && b.group !== 'standard' && b.group !== 'custom'; };
-  // 0 to 1: how much a color is like the ones that sell most. The quieter it is the better; light ones for walls and
-  // trim, very deep ones (which can carry a little more color, like navy) for doors and cabinets, then mid-tones.
-  // Tints leaning pink or purple sell less than warm, gray or blue-green ones.
-  function sellsLike(c) {
-    const L = c.lrv, Cc = c.C, h = c.h;
-    const quiet = k => Math.exp(-(Cc / k) * (Cc / k));
-    const light = L >= 50 ? (L >= 58 && L <= 92 ? 1 : 1 - Math.min(1, (L < 58 ? 58 - L : L - 92) / 10)) * quiet(12) : 0;
-    const deep = L < 10 ? 0.65 * quiet(20) : 0;
-    const mid = L >= 20 && L < 58 ? 0.5 * quiet(14) : 0;
-    const tint = Cc <= 3 ? 1 : (h > 285 || h < 30) ? 0.45 : (h > 200 && h <= 285) ? 0.75 : 1;
-    return Math.max(light, deep, mid) * tint;
-  }
-  function popBase() {
+  // What the paint companies themselves say is popular right now: each brand's Color of the Year and the colors
+  // on its own most-popular list. tools/popular/find.mjs reads those off the brands' websites every week and
+  // saves them in data/popular.js, which the app hands to setPopular(). Nothing here names a color.
+  let POPDATA = null, POP = null;
+  function setPopular(data) { POPDATA = data && data.brands ? data : null; POP = null; }
+  // color id -> { coty: [{ year, url }], lists: [{ title, url, rank, of }] }
+  function popMap() {
     if (POP) return POP;
     POP = new Map();
-    for (const c of INDEX.colors) if (!(c.flags & F.DISC) && popBrand(c)) POP.set(c.id, 0.8 * sellsLike(c) + 0.2 * (c.flags & F.RACK ? 1 : 0));
+    if (!POPDATA) return POP;
+    const have = new Set(INDEX.colors.map(c => c.id));
+    const year = new Date().getFullYear();
+    const entry = id => { if (!POP.has(id)) POP.set(id, { coty: [], lists: [] }); return POP.get(id); };
+    for (const [brand, b] of Object.entries(POPDATA.brands)) {
+      // a Color of the Year counts until its year is over, even if the weekly check stops running
+      for (const x of b.coty || []) { const id = brand + ':' + x.code; if (have.has(id) && x.year >= year) entry(id).coty.push({ year: x.year, url: x.url || '' }); }
+      for (const l of b.lists || []) (l.colors || []).forEach((cc, i) => { const id = brand + ':' + cc[0]; if (have.has(id)) entry(id).lists.push({ title: l.title || '', url: l.url || '', rank: i, of: l.colors.length }); });
+    }
+    for (const p of POP.values()) p.coty.sort((a, b) => b.year - a.year);
     return POP;
   }
-  // pick the top of a list, but varied: not too many of one color family or one brand, and no near-identical pairs
-  function varied(sorted, n, famShare, brandCap) {
-    const out = [], fams = {}, brands = {};
-    const famCap = f => Math.max(2, Math.ceil(n * (famShare[f] || famShare._)));
-    for (const c of sorted) {
-      if (out.length >= n) break;
-      if ((fams[c.fam] || 0) >= famCap(c.fam) || (brands[c.brand] || 0) >= brandCap) continue;
-      if (out.some(o => C.deltaE2000(o.lab, c.lab) < 3)) continue;
-      out.push(c); fams[c.fam] = (fams[c.fam] || 0) + 1; brands[c.brand] = (brands[c.brand] || 0) + 1;
-    }
+  const isPopular = c => !!c && popMap().has(c.id);
+  // 0 to 1, for putting the most talked-about first: a Color of the Year, then by its place on the brand's list
+  function popularity(c) {
+    const p = c && popMap().get(c.id);
+    if (!p) return 0;
+    if (p.coty.length) return p.coty[0].year > new Date().getFullYear() ? 1 : 0.95;
+    return Math.max(...p.lists.map(l => 0.5 + 0.4 * (1 - l.rank / Math.max(1, l.of))));
+  }
+  // why a color is called popular, in the brand's own words: "Sherwin-Williams 2027 Color of the Year"
+  function popularWhy(c) {
+    const p = c && popMap().get(c.id);
+    if (!p) return [];
+    const b = (INDEX.brandById[c.brand] || {}).name || 'The brand';
+    const out = p.coty.map(x => ({ text: `${b} ${x.year} Color of the Year`, url: x.url, coty: x.year }));
+    const seen = new Set();
+    const own = /s$/i.test(b) ? b + '’' : b + '’s';   // Sherwin-Williams’, Benjamin Moore’s
+    for (const l of p.lists) if (!seen.has(l.title)) { seen.add(l.title); out.push({ text: `On ${own} ${l.title ? '“' + l.title + '” list' : 'most popular list'}`, url: l.url }); }
     return out;
   }
-  const FAM_SHARE = { white: 0.3, gray: 0.22, beige: 0.22, _: 0.12 };
-  // 0 to 1: how popular a color looks from all of that
-  function popularity(c) {
-    if (!c) return 0;
-    const base = popBase().get(c.id); if (base == null) return 0;
-    // what's been picked here outweighs the starting guess, so a color people keep choosing becomes popular
-    const w = PICKS[c.id] || 0;
-    return 0.45 * base + 0.55 * Math.min(1, Math.log1p(w) / Math.log1p(25));
+  const popBrandOn = (c, opts) => (!opts.brands || opts.brands[c.brand] !== false) && collectionOn(c, opts.collections);
+  // every brand's Color of the Year (this year's and next year's), newest first
+  function colorsOfYear(opts) {
+    opts = opts || {};
+    const out = [];
+    for (const [id, p] of popMap()) if (p.coty.length) { const c = findColor(id); if (c && popBrandOn(c, opts)) out.push({ color: c, year: p.coty[0].year }); }
+    return out.sort((a, b) => b.year - a.year || ((INDEX.brandById[a.color.brand] || {}).name || '').localeCompare((INDEX.brandById[b.color.brand] || {}).name || ''));
   }
-  // the top few in each brand (2%, at least 6, at most 36), varied, get called popular
-  function isPopular(c) {
-    if (!c) return false;
-    if (!POP_TOP) {
-      POP_TOP = new Set();
-      for (const b of INDEX.brands) {
-        const list = (INDEX.byBrand[b.id] || []).filter(x => popBase().has(x.id));
-        const k = Math.max(6, Math.min(36, Math.round(list.length * 0.02)));
-        const sorted = list.map(x => [x, popularity(x)]).sort((p, q) => q[1] - p[1]).slice(0, k * 12).map(p => p[0]);
-        varied(sorted, k, FAM_SHARE, k).forEach(x => POP_TOP.add(x.id));
-      }
-    }
-    return POP_TOP.has(c.id);
-  }
-  // the most popular colors across the brands asked for, varied so it isn't thirty near-identical whites
+  // the brands' most popular colors, taking turns between brands so one long list doesn't fill the page
   function popularList(opts) {
     opts = opts || {};
     const n = opts.limit || 30;
-    const sorted = INDEX.colors.filter(c => popBase().has(c.id) && (!opts.brands || opts.brands[c.brand] !== false) && collectionOn(c, opts.collections) && isPopular(c))
-      .map(c => [c, popularity(c)]).sort((p, q) => q[1] - p[1]).map(p => p[0]);
-    return varied(sorted, n, FAM_SHARE, Math.ceil(n / 6));
+    const byBrand = {};
+    for (const [id, p] of popMap()) {
+      if (!p.lists.length) continue;
+      const c = findColor(id);
+      if (!c || !popBrandOn(c, opts) || (opts.brand && c.brand !== opts.brand)) continue;
+      (byBrand[c.brand] = byBrand[c.brand] || []).push([c, Math.min(...p.lists.map(l => l.rank / Math.max(1, l.of)))]);
+    }
+    const queues = Object.keys(byBrand).sort((a, b) => ((INDEX.brandById[a] || {}).name || '').localeCompare((INDEX.brandById[b] || {}).name || '')).map(k => byBrand[k].sort((x, y) => x[1] - y[1]).map(x => x[0]));
+    const out = [];
+    for (let i = 0; out.length < n && queues.some(q => i < q.length); i++) for (const q of queues) if (i < q.length && out.length < n) out.push(q[i]);
+    return out;
   }
-  // what's been picked on this device: weights by color id (an open counts 1, adding to a project 3, printing 2)
-  function setPicks(map) { PICKS = map && typeof map === 'object' ? Object.assign({}, map) : {}; POP_TOP = null; }
-  function notePick(id, w) {
-    if (!id || !popBase().has(id)) return PICKS;
-    PICKS[id] = Math.min(9999, (PICKS[id] || 0) + (w || 1));
-    const ids = Object.keys(PICKS);
-    if (ids.length > 3000) { ids.sort((x, y) => PICKS[x] - PICKS[y]).slice(0, ids.length - 3000).forEach(k => delete PICKS[k]); }
-    POP_TOP = null;
-    return PICKS;
+  // when the brands' sites were last checked, and which brands had nothing to say
+  function popularInfo() {
+    const brands = POPDATA ? POPDATA.brands : {};
+    const found = Object.keys(brands).filter(k => (brands[k].coty || []).length || (brands[k].lists || []).length);
+    return { checked: POPDATA ? POPDATA.checked || '' : '', brands: found };
   }
-  const getPicks = () => PICKS;
 
   function codeLabel(c) {
     const b = INDEX.brandById[c.brand] || {};
@@ -1381,7 +1371,11 @@
     for (const k of Object.keys(hints).sort((x, y) => y.length - x.length)) {
       if (nq === k || nq.startsWith(k + ' ')) { brandHint = hints[k]; nq = nq.slice(k.length).trim(); break; }
     }
-    if (!nq && brandHint) return pool.filter(c => c.brand === brandHint && isPopular(c)).sort((x, y) => popularity(y) - popularity(x)).slice(0, opts.limit || 40).map(c => ({ color: c }));
+    // just a brand name: that brand's own popular colors first, then its colors on the store display
+    if (!nq && brandHint) {
+      const own = pool.filter(c => c.brand === brandHint);
+      return own.map(c => [c, popularity(c) * 2 + (c.flags & F.RACK ? 0.5 : 0)]).sort((x, y) => y[1] - x[1]).slice(0, opts.limit || 40).map(x => ({ color: x[0] }));
+    }
     const qCode = nq.replace(/\s+/g, '');
     const scoredList = [];
     for (const c of pool) {
@@ -1434,7 +1428,7 @@
     return { brands, errors };
   }
 
-  const api = { popularity, isPopular, popularList, setPicks, notePick, getPicks, parseColorValue, closestByBrand, F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
+  const api = { popularity, isPopular, popularList, popularWhy, colorsOfYear, popularInfo, setPopular, parseColorValue, closestByBrand, F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
     init, addBrand, getIndex, findColor, codeLabel, target, familyMatch, styleMatch, scoreColor, warningsFor, roomTips, recommend,
     matchesFor, pairings, search, lightForAnswers, parseCustomCsv, allowedColor, facingsOf, facingPhrase, noWindows, DIRS,
     MOODS, UNDERTONES, NOW_COLORS, NOW_HEX, SURFACES, surfacesFor, ISSUES, PRIMERS, primerFor, nowHexOf,

@@ -546,36 +546,75 @@ test('more things to paint and stain, each with a finish, a preview and primer s
 });
 
 // ---------------- popular colors ----------------
-test('popular colors are worked out, not read from a list', () => {
+// What's popular comes from the paint companies' own websites (tools/popular/find.mjs, run weekly), never a list
+// typed into the app. These tests use made-up data so they don't change when the brands' picks do.
+const Y = new Date().getFullYear();
+test('popular colors are the brands’ own picks, with the reason', () => {
   // no color in the data carries the old hand-made "popular" mark
   assert.equal(E.getIndex().colors.filter(c => c.flags & E.F.POPULAR).length, 0);
-  // every paint brand gets a handful, never a huge list
-  for (const b of window.CG_BRANDS.filter(b => b.group !== 'standard')) {
-    const n = (E.getIndex().byBrand[b.id] || []).filter(c => E.isPopular(c)).length;
-    assert.ok(n >= 6 && n <= 36, `${b.id}: ${n}`);
-  }
-  // the shared list is varied: no near-identical pairs, and not mostly one color family
-  const list = E.popularList({ limit: 30 });
-  assert.equal(list.length, 30);
-  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) assert.ok(C.deltaE2000(list[i].lab, list[j].lab) >= 3);
-  const fams = {}; for (const c of list) fams[c.fam] = (fams[c.fam] || 0) + 1;
-  assert.ok(Math.max(...Object.values(fams)) <= 10, JSON.stringify(fams));
-  // mostly the quiet colors that sell: whites, grays, beiges and deep neutrals
-  assert.ok(list.filter(c => c.C < 14).length >= 24);
+  E.setPopular(null);
+  assert.equal(E.isPopular(E.findColor('sw:7008')), false);
+  E.setPopular({ checked: `${Y}-11-24`, brands: {
+    sw: { coty: [{ code: '7008', name: 'Alabaster', year: Y + 1 }, { code: '6258', name: 'Tricorn Black', year: Y - 1 }],
+      lists: [{ title: 'Top 50 Colors', colors: [['7005', 'Pure White'], ['7029', 'Agreeable Gray'], ['9999', 'Not a Real Color']] }] },
+    bm: { lists: [{ title: 'Most Popular', colors: [['OC-17', 'White Dove'], ['HC-154', 'Hale Navy']] }] },
+  } });
+  const ala = E.findColor('sw:7008'), pw = E.findColor('sw:7005'), ag = E.findColor('sw:7029');
+  assert.equal(E.isPopular(ala), true);
+  assert.equal(E.popularity(ala), 1);
+  assert.deepEqual(E.popularWhy(ala).map(x => x.text), [`Sherwin-Williams ${Y + 1} Color of the Year`]);
+  assert.equal(E.popularWhy(ag)[0].text, 'On Sherwin-Williams’ “Top 50 Colors” list');
+  assert.equal(E.popularWhy(E.findColor('bm:OC-17'))[0].text, 'On Benjamin Moore’s “Most Popular” list');
+  // higher on the brand's list ranks higher
+  assert.ok(E.popularity(pw) > E.popularity(ag));
+  // last year's Color of the Year is over, and colors that aren't on any list aren't popular
+  assert.equal(E.isPopular(E.findColor('sw:6258')), false);
+  assert.equal(E.isPopular(E.findColor('sw:7015')), false);
+  // Colors of the Year, and the popular list taking turns between brands
+  assert.deepEqual(E.colorsOfYear().map(x => [x.color.id, x.year]), [['sw:7008', Y + 1]]);
+  const list = E.popularList({ limit: 10 }).map(c => c.id);
+  assert.deepEqual(list, ['bm:OC-17', 'sw:7005', 'bm:HC-154', 'sw:7029']);
+  // turned-off brands are left out
+  assert.ok(E.popularList({ brands: { sw: false } }).every(c => c.brand !== 'sw'));
+  assert.equal(E.colorsOfYear({ brands: { sw: false } }).length, 0);
+  assert.deepEqual(E.popularInfo(), { checked: `${Y}-11-24`, brands: ['sw', 'bm'] });
+  // a brand word alone in search shows that brand's popular colors first
+  assert.equal(E.search('sherwin', { limit: 5 })[0].color.id, 'sw:7008');
+  E.setPopular(null);
+  assert.equal(E.popularList().length, 0);
 });
-test('popular colors learn from what gets picked on the device', () => {
-  const c = E.getIndex().byBrand.sw.find(x => x.C > 25 && x.lrv > 20 && x.lrv < 60 && !(x.flags & E.F.DISC));
-  E.setPicks({});
-  const before = E.popularity(c);
-  assert.equal(E.isPopular(c), false);
-  for (let i = 0; i < 12; i++) E.notePick(c.id, 3);
-  assert.ok(E.popularity(c) > before);
-  assert.equal(E.isPopular(c), true);
-  assert.ok(E.getPicks()[c.id] === 36);
-  // starting over forgets it
-  E.setPicks({});
-  assert.equal(E.isPopular(c), false);
-  // unknown ids are ignored
-  E.notePick('nope:123', 5);
-  assert.equal(Object.keys(E.getPicks()).length, 0);
+
+test('the saved popular colors file is well formed and every color is real', () => {
+  const ctx = {};
+  new Function('window', fs.readFileSync(path.join(ROOT, 'data/popular.js'), 'utf8'))(ctx);
+  const P = ctx.CG_POPULAR;
+  assert.match(P.checked, /^\d{4}-\d\d-\d\d$/);
+  for (const [id, b] of Object.entries(P.brands)) {
+    const codes = new Set((window.CG_COLORS[id] || []).map(r => String(r[0])));
+    for (const x of b.coty) { assert.ok(codes.has(x.code), `${id} ${x.code}`); assert.ok(x.year >= 2000 && /^https:/.test(x.url)); }
+    for (const l of b.lists) { assert.ok(l.title && /^https:/.test(l.url)); for (const [code] of l.colors) assert.ok(codes.has(code), `${id} ${code}`); }
+  }
+});
+
+test('the finder reads a color only when its name and number are together', async () => {
+  const F = await import('../tools/popular/find.mjs');
+  const sw = window.CG_BRANDS.find(b => b.id === 'sw'), de = window.CG_BRANDS.find(b => b.id === 'de');
+  const names = F.nameIndex(window.CG_COLORS.sw);
+  const on = html => F.colorsOnPage(F.readPage(html), sw, names).map(f => f.name);
+  // name and number together: found. Name alone, or a number alone, isn't enough.
+  assert.deepEqual(on('<li data-color-name="Agreeable Gray" data-color-id="SW 7029"></li>'), ['Agreeable Gray']);
+  assert.deepEqual(on('<p>Agreeable Gray is lovely.</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p><p>SW 7029</p>'), []);
+  assert.deepEqual(on('<p>Agreeable Gray 7029</p>'), []);   // Sherwin-Williams numbers carry "SW"
+  // a Color of the Year page: the color its title names, with the year beside the words
+  const page = F.readPage(`<title>Color of the Year ${F.YEAR + 1}, Celery SW 6421 | Sherwin-Williams</title><h2>Pair it with Alabaster SW 7008</h2><p>Celery SW 6421</p>`);
+  const c = F.cotyOnPage(page, F.colorsOnPage(page, sw, names), 'https://example.com/color-of-the-year');
+  assert.deepEqual([c.name, c.code, c.year], ['Celery', '6421', F.YEAR + 1]);
+  // a list of past winners on a hub page doesn't make an old color this year's pick
+  const deNames = F.nameIndex(window.CG_COLORS.de);
+  const hub = F.readPage(`<p>Midnight Garden DE5657 ${F.YEAR} Color of the Year. Past colors: Honey Glow DE5354 (2017), Terra Rosa DE5096</p><p>${F.YEAR} Color of the Year. To get the look, choose Honey Glow DE5354.</p>`);
+  const m = F.cotyMentions(hub, F.colorsOnPage(hub, de, deNames));
+  assert.deepEqual(m.map(x => [x.name, x.year]), [['Midnight Garden', F.YEAR]]);
+  // links: next year's and this year's pages are followed, older years and other languages aren't
+  const links = F.findLinks(`<a href="/color-of-the-year/${F.YEAR + 1}">a</a><a href="/color-of-the-year/${F.YEAR - 2}">b</a><a href="/es/color-of-the-year">c</a><a href="/most-popular">d</a><a href="https://other.com/color-of-the-year">e</a>`, 'https://brand.com/');
+  assert.deepEqual(links, [`https://brand.com/color-of-the-year/${F.YEAR + 1}`, 'https://brand.com/most-popular']);
 });

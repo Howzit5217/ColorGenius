@@ -1,0 +1,54 @@
+# Every week, look up each paint brand's Color of the Year and most popular colors on the brand's own
+# website (tools/popular/find.mjs) and save data/popular.js when anything changed. The site then shows the
+# new picks the next time it opens. Run it by hand from the Actions tab with "Run workflow".
+name: Popular colors
+
+on:
+  schedule:
+    - cron: '23 10 * * 1'   # Mondays, 10:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: popular-colors
+  cancel-in-progress: false
+
+jobs:
+  find:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Look up the brands' picks
+        run: node tools/popular/find.mjs
+
+      - name: Save what changed
+        id: save
+        run: |
+          if git diff --quiet -- data/popular.js; then
+            echo "Nothing changed."
+            echo "changed=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/popular.js
+          git commit -m "Update popular colors from the brands' websites"
+          git push
+          echo "changed=yes" >> "$GITHUB_OUTPUT"
+
+      # A push made by this job doesn't always start a Pages build on its own, so ask for one.
+      - name: Rebuild the site
+        if: steps.save.outputs.changed == 'yes'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" --silent

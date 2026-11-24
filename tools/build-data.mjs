@@ -45,7 +45,8 @@ function lrvFromHex(hex) {
 }
 function num(v) { const n = parseFloat(v); return Number.isFinite(n) ? Math.round(n * 10) / 10 : null; }
 
-// (No list of popular names here: the app works out which colors are popular itself, in js/engine.js.)
+// (No list of popular names here: tools/popular/find.mjs reads each brand's Color of the Year and most popular
+// colors off the brand's own website every week and writes data/popular.js.)
 
 const brands = [];
 const report = [];

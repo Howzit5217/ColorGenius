@@ -12,7 +12,7 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 - **One question per screen**, each choice with a picture. Tap your answer, then press the big **Next** button to go on (or press **Enter** on a computer; a small Enter key shows above Next). Nothing moves on by itself, and Next gives a small nudge once an answer is picked so it's clear what to press. Questions you can leave alone start with a sensible answer picked ("Any Style", "Not Sure"), so there is no Skip button to puzzle over.
 - **A Back button on every screen**, and the phone's own back button and the browser's back arrow work too. Every screen has its own address.
 - **Large text and buttons** in an easy-to-read typeface (Atkinson Hyperlegible, made for people with low vision). Settings → Easy to See → **Bigger text** makes everything larger still.
-- **The top bar** has a **Home** button on every screen but home, a **Project** button with how many things are in the open project (once there's something in it), and **Settings** (on a kiosk, a **Staff** lock button instead). The logo goes home too.
+- **The top bar** has a **Home** button on every screen but home, a **Project** button with how many things are in the open project (once there's something in it), and **Settings** (on a kiosk, a **Staff** lock button instead). The logo goes home too. Going home starts over, so if there are answers, results or a search on the go it asks first ("Go Back Home?"); anything already added to the project stays.
 - Light and dark screens, and **Less motion** for anyone who prefers no sliding.
 
 ## Paint Colors
@@ -78,7 +78,7 @@ Every paint color's page has the same "What You'll Need" summary, with a button 
 
 Type a color name, a code from a chip (`SW 7029`, `OC-17`, `behr swiss coffee`), a hex value (`#D1CBC1`, `D1CBC1`, `#DCB`) or an RGB value (`209 203 193`, `rgb(209, 203, 193)`), or pick a color to match. You get its exact hex, RGB and LRV (tap to copy), then the closest color in every brand, with brands that are turned off folded away underneath.
 
-**Popular colors** (shown before you type, and as a **Popular** tag on a color's page) aren't a typed-in list. They start from the kinds of colors that sell most (soft, light neutrals; deep, quiet classics like black, charcoal and navy; then muted mid-tones) and whether a chip is on the store display, then learn from what gets picked on that device: opening a color, adding it to a project, printing or emailing it. What's picked counts most, so a store's own favorites rise over time. It stays on the device, and Settings → Color Advice → Popular colors → Start Over clears it.
+**Popular colors** come from the paint companies themselves, not a typed-in list. Every Monday a GitHub job (`.github/workflows/popular.yml`) runs `tools/popular/find.mjs`, which opens each brand's own website, follows its links to this year's and next year's **Color of the Year** pages and to its **most popular colors** page, and reads the colors off them. A color only counts when the page shows its name and its color number together, checked against that brand's own colors (names repeat across brands). The results go in `data/popular.js`, which the app loads at start. A color's page then shows a **2027 Color of the Year** or **Popular** tag with the reason ("On Sherwin-Williams' “Top 50 Colors” list"), and Look Up shows **Colors of the Year** and **Popular Right Now** before you type. The starting page for each brand is in `tools/popular/sources.json`; no colors are listed there. If a site can't be reached one week, what it showed before is kept (a Color of the Year until its year ends, popular lists for 120 days). Some sites turn automated visitors away (Behr and Ace Hardware for Clark+Kensington right now) or load their lists only inside a browser (Valspar's popular colors), so those show nothing until that changes. Run it by hand with `node tools/popular/find.mjs` (or `--dry` to just print what it finds), or from GitHub's Actions tab with **Run workflow**.
 
 ## Projects
 
@@ -89,11 +89,36 @@ A project keeps everything for one job in one place (one customer, one room, one
 - Tap **Add to Project** on any paint, stain, exact color or shopping list (tap again to take it back off).
 - On the project page, rename it, add notes for the printout, and type where each item goes.
 - **Print** shows the page at real letter size first, then prints it: black and white, text only, one line per item, with area, brand, color, code, hex, finish, product, primer, amount, roller and brush, and where to find the chip. Columns nothing fills in are left out, and a wide list prints sideways.
-- **Email It** opens the device's email app with the whole project written in, one line per item. Type their address in the box (or in the email), check it, and press Send. On phones, **Share…** can send it by text or another app instead. A very long project is also copied, in case the email app cuts it short.
+- **Email** sits next to every **Print**: on the project page (**Email It**), in the print preview, beside each earlier project, and on a shopping list. Once the site's do-not-reply address is set up (see **Email** below), type their address and press **Send**: it goes straight from "ColorGenius (do not reply)", one line per item, with no email app needed, so it works on a kiosk too. Until then, Email opens the device's own email app with everything written in (on phones, **Share…** can send it by text instead), and a very long project is also copied in case the email app cuts it short. One screen can send up to 12 emails an hour.
 - **More Things to Do:** show the colors full screen, compare them side by side, copy the project as text, or start a new project.
 - **Delete This Project** at the bottom of the project page deletes the open project (after asking once, since it can't be undone) and goes back home.
-- **Earlier Projects** (the last 10 on this device) can be opened, printed or deleted. Kiosks don't keep earlier projects.
+- **Earlier Projects** (the last 10 on this device) can be opened, printed, emailed or deleted. Kiosks don't keep earlier projects.
 - Colors saved in the older Saved Colors list are kept as an earlier project called "Saved Colors".
+
+## Email
+
+The Email buttons can send from the site's own do-not-reply address. It uses [EmailJS](https://www.emailjs.com) (free plan: about 200 emails a month) with a Gmail account made only for this, so nobody's own email is used and customers can't reply into a real inbox.
+
+1. **Make the Gmail account.** Create a new Google account just for this, for example `colorgenius.noreply@gmail.com` (any free name works). Use a strong password and keep it to yourself.
+2. **Make the EmailJS account** at emailjs.com (Sign Up, free).
+3. **Connect Gmail:** in EmailJS, **Email Services → Add New Service → Gmail → Connect Account**, sign in with the new Gmail account, allow it to send email, then **Create Service**. Copy the **Service ID** (like `service_abc1234`).
+4. **Make the template:** **Email Templates → Create New Template**, then fill in:
+   - **Subject:** `{{subject}}`
+   - **Content** (switch to the code `<>` view and paste):
+     ```html
+     <div style="font-family:Arial,sans-serif;font-size:15px;color:#222">
+     <p><b>{{project_name}}</b></p>
+     {{{message_html}}}
+     <p style="color:#777;font-size:12px">Sent by ColorGenius from a do-not-reply address. Replies to this email aren't read.</p>
+     </div>
+     ```
+   - **To Email:** `{{to_email}}`
+   - **From Name:** `{{from_name}}`
+   - **Reply To:** the do-not-reply Gmail address itself.
+   - **Save**, and copy the **Template ID** (like `template_abc1234`).
+5. **Copy the Public Key** from **Account → General**.
+6. Put the three IDs in `js/config.js` (`serviceId`, `templateId`, `publicKey`) and publish the site. They're public IDs, safe to keep in the code. Nothing else changes: the Email boxes now show **Send**.
+7. If EmailJS offers it under **Account → Security**, limit it to this site's address (`howzit5217.github.io`) so the IDs only work from here.
 
 ## Setup, kiosks and settings
 

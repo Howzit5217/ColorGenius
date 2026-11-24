@@ -1,0 +1,17 @@
+{
+  "_about": "Where tools/popular/find.mjs starts looking on each brand's own website. These are starting pages only: the finder follows the links it finds there to that year's Color of the Year page and to the brand's most popular colors, then reads the colors off those pages. No colors are listed here.",
+  "brands": {
+    "sw": ["https://www.sherwin-williams.com/en-us/color/color-of-the-year", "https://www.sherwin-williams.com/en-us/color/color-collections/top-50-colors"],
+    "hgsw": ["https://www.hgtvhomebysherwinwilliams.com/"],
+    "bm": ["https://www.benjaminmoore.com/en-us/paint-colors/most-popular"],
+    "behr": ["https://www.behr.com/"],
+    "valspar": ["https://www.valspar.com/en/colors/color-of-the-year"],
+    "ppg": ["https://www.pittsburghpaints.com/"],
+    "glidden": ["https://www.glidden.com/"],
+    "dutchboy": ["https://www.dutchboy.com/en/colors/color-of-the-year"],
+    "de": ["https://www.dunnedwards.com/colors/color-of-the-year/"],
+    "dv": ["https://www.diamondvogel.com/architectural/color-forecasts"],
+    "ck": ["https://www.acehardware.com/thepaintstudio/inspiration/trends"],
+    "resene": ["https://www.resene.co.nz/"]
+  }
+}

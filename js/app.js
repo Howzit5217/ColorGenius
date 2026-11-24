@@ -462,9 +462,31 @@
     if (t.dataset.go) { e.preventDefault(); if (t.dataset.go === 'back') goBack(); else go(t.dataset.go === 'home' ? '' : t.dataset.go); }
   });
   $('#settingsBtn').addEventListener('click', () => { if (state.ready) go('settings'); });
-  $('#homeNav').addEventListener('click', () => { if (state.ready) go(''); });
   $('#projBtn').addEventListener('click', () => { if (state.ready) go('list'); });
-  $('#homeBtn').addEventListener('click', () => { if (state.ready) go(''); });
+  // Home (the top bar button or the logo) starts over: the answers, results and search are cleared, so it asks
+  // first when there are any. Whatever is in the project stays.
+  const houseIcon = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11L12 4l8.5 7"/><path d="M6 9.5V20h4.5v-5.5h3V20H18V9.5"/></svg>';
+  const hasWork = () => Object.values(state.flows).some(f => f && f.a && f.a._picked && Object.keys(f.a._picked).length) || Object.values(state.results).some(Boolean) || !!state.query.trim();
+  function clearWork() {
+    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null };
+    state.query = ''; state.lookupHex = ''; state.duel = null; state.duelPick = ''; state.pick = { paint: '', stain: '' }; state.ftype = {};
+  }
+  function homeAsk() {
+    if (!state.ready) return;
+    if (state.view === 'home' || !hasWork()) { go(''); return; }
+    const n = session.items.length;
+    openModal('Go Back Home?', `<p style="font-size:1.1rem">This takes you back to the start and clears your answers, results and search.</p>
+      <p style="font-size:1.1rem">${n ? `Everything saved in <b>${esc(sessionTitle())}</b> (${n} thing${n === 1 ? '' : 's'}) stays.` : 'Nothing is saved in a project yet. To keep a color, tap <b>Add to Project</b> first.'}</p>
+      <p style="font-size:1.1rem">Do you want to continue?</p>
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Stay Here</button><span class="grow"></span><button type="button" class="btn big primary" data-home-confirm="1">${houseIcon}Go Home</button></div>`);
+  }
+  $('#modal').addEventListener('click', e => {
+    if (!e.target.closest('[data-home-confirm]')) return;
+    closeModal(); clearWork();
+    go('', { replace: true }); window.scrollTo(0, 0);
+  });
+  $('#homeNav').addEventListener('click', homeAsk);
+  $('#homeBtn').addEventListener('click', homeAsk);
 
   // ================================================================
   // QUESTIONS: one per screen
@@ -1432,7 +1454,6 @@
     if (inStainResults || (!E.findColor(id) && S.find(id))) { renderStainColor(id); return; }
     const c = E.findColor(id);
     if (!c) { view().innerHTML = `<div class="page">${backBtn()}<div class="empty"><h1>Color not found</h1><p class="muted">It may be from a brand that’s turned off.</p><button type="button" class="btn primary big" data-go="lookup">Look Up a Color</button></div></div>`; return; }
-    notePick(c.id, 1);
     const R = state.results.paint;
     const res = R && R.results.concat(R.finalists || []).find(r => r.color.id === c.id);
     const answers = res ? R.answers : null;
@@ -1456,7 +1477,8 @@
         <div>${sceneBox('colorScene')}</div>
         <div class="id-card">
           <div class="id-top"><button type="button" class="id-sw" ${swStyle(c.hex)} data-fullscreen="${esc(c.id)}" aria-label="Show ${esc(c.name)} full screen"><span class="id-sw-hint" aria-hidden="true">${expandIcon(16)}</span></button><div><h1>${esc(c.name)}</h1><p class="meta">${esc(b.name || c.brand)} · <span class="mono">${esc(E.codeLabel(c))}</span></p></div></div>
-          <div class="badges">${E.isPopular(c) ? '<span class="badge good">Popular</span>' : ''}<span class="badge">${esc(d.familyName)}</span><span class="badge">${esc(d.undertone === 'neutral' ? 'True neutral' : cap(d.undertone) + ' undertone')}</span>${c.flags & E.F.DISC ? '<span class="badge">Discontinued</span>' : ''}</div>
+          <div class="badges">${popBadge(c)}<span class="badge">${esc(d.familyName)}</span><span class="badge">${esc(d.undertone === 'neutral' ? 'True neutral' : cap(d.undertone) + ' undertone')}</span>${c.flags & E.F.DISC ? '<span class="badge">Discontinued</span>' : ''}</div>
+          ${popWhyLine(c)}
           ${settings.showLrv ? `<div class="lrv-box"><div class="lrv-top"><span>Light Reflectance (LRV)</span><span class="mono">${c.lrv} of 100</span></div><div class="lrv-bar"><i style="left:${Math.max(0, Math.min(100, c.lrv))}%"></i></div><p>${esc(lrvWords(c.lrv))}.</p></div>` : ''}
           <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-fullscreen="${esc(c.id)}">${expandIcon(20)}Full Screen</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
           ${sampleNote(c)}
@@ -1483,7 +1505,37 @@
     </div>`;
     mountScene('colorScene', paintSceneSpec(c, answers, !!res));
   }
-  const colorRow = (c, dE) => `<button type="button" class="row" data-go="color/${esc(encodeURIComponent(c.id))}"><span class="sw" ${swStyle(c.hex)}></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${esc(brandName(c.brand))} · <span class="mono">${esc(E.codeLabel(c))}</span>${c.flags & E.F.DISC ? ' · discontinued' : ''}</span></span><span class="end">${dE != null ? `<span class="badge${dE < 2.5 ? ' good' : ''}">${esc(C.matchLabel(dE))}</span><span class="mono">ΔE ${dE}</span>` : settings.showLrv ? `<span class="mono">LRV ${c.lrv}</span>` : ''}</span></button>`;
+  // ---------- the brands' own popular colors (data/popular.js, looked up on their websites every week) ----------
+  const popDate = iso => { const d = iso ? new Date(iso + 'T12:00:00') : null; return d && !isNaN(d) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''; };
+  const andList = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a.join('');
+  function popBadge(c) {
+    const why = E.popularWhy(c);
+    if (!why.length) return '';
+    const coty = why.find(x => x.coty);
+    return `<span class="badge good">${coty ? esc(coty.coty + ' Color of the Year') : 'Popular'}</span>`;
+  }
+  function popWhyLine(c) {
+    const why = E.popularWhy(c);
+    return why.length ? `<p class="pop-why">${ic('star', 18)}<span>${why.map(x => esc(x.text)).join('<br>')}</span></p>` : '';
+  }
+  function popNote() {
+    const info = E.popularInfo();
+    return 'Each paint company’s own Color of the Year and most popular colors, looked up on their websites every week. ' + (info.checked ? `Last checked ${popDate(info.checked)}.` : 'Not loaded yet.');
+  }
+  function popularLookup(brands) {
+    const opts = { brands, collections: settings.collections };
+    const coty = E.colorsOfYear(opts);
+    const popular = E.popularList(Object.assign({ limit: 40 }, opts));
+    const info = E.popularInfo();
+    const none = E.getIndex().brands.filter(b => brands[b.id] !== false && b.group !== 'standard' && b.group !== 'custom' && !info.brands.includes(b.id)).map(b => b.name);
+    let h = '';
+    if (coty.length) h += `<h2>Colors of the Year</h2><div class="rows">${coty.map(x => colorRow(x.color, null, String(x.year))).join('')}</div>`;
+    if (popular.length) h += `<h2>Popular Right Now</h2><div class="rows">${popular.map(c => colorRow(c)).join('')}</div>`;
+    if (!h) h = '<h2>Popular Colors</h2><p class="muted">The brands’ popular colors couldn’t be loaded. Type a color name or number above.</p>';
+    h += `<p class="muted small pop-note">${info.checked ? `From each paint company’s own website, checked ${esc(popDate(info.checked))}.` : ''}${none.length ? ` Nothing posted where the app can read it yet for ${esc(andList(none))}.` : ''}</p>`;
+    return h;
+  }
+  const colorRow = (c, dE, tag) =>`<button type="button" class="row" data-go="color/${esc(encodeURIComponent(c.id))}"><span class="sw" ${swStyle(c.hex)}></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${esc(brandName(c.brand))} · <span class="mono">${esc(E.codeLabel(c))}</span>${c.flags & E.F.DISC ? ' · discontinued' : ''}</span></span><span class="end">${tag ? `<span class="badge good">${esc(tag)}</span>` : dE != null ? `<span class="badge${dE < 2.5 ? ' good' : ''}">${esc(C.matchLabel(dE))}</span><span class="mono">ΔE ${dE}</span>` : settings.showLrv ? `<span class="mono">LRV ${c.lrv}</span>` : ''}</span></button>`;
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-plan-for]'); if (!t) return;
     const c = E.findColor(t.dataset.planFor); if (!c) return;
@@ -1622,7 +1674,7 @@
           <div class="big-pick"><span class="k">Primer</span><b>${esc(P.primer.title)}</b><p>${esc(P.primer.why)}${P.primer.products[0] ? ` Try ${esc(P.primer.products[0].name)}.` : ''}</p></div>
           <div class="big-pick"><span class="k">How much</span><b id="planBuy">${esc(P.amount.buy)}</b><p id="planWhat">${esc(P.amount.what)}, ${P.coats} coats.</p></div>
         </div>
-        <div class="actions stack"><button type="button" class="btn big primary" data-add-plan="1">${plusIcon}Add to Project</button>${color ? '' : `<button type="button" class="btn big" data-color-for="${esc(a.space)}">${ic('swatch', 22)}Find a Color for This</button>`}<button type="button" class="btn big ghost" data-print-plan="1">${ic('print', 22)}Print</button></div>
+        <div class="actions stack"><button type="button" class="btn big primary" data-add-plan="1">${plusIcon}Add to Project</button>${color ? '' : `<button type="button" class="btn big" data-color-for="${esc(a.space)}">${ic('swatch', 22)}Find a Color for This</button>`}<button type="button" class="btn big ghost" data-print-plan="1">${ic('print', 22)}Print</button><button type="button" class="btn big ghost" data-email-plan="1">${mailIcon}Email</button></div>
       </div>
       <div class="blocks">
         <div class="block"><h2><span class="ic">${ic('can', 24)}</span>The Paint</h2>
@@ -1712,7 +1764,10 @@
     const P = state.results.buy;
     if (t.dataset.addPlan) { addToList(planItem(P)); t.classList.add('done'); t.innerHTML = checkIcon + ' In Project'; }
     if (t.dataset.colorFor) { const a = flowOf('buy').a; startFlow('paint', { space: a.space, siding: a.siding }); }
-    if (t.dataset.printPlan) printSheet({ name: `Shopping List: ${P.space.label}`, notes: [P.type, P.finish.name + ' finish', P.primer.title, P.amount.buy].join(' · '), items: [planItem(P)].concat(P.supplies.map(s => ({ area: 'Supplies', brand: '', name: s.name, code: '', hex: '', finish: '', product: '', primer: '', loc: '' }))) });
+    // the shopping list on its own, as a one-off sheet for printing or emailing
+    const sheet = () => ({ name: `Shopping List: ${P.space.label}`, notes: [P.type, P.finish.name + ' finish', P.primer.title, P.amount.buy].join(' · '), items: [planItem(P)].concat(P.supplies.map(s => ({ area: 'Supplies', brand: '', name: s.name, code: '', hex: '', finish: '', product: '', primer: '', loc: '' }))) });
+    if (t.dataset.printPlan) printSheet(sheet());
+    if (t.dataset.emailPlan) openEmail(sheet());
   });
 
   // ================================================================
@@ -1752,9 +1807,7 @@
     const q = state.query.trim();
     const opts = { brands: brandsEnabled(), showDiscontinued: settings.showDiscontinued, limit: 60 };
     if (!q) {
-      // worked out from what sells and what's been picked on this device, not a fixed list
-      const popular = E.popularList({ brands: opts.brands, collections: settings.collections, limit: 30 });
-      host.innerHTML = `<h2>Popular Colors</h2><p class="muted small">Picked from the kinds of colors that sell most, and from what's been chosen on this device.</p><div class="rows">${popular.map(c => colorRow(c)).join('')}</div>`;
+      host.innerHTML = popularLookup(opts.brands);
       return;
     }
     const hex = E.parseColorValue(q);
@@ -1824,13 +1877,10 @@
     const best = E.closestByBrand(hex, { brands: brandsEnabled() })[0];
     return { kind: 'custom', ref: '#' + hex, area: '', brand: 'Exact Color', name: best ? `Closest: ${brandName(best.color.brand)} ${best.color.name}` : 'Exact color', code: best ? E.codeLabel(best.color) : '', hex, lrv: String(C.lrvFromHex(hex)), finish: '', product: '', primer: '', loc: '' };
   }
-  // what's picked here teaches the app which colors are popular. Kept on this device only.
-  function notePick(id, w) { if (!id || !E.findColor(id)) return; E.notePick(id, w); store.set('picks', E.getPicks()); }
   function addToList(item) {
     if (!item) return;
     session.items.push(Object.assign({ id: newId() }, item));
     saveSession(); updateListBtn(true);
-    notePick(item.ref, 3);
     toast(`Added ${item.kind === 'custom' ? '#' + item.hex : item.name} to ${sessionTitle()}`);
   }
   // the Add to Project buttons: tap again to take it back off
@@ -1868,7 +1918,7 @@
         : `<div class="empty"><h2>Nothing in this project yet</h2><p class="muted">Find a color, then tap Add to Project. Everything you add lands here.</p><div class="actions stack"><button type="button" class="btn big primary" data-start="paint">Find a Paint Color</button>${jobOn('stain') ? '<button type="button" class="btn big" data-start="stain">Find a Stain</button>' : ''}<button type="button" class="btn big" data-go="lookup">Look Up a Color</button></div></div>`}
       ${items.length || (session.name || '').trim() ? `<div class="proj-delete"><button type="button" class="btn ghost danger" data-list="delete">${trashIcon}Delete This Project</button></div>` : ''}
       ${isKiosk() ? '' : `<section class="section" aria-labelledby="pastH"><h2 id="pastH">Earlier Projects</h2>${past.length ? `<div class="past">${past.map(s => `<div class="past-item"><span class="mini-sws">${s.items.slice(0, 5).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span><b>${esc(titleOf(s))}</b><span class="when">${s.items.length} item${s.items.length === 1 ? '' : 's'} · ${esc(whenOf(s.updated))}</span></span>
-          <span class="btns"><button type="button" class="btn small" data-past-open="${esc(s.id)}">Open</button><button type="button" class="btn small" data-past-print="${esc(s.id)}">Print</button><button type="button" class="btn small ghost danger" data-past-del="${esc(s.id)}" aria-label="Delete ${esc(titleOf(s))}">Delete</button></span></div>`).join('')}</div><p class="muted small">The last ${PAST_MAX} projects stay on this device.</p>` : '<p class="muted">When you start a new project, this one is kept here.</p>'}</section>`}
+          <span class="btns"><button type="button" class="btn small" data-past-open="${esc(s.id)}">Open</button><button type="button" class="btn small" data-past-print="${esc(s.id)}">Print</button><button type="button" class="btn small" data-past-email="${esc(s.id)}">Email</button><button type="button" class="btn small ghost danger" data-past-del="${esc(s.id)}" aria-label="Delete ${esc(titleOf(s))}">Delete</button></span></div>`).join('')}</div><p class="muted small">The last ${PAST_MAX} projects stay on this device.</p>` : '<p class="muted">When you start a new project, this one is kept here.</p>'}</section>`}
     </div>`;
     $('#listName').addEventListener('input', e => { session.name = e.target.value; saveSession(); $('.page-head h1').textContent = sessionTitle(); updateListBtn(); });
     $('#listNotes').addEventListener('input', e => { session.notes = e.target.value; saveSession(); });
@@ -1896,6 +1946,7 @@
       session = p; saveSession(); updateListBtn(); renderList(); toast(`Opened ${sessionTitle()}`);
     }
     if (t.dataset.pastPrint) { const p = past.find(s => s.id === t.dataset.pastPrint); if (p) printPreview(p); }
+    if (t.dataset.pastEmail) { const p = past.find(s => s.id === t.dataset.pastEmail); if (p) openEmail(p); }
     if (t.dataset.pastDel) { const p = past.find(s => s.id === t.dataset.pastDel); if (p) askDelete(p); }
   });
 
@@ -1949,25 +2000,73 @@
   });
 
   // ---- emailing a project: the person's email app opens with the whole list written in ----
+  // ---- email ----
+  // With the EmailJS IDs filled in (js/config.js) the list is sent straight from the site's do-not-reply address,
+  // so no email app is needed (a store kiosk has none). Without them, the device's own email app opens instead.
+  const mailCfg = () => { const m = (window.CG_CONFIG || {}).email || {}; return m.serviceId && m.templateId && m.publicKey ? m : null; };
+  const MAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[a-z]{2,}$/i;
+  const MAIL_PER_HOUR = 12;   // a shared screen shouldn't become a way to send lots of email
+  const mailSubject = s => 'Paint and stain list: ' + titleOf(s);
   function openEmail(s) {
-    const canShare = !!(navigator.share && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
-    openModal('Email This Project', `<p style="font-size:1.1rem">Your email app opens with <b>${esc(titleOf(s))}</b> written in: every color, code, finish and product, one per line. Check it, then press Send.</p>
-      <label class="field">Their email address<input type="email" class="input" id="mailTo" placeholder="name@example.com" autocomplete="email" inputmode="email" enterkeyhint="send"><span class="muted small" style="font-weight:500">Optional. You can also type it in the email.</span></label>
-      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span>${canShare ? `<button type="button" class="btn big" data-mail-share="1">Share…</button>` : ''}<button type="button" class="btn big primary" data-mail-open="1">${mailIcon}Open Email</button></div>`);
+    const cfg = mailCfg();
+    const canShare = !cfg && !!(navigator.share && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
+    const intro = cfg
+      ? `<p style="font-size:1.1rem">Sends <b>${esc(titleOf(s))}</b> from ColorGenius’s do-not-reply address: every color, code, finish and product, one per line.</p>`
+      : `<p style="font-size:1.1rem">Your email app opens with <b>${esc(titleOf(s))}</b> written in: every color, code, finish and product, one per line. Check it, then press Send.</p>`;
+    const field = `<label class="field">Their email address<input type="email" class="input" id="mailTo" placeholder="name@example.com" autocomplete="email" inputmode="email" enterkeyhint="send" maxlength="120">${cfg ? '' : '<span class="muted small" style="font-weight:500">Optional. You can also type it in the email.</span>'}</label>`;
+    // a kiosk has no email app of its own, so it only gets the Send button
+    const appBtn = cfg ? (isKiosk() ? '' : `<button type="button" class="btn big" data-mail-open="1">Use My Email App</button>`) : `<button type="button" class="btn big primary" data-mail-open="1">${mailIcon}Open Email</button>`;
+    openModal(`Email ${titleOf(s)}`, `${intro}${field}<p class="mail-msg" id="mailMsg" role="status" aria-live="polite"></p>
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span>${canShare ? `<button type="button" class="btn big" data-mail-share="1">Share…</button>` : ''}${appBtn}${cfg ? `<button type="button" class="btn big primary" data-mail-send="1">${mailIcon}Send</button>` : ''}</div>`);
     const inp = $('#mailTo'); inp.focus();
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('[data-mail-open]').click(); } });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ($('[data-mail-send]') || $('[data-mail-open]')).click(); } });
+    inp.addEventListener('input', () => mailMsg(''));
     emailOf = s;
   }
   let emailOf = null;
   function mailBody(s) { return sheetText(s) + '\n\nColors look different on screens and paper. Check a real chip or sample before buying.'; }
+  function mailMsg(text, bad) { const m = $('#mailMsg'); if (m) { m.textContent = text; m.classList.toggle('bad', !!bad); } }
+  // sends through EmailJS. The template fills in to_email, subject, message_html (and message, as plain text).
+  async function sendMail(cfg, to, s) {
+    const body = mailBody(s);
+    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
+        body: JSON.stringify({ service_id: cfg.serviceId, template_id: cfg.templateId, user_id: cfg.publicKey, template_params: {
+          to_email: to, subject: mailSubject(s), project_name: titleOf(s), from_name: cfg.fromName || 'ColorGenius (do not reply)',
+          message: body, message_html: `<div style="white-space:pre-wrap;font-family:inherit">${esc(body)}</div>`,
+        } }),
+      });
+      if (!res.ok) throw new Error(`EmailJS ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    } finally { clearTimeout(timer); }
+  }
   document.addEventListener('click', async e => {
     const t = e.target.closest('button'); if (!t || !emailOf) return;
+    if (t.dataset.mailSend) {
+      const cfg = mailCfg(); if (!cfg) return;
+      const to = ($('#mailTo').value || '').trim();
+      if (!MAIL_RE.test(to)) { mailMsg('Type the full email address, like name@example.com', true); $('#mailTo').focus(); return; }
+      const now = Date.now(), log = store.get('mailLog', []).filter(x => now - x < 3600e3);
+      if (log.length >= MAIL_PER_HOUR) { mailMsg('That’s a lot of email from this screen in an hour. Try again a little later, or print it.', true); return; }
+      const s = emailOf;
+      t.disabled = true; t.textContent = 'Sending…'; mailMsg('');
+      try {
+        await sendMail(cfg, to, s);
+        store.set('mailLog', log.concat(now));
+        closeModal(); emailOf = null;
+        toast(`Sent to ${to}`);
+      } catch (err) {
+        console.warn(err);
+        t.disabled = false; t.innerHTML = `${mailIcon}Send`;
+        mailMsg(navigator.onLine === false ? 'This device is offline, so it can’t send right now. Try again when it’s back online, or print it.' : 'It didn’t send. Check the address and try again, or print it instead.', true);
+      }
+    }
     if (t.dataset.mailOpen) {
-      emailOf.items.forEach(x => notePick(x.ref, 2));
       // keep only characters an address can have, so nothing typed can add extra mailto fields
       const to = ($('#mailTo').value || '').trim().replace(/[^\w.@+-]/g, '');
       const body = mailBody(emailOf);
-      const url = `mailto:${to}?subject=${encodeURIComponent('Paint and stain list: ' + titleOf(emailOf))}&body=${encodeURIComponent(body.replace(/\n/g, '\r\n'))}`;
+      const url = `mailto:${to}?subject=${encodeURIComponent(mailSubject(emailOf))}&body=${encodeURIComponent(body.replace(/\n/g, '\r\n'))}`;
       closeModal(); emailOf = null;
       // some email apps cut off very long links, so a long list is also copied to paste in
       if (url.length > 1800) { copyText(body, 'The list is long, so it’s also copied. Paste it in if the email is cut short.'); }
@@ -1976,7 +2075,7 @@
     }
     if (t.dataset.mailShare) {
       const s = emailOf;
-      try { await navigator.share({ title: 'Paint and stain list: ' + titleOf(s), text: mailBody(s) }); closeModal(); emailOf = null; } catch (err) { /* closed the share sheet */ }
+      try { await navigator.share({ title: mailSubject(s), text: mailBody(s) }); closeModal(); emailOf = null; } catch (err) { /* closed the share sheet */ }
     }
   });
 
@@ -2005,7 +2104,6 @@
     return lines.join('\n');
   }
   function printSheet(s) {
-    s.items.forEach(x => notePick(x.ref, 2));
     const sh = sheetOf(s);
     $('#printArea').innerHTML = sh.html;
     const page = document.createElement('style'); page.id = 'printPage';
@@ -2023,7 +2121,7 @@
     const sh = sheetOf(s);
     openModal(`Print ${titleOf(s)}`, `<div class="paper-wrap"><div class="paper${sh.landscape ? ' landscape' : ''}">${sh.html}</div></div>
       <p class="muted">${sh.landscape ? 'Prints sideways so every column fits.' : 'Prints on one letter page.'} One line per item, black and white.</p>
-      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big" data-copy-list="1">Copy as Text</button><button type="button" class="btn big primary" data-print-now="1">${ic('print', 22)}Print</button></div>`, { wide: true });
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big" data-copy-list="1">Copy as Text</button><button type="button" class="btn big" data-email-now="1">${mailIcon}Email</button><button type="button" class="btn big primary" data-print-now="1">${ic('print', 22)}Print</button></div>`, { wide: true });
     fitPaper();
   }
   function fitPaper() {
@@ -2038,6 +2136,7 @@
   document.addEventListener('click', e => {
     const t = e.target.closest('button'); if (!t || !t.closest('#modal')) return;
     if (t.dataset.printNow && previewOf) printSheet(previewOf);
+    if (t.dataset.emailNow && previewOf) openEmail(previewOf);
     if (t.dataset.copyList && previewOf) copyText(sheetText(previewOf), 'Copied the whole project');
   });
 
@@ -2184,7 +2283,7 @@
         ${sw('showMatches', settings.showMatches, 'Show matches in other brands')}
         ${sw('inStoreSamples', settings.inStoreSamples, 'Show where chips are in the store')}
         ${sw('showDiscontinued', settings.showDiscontinued, 'Include discontinued colors', 'Older colors many stores can still mix')}
-        ${(n => `<div class="set-row"><div class="set-text"><b>Popular colors</b><span>${n ? `Learning from ${fmt(n)} color${n === 1 ? '' : 's'} picked on this device, along with the kinds of colors that sell most. Nothing leaves the device.` : 'Worked out from the kinds of colors that sell most, then learned from what gets picked on this device.'}</span></div>${n ? '<button type="button" class="btn small ghost" data-act="reset-picks">Start Over</button>' : ''}</div>`)(Object.keys(E.getPicks()).length)}
+        <div class="set-row"><div class="set-text"><b>Popular colors</b><span>${esc(popNote())}</span></div></div>
       </div></div>
       <div class="set-group"><h2>Screen Color</h2><div class="set-card">
         <div class="set-note" style="border-top:0">Screens show colors differently. Matching this screen to white paper and a real chip makes every color truer.</div>
@@ -2271,7 +2370,6 @@
     if (act === 'install') startInstall();
     if (act === 'run-setup') openOnboarding();
     if (act === 'clear-custom') { const custom = store.get('custom', {}); store.set('custom', {}); for (const name of Object.keys(custom)) removeBrand(customMeta(name).id); afterSettingsChange('brands'); renderKeep(); toast('Imported colors removed'); }
-    if (act === 'reset-picks') { E.setPicks({}); store.set('picks', {}); renderKeep(); toast('Popular colors will learn again from here'); }
     if (act === 'reset-all') {
       if (t.dataset.confirm) { settings = clone(DEFAULT_SETTINGS); saveSettings(); applyTheme(); applyAudience(); afterSettingsChange('all'); toast('Settings reset'); openOnboarding(); }
       else { t.dataset.confirm = '1'; t.textContent = 'Tap Again to Reset Everything'; t.classList.add('armed'); setTimeout(() => { if (document.contains(t)) { delete t.dataset.confirm; t.textContent = 'Reset All Settings'; t.classList.remove('armed'); } }, 3500); }
@@ -2688,7 +2786,9 @@
     S.init(window.CG_STAINS);
     const custom = store.get('custom', {});
     for (const name of Object.keys(custom)) E.addBrand(customMeta(name), custom[name]);
-    E.setPicks(store.get('picks', {}));
+    // the brands' own Colors of the Year and popular colors, looked up every week from their websites
+    try { await loadScript('data/popular.js'); } catch (e) { /* the app works without it, just with no Popular marks */ }
+    E.setPopular(window.CG_POPULAR);
     // Saved Colors from older versions are kept as an earlier project, so nothing is lost
     const oldSaved = store.get('shortlist', null);
     if (Array.isArray(oldSaved) && oldSaved.length) {
