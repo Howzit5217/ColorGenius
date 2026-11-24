@@ -573,6 +573,9 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .search svg { flex: none; color: var(--ink-3); }
 .search input { flex: 1; min-width: 0; border: 0; background: none; font-size: 1.2rem; min-height: 60px; outline: none; }
 .search input::placeholder { color: var(--ink-3); }
+/* only the app's own clear button: the browser's built-in one is hidden */
+.search input::-webkit-search-cancel-button, .search input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
+.search input::-ms-clear { display: none; width: 0; height: 0; }
 .search .clear { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; flex: none; }
 .exact { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); padding: 20px; border-radius: var(--r-xl); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
 @media (min-width: 700px) { .exact { grid-template-columns: 220px minmax(0, 1fr); } }
