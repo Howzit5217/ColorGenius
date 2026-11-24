@@ -160,11 +160,8 @@ html.bar-on .main { padding-bottom: calc(var(--bar-h) + 48px); }
 .tile { position: relative; display: grid; grid-template-rows: auto 1fr; text-align: left; border-radius: var(--r-xl); background: var(--surface); border: 1.5px solid var(--line); overflow: hidden; box-shadow: var(--shadow); transition: transform var(--t2) var(--ease), box-shadow var(--t2) var(--ease), border-color var(--t1); }
 .tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--line-2); }
 .tile:active { transform: scale(.985); }
-.tile-art { height: 150px; position: relative; overflow: hidden; }
-.tile-art svg, .tile-art canvas { width: 100%; height: 100%; display: block; }
+.tile-art { height: 150px; position: relative; overflow: hidden; background: #ece8e1; }
 .tile-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-.tile-art img.fresh { animation: shotIn 600ms var(--ease); }
-@keyframes shotIn { from { opacity: 0; } }
 .tile-text { display: grid; gap: 6px; padding: 18px 22px 22px; align-content: start; }
 .tile-title { font-size: 1.45rem; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
 .tile-title svg { margin-left: auto; color: var(--ink-3); transition: transform var(--t2) var(--ease); }

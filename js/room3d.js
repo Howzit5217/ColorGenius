@@ -49,7 +49,9 @@
   // Everything is grouped by material. Texture coordinates are the world position in meters, projected on the
   // face's main axis, so wood grain and tile patterns keep their real size on every surface.
   class Builder {
-    constructor() { this.groups = {}; this.mats = {}; this.M = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]; this.stack = []; this.decals = []; this.lamps = []; this.windows = []; this.lo = [1e9, 1e9, 1e9]; this.hi = [-1e9, -1e9, -1e9]; }
+    // `solid` counts the closed shapes being built: a face made outside one (a roof sheet, a gable, a vase) belongs to
+    // an open shape, which the soft-shadow views have to draw from both sides
+    constructor() { this.groups = {}; this.mats = {}; this.M = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]; this.stack = []; this.decals = []; this.lamps = []; this.windows = []; this.lo = [1e9, 1e9, 1e9]; this.hi = [-1e9, -1e9, -1e9]; this.solid = 0; }
     // the first real definition of a material wins; one made up on first use can still be defined properly later
     mat(name, props) { const ex = this.mats[name]; if (!ex || ex.auto) this.mats[name] = Object.assign({ color: 'FFFFFF' }, props || {}); return name; }
     grp(name) { if (!this.mats[name]) this.mats[name] = { color: 'FFFFFF', auto: true }; return this.groups[name] || (this.groups[name] = { p: [], n: [], u: [], i: [] }); }
@@ -70,6 +72,7 @@
     // a flat four-sided face; turned so its front faces the normal
     quad(mat, a, b, c, d, n) {
       const g = this.grp(mat);
+      if (!this.solid) g.open = true;
       const fn = n || norm(cross(sub(b, a), sub(c, a)));
       const flip = dot(cross(sub(b, a), sub(c, a)), fn) < 0;
       const i0 = this.vert(g, a, fn), i1 = this.vert(g, b, fn), i2 = this.vert(g, c, fn), i3 = this.vert(g, d, fn);
@@ -78,6 +81,11 @@
     }
     box(mat, x0, y0, z0, x1, y1, z1, skip) {
       skip = skip || '';
+      this.solid++;
+      try { this.boxFaces(mat, x0, y0, z0, x1, y1, z1, skip); } finally { this.solid--; }
+      return this;
+    }
+    boxFaces(mat, x0, y0, z0, x1, y1, z1, skip) {
       if (!skip.includes('t')) this.quad(mat, [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], [0, 1, 0]);
       if (!skip.includes('b')) this.quad(mat, [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, -1, 0]);
       if (!skip.includes('f')) this.quad(mat, [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1]);
@@ -119,6 +127,7 @@
     cyl(mat, x, y0, z, r0, h, seg, r1, caps) {
       seg = seg || 16; r1 = r1 == null ? r0 : r1; caps = caps == null ? 'tb' : caps;
       const g = this.grp(mat), ring = [];
+      if (!(caps.includes('t') || r1 <= 0) || !(caps.includes('b') || r0 <= 0)) g.open = true;
       const slope = (r0 - r1) / h;
       for (let i = 0; i <= seg; i++) {
         const a = i / seg * Math.PI * 2, cx = Math.cos(a), sz = Math.sin(a);
@@ -126,12 +135,15 @@
         ring.push([this.vert(g, [x + cx * r0, y0, z + sz * r0], n), this.vert(g, [x + cx * r1, y0 + h, z + sz * r1], n)]);
       }
       for (let i = 0; i < seg; i++) { const [a, b] = ring[i], [c, d] = ring[i + 1]; g.i.push(a, d, c, a, b, d); }
+      this.solid++;
       if (caps.includes('t') && r1 > 0) this.disc(mat, x, y0 + h, z, r1, seg, 1);
       if (caps.includes('b') && r0 > 0) this.disc(mat, x, y0, z, r0, seg, -1);
+      this.solid--;
       return this;
     }
     disc(mat, x, y, z, r, seg, up) {
       const g = this.grp(mat), n = [0, up, 0], c = this.vert(g, [x, y, z], n), ids = [];
+      if (!this.solid) g.open = true;
       for (let i = 0; i <= seg; i++) { const a = i / seg * Math.PI * 2; ids.push(this.vert(g, [x + Math.cos(a) * r, y, z + Math.sin(a) * r], n)); }
       for (let i = 0; i < seg; i++) if (up > 0) g.i.push(c, ids[i + 1], ids[i]); else g.i.push(c, ids[i], ids[i + 1]);
       return this;
@@ -160,6 +172,7 @@
     // a turned shape from a profile of [radius, height] pairs (lamps, vases, pots, bowls)
     lathe(mat, x, y, z, prof, seg) {
       seg = seg || 20; const g = this.grp(mat), rings = [];
+      g.open = true;
       for (let k = 0; k < prof.length; k++) {
         const [r, h] = prof[k], prev = prof[Math.max(0, k - 1)], next = prof[Math.min(prof.length - 1, k + 1)];
         const dr = next[0] - prev[0], dh = next[1] - prev[1];
@@ -214,7 +227,7 @@
     uniform float uGloss; uniform int uPat; uniform float uTexMode; uniform sampler2D uTex; uniform vec2 uTexScale; uniform float uTexSwap; uniform float uScale;
     uniform vec3 uSunDir, uSunCol; uniform float uSunOn; uniform sampler2DShadow uShadow; uniform highp sampler2D uShadowRaw; uniform float uTexel;
     uniform mat4 uLVP; uniform float uSunSoft, uSunSearch, uSunNO, uDepthM;
-    uniform highp sampler2DArray uAoRaw; uniform vec3 uAoDir[${AO_N}]; uniform vec3 uAoC; uniform float uAoR, uAoOn, uAoNO, uAoBias, uAoAmt, uAoFar;
+    uniform highp sampler2DArray uAoRaw; uniform vec3 uAoDir[${AO_N}]; uniform vec3 uAoC; uniform float uAoR, uAoOn, uAoNO, uAoBias, uAoAmt, uAoFar, uAoTexel;
     uniform vec3 uSky, uGround, uHorizon; uniform float uAmb; uniform vec3 uEye;
     uniform vec4 uLamp[6]; uniform vec3 uLampCol[6]; uniform int uLampN;
     uniform vec3 uRoomMin, uRoomMax; uniform float uRoomAO; uniform float uExposure; uniform float uTime;
@@ -256,8 +269,12 @@
       vec2(-0.9159, 0.4577), vec2(-0.8154, -0.8791), vec2(-0.3828, 0.2768), vec2(0.9748, 0.7565),
       vec2(0.4432, -0.9751), vec2(0.5374, -0.4737), vec2(-0.2650, -0.4189), vec2(0.7920, 0.1909),
       vec2(-0.2419, 0.9971), vec2(-0.8141, 0.9144), vec2(0.1998, 0.7864), vec2(0.1438, -0.1410));
-    // a fine, even scatter so 16 samples blend into a smooth edge instead of 16 copies of the shadow
-    float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
+    // a fine scatter so the samples blend into a smooth edge instead of copies of the shadow. Each pixel (and
+    // each direction) gets its own unrelated number, so the scatter evens out instead of lining up into stripes
+    uint hashU(uint x) { x ^= x >> 16; x *= 0x7feb352dU; x ^= x >> 15; x *= 0x846ca68bU; x ^= x >> 16; return x; }
+    float rnd(uint seed) { return float(hashU(seed) >> 8) / 16777216.0; }
+    uint pixSeed() { uvec2 p = uvec2(gl_FragCoord.xy); return hashU(p.x * 1973U + p.y * 9277U + 26699U); }
+    float ign(vec2 p) { return rnd(pixSeed()); }
     float shadowAt(vec3 p, vec3 n, float ndl) {
       // looked up a little off the surface (along its normal), so shadows stay attached to what casts them
       vec4 ls = uLVP * vec4(p + n * uSunNO * (1.0 - 0.6 * ndl), 1.0);
@@ -274,7 +291,22 @@
       float pen = clamp((z - bd / bn) * uDepthM * uSunSoft, uTexel * 1.2, uSunSearch);
       float s = 0.0;
       for (int i = 0; i < 16; i++) s += texture(uShadow, vec3(q.xy + rot * PD[i] * pen, z));
+      // in the soft edge itself, 16 more looks (turned a little) so it's smooth rather than grainy
+      if (s > 0.05 && s < 15.95) {
+        mat2 rot2 = rot * mat2(0.9239, 0.3827, -0.3827, 0.9239);
+        for (int i = 0; i < 16; i++) s += texture(uShadow, vec3(q.xy + rot2 * PD[i] * pen * 0.85, z));
+        return s / 32.0;
+      }
       return s / 16.0;
+    }
+    // one look along direction i, shifted by o (meters) across it: how much a blocker there shades this spot
+    float aoLook(vec2 uv, vec2 o, float fi, vec3 n, vec3 x, vec3 y, float k, float zz, float dm, float toUv) {
+      // the surface itself is tilted: at a shifted spot it sits nearer or farther along this direction, so
+      // compare against where it really is there (otherwise sloped things shade themselves)
+      float z2 = zz - (-(dot(n, x) * o.x + dot(n, y) * o.y) / max(k, 0.25)) / dm;
+      // only a real blocker in front counts (at an outline a smoothed test can see one the exact read misses)
+      float r = texture(uAoRaw, vec3(uv + o * toUv, fi)).r;
+      return r < z2 - uAoBias ? 1.0 - smoothstep(uAoFar * 0.15, uAoFar, (z2 - r) * dm) : 0.0;
     }
     // how open this spot is to the light all around it (1 open, 0 closed in), weighted toward where it faces.
     // A blocker counts fully when it's close and fades out by uAoFar meters away: things across the room don't
@@ -282,7 +314,7 @@
     float aoAt(vec3 p, vec3 n) {
       vec3 q = p + n * uAoNO - uAoC;
       float dm = 4.0 * uAoR - 0.1, toUv = 0.5 / uAoR;
-      float j = ign(gl_FragCoord.xy + 17.0) * 6.2831853;
+      uint ps = pixSeed();
       float s = 0.0, w = 0.0;
       for (int i = 0; i < ${AO_N}; i++) {
         vec3 d = uAoDir[i]; float k = dot(n, d);
@@ -291,23 +323,24 @@
         vec3 up = abs(d.y) > 0.95 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
         vec3 x = normalize(cross(up, d)), y = cross(d, x);
         vec2 uv = vec2(dot(q, x), dot(q, y)) * toUv + 0.5;
-        float zz = (2.0 * uAoR - dot(q, d) - 0.1) / dm;
+        // seen at a slant, one texel of the view covers a range of depths on the surface: allow for it
+        float zz = (2.0 * uAoR - dot(q, d) - 0.1) / dm - uAoTexel * 1.2 * sqrt(max(1.0 - k * k, 0.0)) / max(k, 0.2) / dm;
         float occ = 0.0;
         if (uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0) {
           // each direction stands for the slice of sky around it, so its shadow is spread over that slice:
           // wider the farther away the blocker is (how far, from a first look straight along it)
           float r0 = texture(uAoRaw, vec3(uv, fi)).r;
           float f0 = r0 < zz - uAoBias ? (zz - r0) * dm : uAoFar * 0.5;
-          float a = j + fi * 2.39996;
-          vec2 om = vec2(cos(a), sin(a)) * sqrt(fract(j * 0.37 + fi * 0.618)) * min(f0, uAoFar) * 0.38;
-          // two looks, mirrored about the spot, so the scatter evens out instead of speckling.
-          // The surface itself is tilted: at a shifted spot it sits nearer or farther along this direction, so
-          // compare against where it really is there (otherwise sloped things shade themselves)
-          float dz = -(dot(n, x) * om.x + dot(n, y) * om.y) / max(k, 0.25) / dm;
-          float za = zz - dz, zb = zz + dz;
-          float ra = texture(uAoRaw, vec3(uv + om * toUv, fi)).r, rb = texture(uAoRaw, vec3(uv - om * toUv, fi)).r;
-          if (ra < za - uAoBias) occ += 0.5 * (1.0 - smoothstep(uAoFar * 0.15, uAoFar, (za - ra) * dm));
-          if (rb < zb - uAoBias) occ += 0.5 * (1.0 - smoothstep(uAoFar * 0.15, uAoFar, (zb - rb) * dm));
+          uint sd = ps + uint(i) * 0x9E3779B9U;
+          float a = rnd(sd) * 6.2831853;
+          vec2 om = vec2(cos(a), sin(a)) * sqrt(rnd(sd ^ 0x68E31DA4U)) * min(min(f0, uAoFar) * 0.38, 1.2);
+          // two looks, mirrored about the spot, so the scatter evens out instead of speckling; where they
+          // disagree (the soft edge of a shadow) two more, turned a quarter, to smooth it further
+          float o2 = aoLook(uv, om, fi, n, x, y, k, zz, dm, toUv) + aoLook(uv, -om, fi, n, x, y, k, zz, dm, toUv);
+          if (abs(o2 - 1.0) < 0.98) {
+            vec2 oq = vec2(-om.y, om.x);
+            occ = (o2 + aoLook(uv, oq, fi, n, x, y, k, zz, dm, toUv) + aoLook(uv, -oq, fi, n, x, y, k, zz, dm, toUv)) * 0.25;
+          } else occ = o2 * 0.5;
         }
         s += k * (1.0 - occ); w += k;
       }
@@ -495,7 +528,7 @@
         const big = g.p.length / 3 > 65535;
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, big ? new Uint32Array(g.i) : new Uint16Array(g.i), gl.STATIC_DRAW);
         gl.bindVertexArray(null);
-        this.draws.push({ name, vao, count: g.i.length, type: big ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT });
+        this.draws.push({ name, vao, count: g.i.length, type: big ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT, open: !!g.open });
       }
       // floor shadows under furniture: one quad each
       const dp = [], du = [], ds = [], di = [];
@@ -517,12 +550,15 @@
     }
     // the scene seen from every direction in `dirs` (straight-on views of a ball of radius R around c), keeping only
     // how far away the nearest thing is. Things that `skip` says no to (the room's own walls, the lawn) don't block.
-    bakeAO(dirs, c, R, skip) {
+    // Solid shapes are seen by their far faces (the underside of a dresser, seen from above), so the distance is
+    // measured to the side facing what it shades: 8 cm under a dresser, not the 95 cm to its top. Open shapes
+    // (roof sheets, vases) and two-sided ones (curtains) have no far face, so both their sides count.
+    bakeAO(dirs, c, R, skip, twoSided) {
       const gl = this.gl;
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.aoFb);
       gl.viewport(0, 0, this.aoSize, this.aoSize);
-      gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.disable(gl.CULL_FACE);
-      gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(1.5, 3);
+      gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.cullFace(gl.FRONT);
+      gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(1, 2);
       gl.useProgram(this.sh.p);
       const proj = ortho(-R, R, -R, R, 0.1, R * 4);
       dirs.forEach((d, i) => {
@@ -530,13 +566,18 @@
         gl.clear(gl.DEPTH_BUFFER_BIT);
         const lv = lookAt(add(c, scl(d, R * 2)), c, Math.abs(d[1]) > 0.95 ? [0, 0, 1] : [0, 1, 0]);
         gl.uniformMatrix4fv(this.sh.u.uLVP, false, mmul(proj, lv));
-        for (const dr of this.draws) { if (skip(dr.name)) continue; gl.bindVertexArray(dr.vao); gl.drawElements(gl.TRIANGLES, dr.count, dr.type, 0); }
+        for (const dr of this.draws) {
+          if (skip(dr.name)) continue;
+          if (dr.open || twoSided(dr.name)) gl.disable(gl.CULL_FACE); else gl.enable(gl.CULL_FACE);
+          gl.bindVertexArray(dr.vao); gl.drawElements(gl.TRIANGLES, dr.count, dr.type, 0);
+        }
       });
+      gl.disable(gl.CULL_FACE); gl.cullFace(gl.BACK);
       gl.disable(gl.POLYGON_OFFSET_FILL);
       gl.bindVertexArray(null);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       const texel = 2 * R / this.aoSize;
-      this.ao = { dirs: new Float32Array(dirs.flat()), c, R, no: texel * 1.6, bias: 0.012 / (R * 4) };
+      this.ao = { dirs: new Float32Array(dirs.flat()), c, R, texel, no: texel * 1.6, bias: 0.012 / (R * 4) };
     }
     // frame: { vp, eye, lvp, sunDir, sunCol, sunOn, sky..., mats: { name -> resolved material }, lamps, room, wipe }
     draw(fr) {
@@ -587,7 +628,7 @@
       gl.uniform1f(u.uSunNO, 2 * sr / this.shadowSize * 1.5);
       const A = this.ao;
       gl.uniform1f(u.uAoOn, A && fr.aoAmt > 0 ? 1 : 0);
-      if (A) { gl.uniform3fv(u.uAoDir, A.dirs); gl.uniform3fv(u.uAoC, A.c); gl.uniform1f(u.uAoR, A.R); gl.uniform1f(u.uAoNO, A.no); gl.uniform1f(u.uAoBias, A.bias); gl.uniform1f(u.uAoAmt, fr.aoAmt || 0); gl.uniform1f(u.uAoFar, fr.aoFar || 1); }
+      if (A) { gl.uniform3fv(u.uAoDir, A.dirs); gl.uniform3fv(u.uAoC, A.c); gl.uniform1f(u.uAoR, A.R); gl.uniform1f(u.uAoNO, A.no); gl.uniform1f(u.uAoBias, A.bias); gl.uniform1f(u.uAoAmt, fr.aoAmt || 0); gl.uniform1f(u.uAoFar, fr.aoFar || 1); gl.uniform1f(u.uAoTexel, A.texel); }
       gl.uniform1i(u.uTex, 0);
       gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
       for (const d of this.draws) {
@@ -1665,6 +1706,8 @@
     b.box(rail, x0, 0.25, z1 - 0.04, x1, H - 0.05, z1); b.box(rail, x0, 0.25, z0, x0 + 0.04, H - 0.05, z1); b.box(rail, x1 - 0.04, 0.25, z0, x1, H - 0.05, z1);
     const sx0 = -0.7, sx1 = 0.7;
     for (let i = 0; i < 3; i++) b.box(dk, sx0, H - 0.05 - (i + 1) * 0.17, z1 + i * 0.28, sx1, H - (i + 1) * 0.17, z1 + (i + 1) * 0.28);
+    // the stringers the treads sit on (saw-toothed boards down to the ground), so the stairs don't float
+    for (const sx of [sx0 + 0.05, 0, sx1 - 0.05]) for (let i = 0; i < 3; i++) b.box(rail, sx - 0.022, 0, z1 + i * 0.28, sx + 0.022, H - 0.05 - (i + 1) * 0.17, z1 + (i + 1) * 0.28 - 0.02);
     const post = (x, z) => b.box(rail, x - 0.06, 0, z - 0.06, x + 0.06, H + 1.0, z + 0.06);
     for (const x of [x0 + 0.06, -2, sx0, sx1, 2, x1 - 0.06]) post(x, z1 - 0.06);
     for (const z of [z0 + 0.4, -1.5]) { post(x0 + 0.06, z); post(x1 - 0.06, z); }
@@ -1955,7 +1998,7 @@
       }
       // outside in the sun, the shade takes on the sky's blue a little
       const sky = info.outside && sunOn ? [L.sky[0] * 0.92, L.sky[1] * 0.97, L.sky[2] * 1.04] : L.sky;
-      r.draw({ vp, inv: inv4(vp), eye: e, lvp, shadowR: shR, sunDir, sunCol, sunOn, showSun: info.outside, sky, ground: L.ground, horizon: L.horizon, skyTop: L.skyTop, amb, exp: L.exp * (o.exposure || 1), lamps, room: info.outside ? null : b.room, mats, wipePlane, clear: info.outside ? L.horizon : [0.88, 0.87, 0.85], skyBox: !!info.outside, time: (now || 0) / 1000, aoAmt: info.outside ? 0.95 : 0.9, aoFar: info.studio ? 0.12 : info.outside ? 5 : 0.9 });
+      r.draw({ vp, inv: inv4(vp), eye: e, lvp, shadowR: shR, sunDir, sunCol, sunOn, showSun: info.outside, sky, ground: L.ground, horizon: L.horizon, skyTop: L.skyTop, amb, exp: L.exp * (o.exposure || 1), lamps, room: info.outside ? null : b.room, mats, wipePlane, clear: info.outside ? L.horizon : [0.88, 0.87, 0.85], skyBox: !!info.outside, time: (now || 0) / 1000, aoAmt: info.outside ? 1 : 0.9, aoFar: info.studio ? 0.12 : info.outside ? 7 : 1.4 });
       if (anim || (info.water && o.interactive)) schedule();
     }
     function schedule() { if (!raf && !dead) raf = requestAnimationFrame(t => { raf = 0; draw(t); }); }
@@ -1973,11 +2016,11 @@
     // (baseboards, casings, wall tile, doors, a house's trim and shutters) don't either: they're too thin to shade
     // anything, and in the side views they'd smear onto the wall itself.
     try {
-      const SHELL = new Set(['wall', 'side', 'ceil', 'floor', 'lawn', 'water', 'bd', 'trim', 'wain', 'door', 'tile', 'mirror', 'xtrim', 'glassx', 'shut', 'xdoor', 'gdoor']);
+      const SHELL = new Set(['wall', 'side', 'ceil', 'floor', 'lawn', 'water', 'bd', 'trim', 'wain', 'door', 'tile', 'mirror', 'xtrim', 'glassx', 'shut', 'xdoor', 'gdoor', 'walk', 'mulch', 'shore', 'farshore']);
       const dirs = [], ga = Math.PI * (3 - Math.sqrt(5));
       for (let i = 0; i < AO_N; i++) { const y = 1 - (i + 0.5) / AO_N * 2, rr = Math.sqrt(1 - y * y); dirs.push([Math.cos(i * ga) * rr, y, Math.sin(i * ga) * rr]); }
       const aoR = info.outside ? Math.min(shadowBall.R, 16) : shadowBall.R;
-      r.bakeAO(dirs, shadowBall.c, aoR, name => SHELL.has(name) || !mats[name] || mats[name].noShadow || mats[name].hidden);
+      r.bakeAO(dirs, shadowBall.c, aoR, name => SHELL.has(name) || !mats[name] || mats[name].noShadow || mats[name].hidden, name => !!(mats[name] && mats[name].twoSided));
     } catch (e) { r.ao = null; }
     draw(performance.now());
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { draw(performance.now()); }) : null;

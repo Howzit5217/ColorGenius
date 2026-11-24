@@ -411,20 +411,6 @@
     ['Light changes color', 'Warm bulbs make colors cozier. Daylight bulbs make them crisper.'],
     ['Two thin coats', 'Two thin coats look better and last longer than one thick one.'],
   ];
-  function tileArt(kind) {
-    if (kind === 'paint') return `<svg viewBox="0 0 320 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="320" height="150" fill="#e9e3d8"/>
-      ${[['#e7dfd0', -38], ['#c9b79c', -25], ['#a9b8a0', -12], ['#6f8f85', 1], ['#4f6b7d', 14], ['#2f3b4c', 27], ['#c47f5e', 40]].map(([c, r]) => `<g transform="rotate(${r} 120 168)"><rect x="104" y="22" width="32" height="140" rx="6" fill="${c}" stroke="rgba(0,0,0,.12)"/><rect x="108" y="128" width="24" height="5" rx="2" fill="rgba(255,255,255,.6)"/></g>`).join('')}
-      <g transform="translate(196 34)"><rect x="0" y="0" width="92" height="34" rx="12" fill="#6f8f85"/><rect x="0" y="0" width="92" height="34" rx="12" fill="url(#rlH)"/><path d="M92 17h14v28H48v22" fill="none" stroke="#3a3632" stroke-width="7" stroke-linejoin="round"/><rect x="40" y="66" width="16" height="44" rx="7" fill="#c9553a"/></g>
-      <defs><linearGradient id="rlH" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".15"/></linearGradient></defs></svg>`;
-    if (kind === 'stain') return SC.woodCv({ sp: 'red_oak', stain: { hex: '8A5A35', type: 'semi' }, split: 0.42, w: 640, h: 300, cm: 0.2, seed: 6, sheen: 0.45, label: 'Bare and stained oak' });
-    if (kind === 'buy') return `<svg viewBox="0 0 320 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="320" height="150" fill="#dfe8e3"/>
-      <g transform="translate(70 34)"><path d="M0 18h86v86a8 8 0 01-8 8H8a8 8 0 01-8-8z" fill="#f3f1ec" stroke="#3a3632" stroke-width="3"/><ellipse cx="43" cy="18" rx="43" ry="12" fill="#e6e1d6" stroke="#3a3632" stroke-width="3"/><rect x="10" y="48" width="66" height="40" rx="6" fill="#2f6b5e"/><path d="M18 60h50M18 70h34" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M12 8c0-18 62-18 62 0" fill="none" stroke="#3a3632" stroke-width="3"/></g>
-      <g transform="translate(186 24) rotate(18)"><rect x="18" y="0" width="22" height="60" rx="6" fill="#b48a63"/><rect x="12" y="58" width="34" height="18" rx="3" fill="#a9acae"/><path d="M12 76h34l-4 34H16z" fill="#2f3b4c"/></g>
-      <g transform="translate(230 70)"><rect x="0" y="0" width="64" height="24" rx="9" fill="#c9b79c"/><path d="M64 12h10v22H32v16" fill="none" stroke="#3a3632" stroke-width="5" stroke-linejoin="round"/><rect x="26" y="50" width="12" height="30" rx="5" fill="#3a3632"/></g></svg>`;
-    return `<svg viewBox="0 0 320 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="320" height="150" fill="#e6e4ef"/>
-      ${['#d1cbc1', '#a7b3a0', '#8c9fb3', '#c58f73', '#e3d5b8'].map((c, i) => `<rect x="${40 + i * 50}" y="30" width="40" height="90" rx="8" fill="${c}" stroke="rgba(0,0,0,.1)"/><rect x="${46 + i * 50}" y="98" width="28" height="5" rx="2" fill="rgba(255,255,255,.7)"/>`).join('')}
-      <g transform="translate(150 22)"><circle cx="40" cy="40" r="34" fill="rgba(255,255,255,.55)" stroke="#2b2b2c" stroke-width="7"/><path d="M64 64l30 30" stroke="#2b2b2c" stroke-width="12" stroke-linecap="round"/><text x="40" y="47" text-anchor="middle" font-family="monospace" font-weight="700" font-size="17" fill="#2b2b2c">#8C9F</text></g></svg>`;
-  }
   function renderHome() {
     const tiles = [
       jobOn('paint') && ['paint', 'Paint Colors', 'Find the right color for a room, cabinets, trim or the outside of a house.'],
@@ -437,7 +423,7 @@
     view().innerHTML = `<div class="home">
       <div class="home-head"><h1>${isKiosk() ? 'Welcome! What are you working on?' : 'What would you like to do?'}</h1><p>Tap one to start. Every step has a Back button, so you can always change your mind.</p></div>
       <div class="tiles">${tiles.map(([k, t, s]) => `<button type="button" class="tile" data-start="${k}">
-        <span class="tile-art">${tileShots[k] ? `<img src="${tileShots[k]}" alt="">` : tileArt(k)}</span>
+        <span class="tile-art"><img src="img/tile-${k}.jpg" alt="" width="1080" height="510" decoding="async"></span>
         <span class="tile-text"><span class="tile-title">${esc(t)}${chev('right', 22)}</span><span class="tile-sub">${esc(s)}</span></span></button>`).join('')}</div>
       <section class="section" aria-labelledby="projH">
         <div class="page-head"><h2 id="projH">Projects</h2><p>Save the colors, stains and shopping lists for one job in one place, then print it or email it.</p></div>
@@ -449,29 +435,9 @@
       </section>
       ${isKiosk() ? '' : `<section class="section" aria-labelledby="tipsH"><h2 id="tipsH">Paint Department Tips</h2><div class="home-tips">${tips.map(([t, s]) => `<div class="tipcard"><b>${esc(t)}</b><span>${esc(s)}</span></div>`).join('')}</div></section>`}
     </div>`;
-    SC.paintWoods(view(), 'none');
-    makeTileShots();
   }
-  // The home pictures are small 3D product shots, drawn once and then kept. Until they're ready (or on devices
-  // without 3D) the flat drawings show; each 3D shot fades in over its drawing.
-  const tileShots = {};
-  let tileTimer = 0;
-  function makeTileShots() {
-    if (!R3().supported() || !R3().snapshot) return;
-    clearTimeout(tileTimer);
-    const todo = ['paint', 'stain', 'buy', 'lookup'].filter(k => !tileShots[k]);
-    const one = () => {
-      const k = todo.shift(); if (!k) return;
-      const url = R3().snapshot('tile-' + k, 720, 340);
-      if (url) {
-        tileShots[k] = url;
-        const art = $(`[data-start="${k}"] .tile-art`);
-        if (art && state.view === 'home') { const img = new Image(); img.alt = ''; img.className = 'fresh'; img.src = url; art.appendChild(img); }
-      }
-      tileTimer = setTimeout(one, 30);
-    };
-    if (todo.length) tileTimer = setTimeout(one, 60);
-  }
+  // The home pictures are 3D product shots rendered ahead of time (img/tile-*.jpg, made with
+  // CG.room3d.snapshot('tile-paint', 1080, 510) and friends), so they're there the moment the app opens.
   document.addEventListener('click', e => {
     const t = e.target.closest('button, a'); if (!t || !state.ready) return;
     if (t.dataset.start) {
