@@ -564,6 +564,7 @@
     const f = { a: freshAnswers(kind) };
     if (preset) Object.assign(f.a, clone(preset));
     state.flows[kind] = f; state.results[kind] = null; state.duel = null; state.ftype = {};
+    barAt = { kind, pct: 0 };   // a new set of questions fills the bar from empty
     let first = 0;
     // a carried-over job skips the questions it already answers
     if (preset && preset.space) { f.a.where = groupOf(preset.space); f.a._picked = { where: true, space: true }; first = flowSteps(kind).indexOf('space') + 1; }
@@ -963,6 +964,7 @@
   }
   function toggleIn(arr, v) { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); }
 
+  let barAt = null;   // where the question progress bar was last shown
   function renderFlow(kind, step) {
     if (kind === 'stain' && !jobOn('stain')) { go('', { replace: true }); return; }
     const f = flowOf(kind), a = f.a;
@@ -975,10 +977,15 @@
     state.lastFlow = kind;
     const id = list[step], st = STEPS[id];
     const n = list.length;
+    // the bar starts where the last question left it and slides to this one, instead of jumping
+    const pct = Math.round((step + 1) / n * 100);
+    const from = barAt && barAt.kind === kind ? barAt.pct : pct;
+    barAt = { kind, pct };
     view().innerHTML = `<div class="flow">
-      <div class="flow-top"><div class="progress" aria-hidden="true"><span class="progress-text">${esc(FLOW_INFO[kind].title)} · Question ${step + 1} of ${n}</span><span class="progress-bar"><i style="width:${Math.round((step + 1) / n * 100)}%"></i></span></div></div>
+      <div class="flow-top"><div class="progress" aria-hidden="true"><span class="progress-text">${esc(FLOW_INFO[kind].title)} · Question ${step + 1} of ${n}</span><span class="progress-bar"><i style="width:${from}%"></i></span></div></div>
       <div class="q-body${navDir > 0 ? ' slide' : navDir < 0 ? ' slide-back' : ''}" id="qBody">${stepInner(kind, id, a)}</div>
     </div>`;
+    if (from !== pct) { const bi = $('.progress-bar i'); void bi.offsetWidth; bi.style.width = pct + '%'; }
     if (st.after) st.after(a);
     SC.paintWoods(view(), 'none');
     showBar(true, kind, step, list);
@@ -995,7 +1002,7 @@
     // an answer can add or take away questions, so the count changes right away
     const pt = $('.progress-text'), pb = $('.progress-bar i');
     if (pt) pt.textContent = `${FLOW_INFO[kind].title} · Question ${f.step + 1} of ${list.length}`;
-    if (pb) pb.style.width = Math.round((f.step + 1) / list.length * 100) + '%';
+    if (pb) { const p = Math.round((f.step + 1) / list.length * 100); pb.style.width = p + '%'; barAt = { kind, pct: p }; }
     const st = STEPS[id]; if (st.after) st.after(f.a);
     SC.paintWoods(body, 'none');
     showBar(true, kind, f.step, list);
