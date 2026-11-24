@@ -7,9 +7,9 @@
    Setup steps are in README.md under "Email". */
 window.CG_CONFIG = {
   email: {
-    serviceId: '',    // EmailJS → Email Services → the Gmail service → Service ID (looks like service_abc1234)
-    templateId: '',   // EmailJS → Email Templates → the template → Template ID (looks like template_abc1234)
-    publicKey: '',    // EmailJS → Account → General → Public Key
+    serviceId: 'service_color6529',     // EmailJS → Email Services → the Gmail service → Service ID
+    templateId: 'template_s0d3z6e',     // EmailJS → Email Templates → the template → Settings → Template ID
+    publicKey: 'M1MNTNLwogTu7OrEJ',     // EmailJS → Account → General → Public Key
     fromName: 'ColorGenius (do not reply)',
   },
 };
