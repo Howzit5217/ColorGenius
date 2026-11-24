@@ -1901,7 +1901,8 @@
     // soft shadow right under it.
     'tile-paint'(b) {
       studio(b, 'EAE4D9');
-      // a fan deck, fanned out from its rivet
+      // a fan deck, fanned out from its brass rivet (the same as the app icon's)
+      b.mat('brass', { color: 'BC9A45', gloss: 0.85 });
       const hues = ['E8DFCF', 'C9B79C', 'A9B8A0', '6F8F85', '4F6B7D', '2F3B4C', 'C47F5E'];
       const px = -0.17, pz = 0.1;
       // (thin cards lying flat cast only a faint shadow right along their own edges)
