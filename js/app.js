@@ -1996,13 +1996,14 @@
     }
     openModal('Match With the Camera', `
       <div class="cam-wrap" id="camWrap"><video id="camVideo" playsinline muted autoplay></video>
-        <div class="cam-box cam-p"><span>Paper</span></div><div class="cam-box cam-c"><span>Color</span></div>
+        <div class="cam-box cam-p" data-cam-box="p"><span>Paper</span><i class="cam-size" aria-hidden="true"></i></div><div class="cam-box cam-c" data-cam-box="c"><span>Color</span><i class="cam-size" aria-hidden="true"></i></div>
         <p class="cam-wait" id="camWait">Starting the camera…</p></div>
       <ol class="cam-steps"><li>Lay the chip or sample on a sheet of plain white paper, or hold the paper flat against the wall right beside the color.</li>
-        <li>Line up the paper in the <b>Paper</b> box and the color in the <b>Color</b> box, in even light with no glare or shadow.</li>
+        <li>Line up the paper in the <b>Paper</b> box and the color in the <b>Color</b> box, in even light with no glare or shadow. Drag a box to move it, or its corner to make it bigger or smaller.</li>
         <li>Tap <b>Read Color</b>. It gets close, not exact, so check the match against a real chip.</li></ol>
       <div class="cam-live" aria-live="polite"><span class="sw" id="camSw"></span><span id="camNote">Getting ready…</span></div>
-      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big primary" data-cam-read="1" disabled>${ic('camera', 22)}Read Color</button></div>`, { wide: true });
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big" data-cam-light="1" aria-pressed="false" hidden>${ic('bulb', 22)}Light</button><button type="button" class="btn big primary" data-cam-read="1" disabled>${ic('camera', 22)}Read Color</button></div>`, { wide: true });
+    camLayout();
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
@@ -2017,10 +2018,64 @@
     if (!video) { stream.getTracks().forEach(t => t.stop()); return; }   // closed while it was starting
     video.srcObject = stream;
     try { await video.play(); } catch (e) { /* plays once it can */ }
-    cam = { stream, video, canvas: document.createElement('canvas'), timer: 0, busy: false };
+    cam = { stream, video, canvas: document.createElement('canvas'), timer: 0, busy: false, torch: false, light: false };
+    // the phone's light, where there is one. It's off at first: room light reads better, since the light is
+    // brighter in the middle of the picture than at the sides and glares on glossy paint. It's there for dark rooms.
+    try { const tr = stream.getVideoTracks()[0], caps = tr && tr.getCapabilities ? tr.getCapabilities() : {}; cam.torch = !!caps.torch; } catch (e) { cam.torch = false; }
+    const lb = $('[data-cam-light]'); if (lb) lb.hidden = !cam.torch;
     const w = $('#camWait'); if (w) w.hidden = true;
     cam.timer = setInterval(camLive, 250);
   }
+  // Where the boxes are, as parts of the picture (center x, center y, width, height), so they keep their place
+  // when the screen turns. Moved or resized boxes are remembered on this device for next time.
+  const CAM_BOX0 = { p: { x: 0.27, y: 0.5, w: 0.3, h: 0.4 }, c: { x: 0.73, y: 0.5, w: 0.3, h: 0.4 } };
+  let camBoxes = null;
+  function camLayout() {
+    const wrap = $('#camWrap'); if (!wrap) return;
+    if (!camBoxes) { const saved = store.get('camBoxes', null); camBoxes = saved && saved.p && saved.c ? saved : clone(CAM_BOX0); }
+    const W = wrap.clientWidth, H = wrap.clientHeight;
+    for (const k of ['p', 'c']) {
+      const b = camBoxes[k], el = $(`#camWrap [data-cam-box="${k}"]`); if (!el) continue;
+      // kept clear of the edges, so the corner handle is never cut off
+      const w = Math.max(44, Math.min(W - 32, b.w * W)), h = Math.max(44, Math.min(H - 32, b.h * H));
+      const left = Math.max(14, Math.min(W - w - 18, b.x * W - w / 2)), top = Math.max(14, Math.min(H - h - 18, b.y * H - h / 2));
+      Object.assign(el.style, { left: left + 'px', top: top + 'px', width: w + 'px', height: h + 'px' });
+    }
+  }
+  window.addEventListener('resize', () => { if ($('#camWrap')) camLayout(); });
+  function camUneven() {
+    if (!camBoxes) return false;
+    const d = k => Math.hypot(camBoxes[k].x - 0.5, camBoxes[k].y - 0.5);
+    return Math.abs(d('p') - d('c')) > 0.12;
+  }
+  let camDrag = null;
+  document.addEventListener('pointerdown', e => {
+    const el = e.target.closest('#camWrap [data-cam-box]'); if (!el) return;
+    e.preventDefault();
+    const wrap = $('#camWrap'), k = el.dataset.camBox;
+    camDrag = { k, el, id: e.pointerId, resize: !!e.target.closest('.cam-size'), x0: e.clientX, y0: e.clientY, b0: Object.assign({}, camBoxes[k]), W: wrap.clientWidth, H: wrap.clientHeight };
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* fine without it */ }
+    el.classList.add('moving');
+  });
+  document.addEventListener('pointermove', e => {
+    if (!camDrag || e.pointerId !== camDrag.id) return;
+    const d = camDrag, dx = (e.clientX - d.x0) / d.W, dy = (e.clientY - d.y0) / d.H, b = camBoxes[d.k];
+    if (d.resize) {
+      // the corner grows or shrinks it, keeping the opposite corner where it was
+      b.w = Math.max(44 / d.W, Math.min(0.95, d.b0.w + dx)); b.h = Math.max(44 / d.H, Math.min(0.95, d.b0.h + dy));
+      b.x = d.b0.x - d.b0.w / 2 + b.w / 2; b.y = d.b0.y - d.b0.h / 2 + b.h / 2;
+    } else { b.x = Math.max(b.w / 2, Math.min(1 - b.w / 2, d.b0.x + dx)); b.y = Math.max(b.h / 2, Math.min(1 - b.h / 2, d.b0.y + dy)); }
+    camLayout();
+  });
+  const camDragEnd = e => { if (!camDrag || (e && e.pointerId !== camDrag.id)) return; camDrag.el.classList.remove('moving'); camDrag = null; store.set('camBoxes', camBoxes); };
+  document.addEventListener('pointerup', camDragEnd); document.addEventListener('pointercancel', camDragEnd);
+  document.addEventListener('click', async e => {
+    const t = e.target.closest('[data-cam-light]'); if (!t || !cam || !cam.torch) return;
+    const on = !cam.light;
+    try { await cam.stream.getVideoTracks()[0].applyConstraints({ advanced: [{ torch: on }] }); cam.light = on; } catch (err) { toast('The light couldn’t turn on here'); return; }
+    t.setAttribute('aria-pressed', String(on));
+    t.lastChild.textContent = on ? 'Light On' : 'Light';
+  });
   // the average color in the middle of one of the boxes: glints and specks (the brightest and darkest tenth)
   // left out, how even it is, and how much of it is blown out to pure white
   function camRead(box) {
@@ -2048,11 +2103,14 @@
   const camHex = s => [0, 1, 2].map(i => toEnc(s.C.avg[i] / Math.max(1e-4, s.P.avg[i]) * PAPER).toString(16).padStart(2, '0')).join('').toUpperCase();
   function camProblem(s) {
     const pl = lumOf(s.P.avg), tint = Math.max(...s.P.avg) / Math.max(1e-4, Math.min(...s.P.avg));
-    if (pl < 0.03) return 'Too dark. Turn on more light, or move closer to a window.';
-    if (s.P.hot > 0.25) return 'The paper is too bright or shiny. Tilt it a little so there’s no glare.';
+    const lit = cam && cam.light;
+    if (pl < 0.03) return cam && cam.torch && !lit ? 'Too dark. Tap Light, or move closer to a window.' : 'Too dark. Turn on more light, or move closer to a window.';
+    if (s.P.hot > 0.25) return lit ? 'The light is glaring on the paper. Hold the phone a little farther away, or tilt it.' : 'The paper is too bright or shiny. Tilt it a little so there’s no glare.';
     if (s.P.spread > 0.12) return 'Fill the Paper box with just the plain paper.';
     if (tint > 2.2) return 'That doesn’t look like white paper. Put plain white paper in the Paper box.';
-    if (s.C.hot > 0.25) return 'There’s glare on the color. Tilt it a little.';
+    if (s.C.hot > 0.25) return lit ? 'The light is glaring on the color. Tilt the phone a little, or turn the light off for glossy paint.' : 'There’s glare on the color. Tilt it a little.';
+    // the light falls off toward the sides of the picture, so with it on, keep both boxes about the same distance from the middle
+    if (lit && camUneven()) return 'With the light on, keep both boxes about the same distance from the middle of the picture.';
     if (s.C.spread > 0.2) return 'Fill the Color box with just the one color.';
     if (lumOf(s.C.avg) > pl * 1.1) return 'The color looks brighter than the paper. Check the paper is in the Paper box.';
     return '';
