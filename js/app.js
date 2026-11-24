@@ -1678,8 +1678,8 @@
   // LOOK UP: any color by name, code or number
   // ================================================================
   function renderLookup() {
+    // (no "Home" button on the page itself: the top bar has one)
     view().innerHTML = `<div class="page narrow">
-      ${backBtn('Home', 'data-go="home"')}
       <div class="page-head"><h1>Look Up a Color</h1><p>Type a color name, a code from a chip, or a color number like #D1CBC1.</p></div>
       <div class="search"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         <input type="search" id="lookupInput" aria-label="Search colors" placeholder="Agreeable Gray, SW 7029 or #D1CBC1" value="${esc(state.query)}" autocomplete="off" spellcheck="false" enterkeyhint="search">
@@ -1812,7 +1812,6 @@
     const items = session.items;
     const paintRefs = items.filter(x => E.findColor(x.ref));
     view().innerHTML = `<div class="page narrow">
-      ${backBtn('Home', 'data-go="home"')}
       <div class="page-head"><p class="eyebrow">Project</p><h1>${esc(sessionTitle())}</h1><p>Everything for this job in one place. Print it, email it, or bring it to the paint desk.</p></div>
       <div class="list-head"><label class="field">What’s this project for?<input type="text" class="input" id="listName" value="${esc(session.name || '')}" placeholder="Smith kitchen, Mom’s porch..." maxlength="60" autocomplete="off"></label>
         <label class="field">Notes for the printout<input type="text" class="input" id="listNotes" value="${esc(session.notes || '')}" placeholder="Phone number, due date..." maxlength="160" autocomplete="off"></label></div>
@@ -2108,7 +2107,6 @@
     const groups = [['us', 'US National Brands'], ['us-more', 'More US Brands'], ['intl', 'International'], ['standard', 'Color Standards'], ['custom', 'Imported']];
     const st = installState();
     view().innerHTML = `<div class="set">
-      ${backBtn('Home', 'data-go="home"')}
       <div class="page-head"><h1>Settings</h1><p>Everything here is saved on this device.</p></div>
       <div class="set-group"><h2>Who Uses This</h2><div class="set-card">
         ${segRow('audience', 'This device is for', settings.audience === 'kiosk' ? 'Kiosk: big buttons, and it starts over when nobody has touched it for 2 minutes. The Staff button at the top unlocks it with the PIN.' : home() ? 'Simple tips for buying and testing samples.' : 'Chip locations and paint lines for the paint desk.', { store: 'Store Staff', home: 'My Home', kiosk: 'Kiosk' }, settings.audience || 'store')}
