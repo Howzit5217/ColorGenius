@@ -29,12 +29,12 @@
       <span class="logo-text">ColorGenius</span>
     </button>
     <span class="grow"></span>
-    <button type="button" class="top-btn" id="listBtn" aria-label="My List">
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <span class="top-label">My List</span><span class="badge-count" id="listCount" hidden>0</span>
+    <button type="button" class="top-btn" id="lockBtn" aria-label="Staff: unlock the kiosk" hidden>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/><circle cx="12" cy="15.3" r="1.4" fill="currentColor" stroke="none"/><path d="M12 16.5v1.8"/></svg>
+      <span class="top-label">Staff</span>
     </button>
     <button type="button" class="top-btn" id="settingsBtn" aria-label="Settings">
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13.5l1.6 1.2-1.8 3.1-1.9-.7a7.6 7.6 0 01-2.2 1.3l-.3 2h-3.6l-.3-2a7.6 7.6 0 01-2.2-1.3l-1.9.7-1.8-3.1 1.6-1.2a7.4 7.4 0 010-3l-1.6-1.2 1.8-3.1 1.9.7A7.6 7.6 0 0110.9 4.3l.3-2h3.6l.3 2a7.6 7.6 0 012.2 1.3l1.9-.7 1.8 3.1-1.6 1.2a7.4 7.4 0 010 3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M10.17 4.62L10.33 1.94L13.67 1.94L13.83 4.62A7.6 7.6 0 0 1 15.92 5.49L17.93 3.7L20.3 6.07L18.51 8.08A7.6 7.6 0 0 1 19.38 10.17L22.06 10.33L22.06 13.67L19.38 13.83A7.6 7.6 0 0 1 18.51 15.92L20.3 17.93L17.93 20.3L15.92 18.51A7.6 7.6 0 0 1 13.83 19.38L13.67 22.06L10.33 22.06L10.17 19.38A7.6 7.6 0 0 1 8.08 18.51L6.07 20.3L3.7 17.93L5.49 15.92A7.6 7.6 0 0 1 4.62 13.83L1.94 13.67L1.94 10.33L4.62 10.17A7.6 7.6 0 0 1 5.49 8.08L3.7 6.07L6.07 3.7L8.08 5.49A7.6 7.6 0 0 1 10.17 4.62Z"/><circle cx="12" cy="12" r="3.3"/></svg>
       <span class="top-label">Settings</span>
     </button>
   </div>
@@ -52,7 +52,7 @@
   <div class="bottom-in">
     <button type="button" class="btn big ghost" data-flow="back"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M12.5 4L6.5 10l6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
     <span class="grow"></span>
-    <button type="button" class="btn big primary" data-flow="next"><span class="next-label">Next</span><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M7.5 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button type="button" class="btn big primary" data-flow="next"><span class="enter-hint" aria-hidden="true">Enter <span class="ret">↵</span></span><span class="next-label">Next</span><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M7.5 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
 </nav>
 

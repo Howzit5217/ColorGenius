@@ -24,7 +24,7 @@
     cal: { enabled: false, warmth: 0, brightness: 0, vividness: 0, ref: '' },
     theme: 'system', reduceMotion: false, lines: {}, collections: {}, audience: '', onboarded: false,
     jobs: { paint: true, stain: true }, stainBrands: {}, chain: '',
-    questions: 'quick', view3d: false, bigText: false,
+    questions: 'quick', view3d: false, bigText: false, kioskPin: null,
   };
   function merge(base, over) {
     const out = clone(base);
@@ -98,30 +98,30 @@
     laundry: '<rect x="5" y="3" width="22" height="26" rx="2.5"/><circle cx="16" cy="18" r="6.5"/><path d="M5 9h22M9 6h2"/>',
     closet: '<path d="M13 7a3 3 0 116 0c0 2-3 2.5-3 4.5"/><path d="M16 11.5L4 21.5h24z"/>',
     sunroom: '<circle cx="23" cy="8" r="3.5"/><path d="M23 1.5V2.5M29.5 8h-1M27.6 3.4l-.8.8M18.4 3.4l.8.8"/><path d="M3 28V14h16v14M3 21h16M11 14v14"/>',
-    basement: '<path d="M3 9h26M3 9v19h26V9"/><path d="M7 9v4h5v4h5v4h5v4"/>',
+    basement: '<path d="M3 13L16 4l13 9"/><path d="M6 11v5M26 11v5"/><path d="M2 16h28"/><rect x="6" y="18.5" width="20" height="9" rx="1"/><path d="M9 27.5V25h3v-2.5h3V20h3"/>',
     attic: '<path d="M3 17L16 5l13 12"/><path d="M6 14.5V28h20V14.5"/><path d="M13 16h6v6h-6zM16 16v6M13 19h6"/>',
     media: '<rect x="3" y="6" width="26" height="16" rx="2"/><path d="M11 27h10M16 22v5"/>',
     garage: '<path d="M5 20l2.5-7a2 2 0 011.9-1.4h13.2a2 2 0 011.9 1.4L27 20"/><rect x="3" y="20" width="26" height="6" rx="2"/><circle cx="9" cy="23" r="1.3" fill="currentColor"/><circle cx="23" cy="23" r="1.3" fill="currentColor"/><path d="M6 26v2.5M26 26v2.5"/>',
     accent: '<rect x="3" y="5" width="26" height="22" rx="1"/><rect x="11" y="5" width="10" height="22" fill="currentColor" opacity=".3"/>',
     ceiling: '<path d="M2 4h28M16 4v7"/><path d="M9 18a7 7 0 0114 0z"/><path d="M13 22l-1 3M19 22l1 3M16 22v4"/>',
-    trim: '<path d="M4 3v25h25"/><path d="M4 21h25M4 24h25"/><path d="M12 3v18M16 3v18"/>',
+    trim: '<path d="M3 27h26"/><path d="M10 27V5h12v22"/><path d="M13 27V8h6v19"/><path d="M3 23h7M22 23h7"/>',
     doors: '<rect x="9" y="3" width="14" height="25" rx="1"/><rect x="12" y="6" width="8" height="8" rx=".5"/><rect x="12" y="17" width="8" height="8" rx=".5"/><path d="M5 28h22"/>',
     wainscot: '<path d="M3 4h26v24H3z"/><path d="M3 15h26"/><path d="M7 15v13M11 15v13M15 15v13M19 15v13M23 15v13M27 15v13"/>',
     fireplace: '<path d="M3 8h26M5 8v20M27 8v20M3 28h26"/><path d="M10 28V18a6 6 0 0112 0v10"/><path d="M16 26c-2 0-3-1.5-2-3.5.5 1 1.3 1 1.3-.5 0-1.5 1.7-2.5 1.7-2.5s2 2 2 4c0 1.5-1 2.5-3 2.5z"/>',
     cabinets: '<rect x="3" y="4" width="26" height="24" rx="1.5"/><path d="M16 4v24M3 13h26"/><path d="M13 18v4M19 18v4M10 8.5h3M19 8.5h3"/>',
     builtins: '<rect x="5" y="3" width="22" height="26" rx="1"/><path d="M5 11h22M5 19h22"/><path d="M8 11V6M10.5 11V6.5M13 11V5.5M18 19v-5M20.5 19v-6l2.5 1v5M9 27v-5M12 27v-5"/>',
     furniture: '<rect x="5" y="5" width="22" height="20" rx="1.5"/><path d="M5 11.5h22M5 18h22M14 8.2h4M14 14.8h4M14 21.4h4M7 25v3M25 25v3"/>',
-    floor_paint: '<path d="M2 27l7-6h21l-7 6z"/><rect x="11" y="3" width="15" height="6" rx="2"/><path d="M26 6h3v6H18v5"/>',
+    floor_paint: '<path d="M3 27l5-10h16l5 10z"/><path d="M3 27l5-10h8v10z" fill="currentColor" opacity=".3" stroke="none"/><rect x="13" y="3.5" width="11" height="5" rx="2"/><path d="M24 6h2.5v5H18.5v5"/>',
     ext_body: '<path d="M3 15L16 4l13 11"/><path d="M6 12.5V28h20V12.5"/><path d="M13 28v-7h6v7"/><path d="M8.5 16h4v4h-4zM19.5 16h4v4h-4z"/>',
     ext_trim: '<path d="M3 15L16 4l13 11"/><path d="M6 12.5V28h20V12.5"/><rect x="11" y="14" width="10" height="9"/><path d="M9 25h14"/>',
     front_door: '<path d="M3 28h26"/><rect x="9" y="5" width="14" height="23" rx="1"/><path d="M7 5h18"/><circle cx="19.5" cy="17" r="1.3" fill="currentColor"/><path d="M12 9h8v5h-8z"/>',
     shutters: '<rect x="11" y="6" width="10" height="20"/><path d="M16 6v20M11 16h10"/><rect x="4" y="6" width="5" height="20"/><rect x="23" y="6" width="5" height="20"/><path d="M5 10h3M5 13h3M5 16h3M5 19h3M5 22h3M24 10h3M24 13h3M24 16h3M24 19h3M24 22h3"/>',
     garage_door: '<path d="M2 12L16 4l14 8"/><path d="M5 10.5V28M27 10.5V28"/><rect x="8" y="14" width="16" height="14"/><path d="M8 17.5h16M8 21h16M8 24.5h16"/>',
-    porch_floor: '<path d="M3 13h26M5 13v15M27 13v15"/><path d="M3 9L16 3l13 6"/><path d="M9 28v-3h14v3M11 25v-3h10v3"/>',
+    porch_floor: '<path d="M3 11L16 4l13 7"/><path d="M6 10v11M26 10v11"/><path d="M3 21h26v3H3z"/><path d="M11 24v2h10v-2M9 26v2h14v-2"/>',
     shed: '<path d="M4 28V14l4-7h16l4 7v14z"/><path d="M4 14h24"/><rect x="11" y="18" width="10" height="10"/><path d="M11 18l10 10M21 18L11 28"/>',
     planks: '<path d="M3 6h26v20H3z"/><path d="M3 12.5h26M3 19h26M11 6v6.5M20 12.5V19M8 19v7M24 6v6.5M17 19v7"/>',
     table: '<path d="M2 11h28v3H2z"/><path d="M5 14v14M27 14v14M9 14v6h14v-6"/>',
-    chair: '<path d="M9 28l3-10h12l3 10M11 18V6a1 1 0 011-1h12a1 1 0 011 1v12M6 18h24"/>',
+    chair: '<path d="M9 4.5h14v12.5H9z"/><path d="M9 9h14M9 13h14"/><path d="M6.5 17h19v4h-19z"/><path d="M8 21v7M24 21v7"/>',
     paneling: '<path d="M3 4h26v24H3z"/><path d="M8.2 4v24M13.4 4v24M18.6 4v24M23.8 4v24"/>',
     deck: '<path d="M2 20h28M4 20v8M28 20v8M2 24h28"/><path d="M4 20V10M28 20V10M4 12h24M9 12v8M14 12v8M19 12v8M24 12v8"/>',
     fence: '<path d="M5 28V8l2.5-3L10 8v20M14 28V8l2.5-3L19 8v20M23 28V8l2.5-3L28 8v20M3 13h27M3 22h27"/>',
@@ -132,7 +132,7 @@
     tree: '<path d="M16 29v-8"/><path d="M16 21c-6 0-9-3-9-7a5 5 0 014-5 5 5 0 0110 0 5 5 0 014 5c0 4-3 7-9 7z"/>',
     roller: '<rect x="4" y="4" width="18" height="7" rx="2"/><path d="M22 7.5h4v7H15v4"/><rect x="13" y="18.5" width="4" height="10" rx="1.5"/>',
     drywall: '<rect x="5" y="3" width="22" height="26" rx="1"/><path d="M5 16h22"/><circle cx="9" cy="7" r="1" fill="currentColor"/><circle cx="23" cy="7" r="1" fill="currentColor"/><circle cx="9" cy="25" r="1" fill="currentColor"/><circle cx="23" cy="25" r="1" fill="currentColor"/>',
-    plaster: '<path d="M4 19h18l4 6H8z"/><path d="M14 19v-6a3 3 0 013-3h6"/>',
+    plaster: '<rect x="4" y="18" width="24" height="6" rx="2"/><path d="M16 18v-5"/><rect x="10.5" y="6" width="11" height="7" rx="3.5"/>',
     grain: '<rect x="3" y="7" width="26" height="18" rx="2"/><path d="M3 13c6-3 10 3 16 0s8-2 10-1M3 19c5-2 9 2 14 0s9-3 12-1"/><ellipse cx="20" cy="16" rx="3" ry="1.5"/>',
     stained: '<rect x="3" y="12" width="26" height="15" rx="2"/><path d="M3 18c6-3 10 3 16 0s8-2 10-1M3 23c5-2 9 2 14 0s9-3 12-1"/><path d="M16 3s-3.5 4-3.5 6a3.5 3.5 0 007 0c0-2-3.5-6-3.5-6z"/>',
     laminate: '<path d="M4 12l12-6 12 6-12 6z"/><path d="M4 17l12 6 12-6M4 22l12 6 12-6"/>',
@@ -145,7 +145,7 @@
     rough: '<path d="M3 17l3-5 3 7 3-8 3 9 3-6 3 7 3-9 3 6 2-3"/>',
     stains: '<path d="M16 4s-7 8-7 13a7 7 0 0014 0c0-5-7-13-7-13z"/><path d="M13 18a3 3 0 003 3"/>',
     glossy: '<path d="M16 3l2.5 8.5L27 14l-8.5 2.5L16 25l-2.5-8.5L5 14l8.5-2.5z"/>',
-    oil: '<path d="M5 14h14l4-4h4l-2 3-4 4v9H5z"/><path d="M9 14v-3h6v3"/>',
+    oil: '<path d="M7 10h18v16a2 2 0 01-2 2H9a2 2 0 01-2-2z"/><ellipse cx="16" cy="10" rx="9" ry="3"/><path d="M16 15s-3 3.5-3 5.6a3 3 0 006 0c0-2.1-3-5.6-3-5.6z"/>',
     knots: '<rect x="3" y="6" width="26" height="20" rx="2"/><ellipse cx="16" cy="16" rx="5" ry="3.5"/><ellipse cx="16" cy="16" rx="1.8" ry="1"/><path d="M3 11c5 0 7 1.5 8 3M3 21c5 0 7-1.5 8-3M29 11c-5 0-7 1.5-8 3M29 21c-5 0-7-1.5-8-3"/>',
     mildew: '<circle cx="10" cy="12" r="3"/><circle cx="20" cy="9" r="2"/><circle cx="21" cy="20" r="4"/><circle cx="10" cy="22" r="1.6"/><circle cx="26" cy="13" r="1.3"/>',
     flaws: '<rect x="3" y="5" width="26" height="22" rx="1.5"/><path d="M12 5l3 6-4 5 5 4-2 7"/>',
@@ -165,14 +165,14 @@
     unsure: '<circle cx="16" cy="16" r="12"/><path d="M12.5 12.5a3.5 3.5 0 117 0c0 2.5-3.5 3-3.5 5.5"/><circle cx="16" cy="22.5" r="1.2" fill="currentColor"/>',
     weathered: '<rect x="3" y="6" width="26" height="20" rx="2"/><path d="M3 12h9l3 2h14M3 20h6l4-2h16"/>',
     solid: '<rect x="4" y="4" width="24" height="24" rx="3" fill="currentColor" opacity=".35"/><rect x="4" y="4" width="24" height="24" rx="3"/>',
-    room: '<path d="M3 26L9 21V6l-6-3zM29 26l-6-5V6l6-3zM9 21h14M9 6h14"/>',
+    room: '<path d="M3 27h26"/><rect x="5" y="6" width="10" height="10" rx="1"/><path d="M10 6v10M5 11h10"/><path d="M23 27V12M20 12h6l-1.2-4.5h-3.6z"/><path d="M20.5 27h5"/><path d="M6 27v-4h11v4M6 23v-2h11v2"/>',
     can: '<path d="M7 9h18v18a2 2 0 01-2 2H9a2 2 0 01-2-2z"/><ellipse cx="16" cy="9" rx="9" ry="3"/><path d="M10 6c0-3 12-3 12 0"/>',
-    brush: '<path d="M13 3h6v10h-6z"/><path d="M11 13h10v4l-2 12h-6l-2-12z"/>',
+    brush: '<rect x="13.5" y="3" width="5" height="11" rx="2"/><rect x="11" y="14" width="10" height="5" rx="1"/><path d="M11.5 19h9v5a4.5 4.5 0 01-9 0z"/>',
     search: '<circle cx="14" cy="14" r="8.5"/><path d="M20.5 20.5L28 28"/>',
-    swatch: '<rect x="5" y="3" width="10" height="26" rx="2"/><path d="M15 9l7-4 5 8.7-12 7"/><circle cx="10" cy="24" r="1.5" fill="currentColor"/>',
+    swatch: '<rect x="5" y="4" width="7.5" height="22" rx="1.5" transform="rotate(52 8.75 23)" fill="currentColor" opacity=".28" stroke="none"/><rect x="5" y="4" width="7.5" height="22" rx="1.5" transform="rotate(26 8.75 23)" fill="currentColor" opacity=".5" stroke="none"/><rect x="5" y="4" width="7.5" height="22" rx="1.5"/><path d="M5 10h7.5M5 16h7.5"/><circle cx="8.75" cy="23" r="1.2" fill="currentColor"/>',
     list: '<rect x="6" y="4" width="20" height="25" rx="3"/><path d="M11 11h10M11 16h10M11 21h6"/>',
     print: '<path d="M9 11V4h14v7M9 23H5a2 2 0 01-2-2v-8a2 2 0 012-2h22a2 2 0 012 2v8a2 2 0 01-2 2h-4M9 18h14v10H9z"/>',
-    tape: '<circle cx="14" cy="16" r="10"/><circle cx="14" cy="16" r="4"/><path d="M24 16h5v6H14"/>',
+    tape: '<circle cx="13" cy="14.5" r="9.5"/><circle cx="13" cy="14.5" r="3.5"/><path d="M13 24h15.5l-1.5-3.5"/>',
     sparkle: '<path d="M14 4l2 7 7 2-7 2-2 7-2-7-7-2 7-2zM25 18l1 3.5 3.5 1-3.5 1-1 3.5-1-3.5-3.5-1 3.5-1z"/>',
     cube: '<path d="M16 3l12 6.5v13L16 29 4 22.5v-13z"/><path d="M4 9.5L16 16l12-6.5M16 16v13"/>',
   };
@@ -183,6 +183,7 @@
   const chev = (dir, size) => `<svg viewBox="0 0 20 20" width="${size || 20}" height="${size || 20}" aria-hidden="true"><path d="${dir === 'left' ? 'M12.5 4L6.5 10l6 6' : dir === 'down' ? 'M4 7.5l6 6 6-6' : 'M7.5 4l6 6-6 6'}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   const xIcon = '<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
   const plusIcon = '<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+  const mailIcon = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7l8 6 8-6"/></svg>';
   const checkIcon = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M3.5 8.4l3 3 6-6.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const tick = `<span class="tick" aria-hidden="true">${checkIcon}</span>`;
   const backBtn = (label, attrs) => `<button type="button" class="back-btn" ${attrs || 'data-go="back"'}>${chev('left')}${esc(label || 'Back')}</button>`;
@@ -372,7 +373,6 @@
     const v = view();
     v.hidden = false;
     // the top bar shows where you are
-    $('#listBtn').setAttribute('aria-current', r.view === 'list' ? 'page' : 'false');
     $('#settingsBtn').setAttribute('aria-current', r.view === 'settings' ? 'page' : 'false');
     showBar(false);
     if (r.view === 'home') renderHome();
@@ -381,7 +381,12 @@
     else if (r.view === 'color') renderColor(r.id);
     else if (r.view === 'lookup') renderLookup();
     else if (r.view === 'list') renderList();
-    else if (r.view === 'settings') renderSettings();
+    else if (r.view === 'settings') {
+      // a locked kiosk keeps Settings behind the PIN
+      if (isKiosk() && !state.unlocked) { go('', { replace: true }); openUnlock(); return; }
+      renderSettings();
+    }
+    if (r.view !== 'settings') state.unlocked = false;
     // replay the page entrance
     if (r.view !== 'flow' && !reduced()) { v.style.animation = 'none'; void v.offsetWidth; v.style.animation = ''; }
     if (scrollTo != null) window.scrollTo(0, scrollTo);
@@ -432,12 +437,40 @@
     view().innerHTML = `<div class="home">
       <div class="home-head"><h1>${isKiosk() ? 'Welcome! What are you working on?' : 'What would you like to do?'}</h1><p>Tap one to start. Every step has a Back button, so you can always change your mind.</p></div>
       <div class="tiles">${tiles.map(([k, t, s]) => `<button type="button" class="tile" data-start="${k}">
-        <span class="tile-art">${tileArt(k)}</span>
+        <span class="tile-art">${tileShots[k] ? `<img src="${tileShots[k]}" alt="">` : tileArt(k)}</span>
         <span class="tile-text"><span class="tile-title">${esc(t)}${chev('right', 22)}</span><span class="tile-sub">${esc(s)}</span></span></button>`).join('')}</div>
-      ${list.length ? `<div class="home-list"><span class="mini-sws">${list.slice(0, 5).map(x => `<i ${swStyle(x.hex)}></i>`).join('')}</span><span class="grow"><b>${esc(sessionTitle())}</b><br><span class="muted">${list.length} item${list.length === 1 ? '' : 's'} on your list</span></span><button type="button" class="btn" data-go="list">Open My List</button></div>` : ''}
+      <section class="section" aria-labelledby="projH">
+        <div class="page-head"><h2 id="projH">Projects</h2><p>Save the colors, stains and shopping lists for one job in one place, then print it or email it.</p></div>
+        <div class="proj-grid">
+          ${list.length || (session.name || '').trim() ? `<div class="proj-card current"><span class="mini-sws">${list.slice(0, 5).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('') || `<i></i>`}</span><span class="proj-text"><span class="eyebrow">Open now</span><b>${esc(sessionTitle())}</b><span class="muted">${list.length} item${list.length === 1 ? '' : 's'}</span></span><button type="button" class="btn big primary" data-go="list">Open Project</button></div>` : ''}
+          <button type="button" class="proj-new" data-project-new="1"><span class="plus" aria-hidden="true">${plusIcon}</span><b>Start a Project</b><span>Give it a name, then add colors to it as you go</span></button>
+          ${isKiosk() ? '' : past.slice(0, 3).map(s => `<button type="button" class="proj-card" data-past-home="${esc(s.id)}"><span class="mini-sws">${s.items.slice(0, 5).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span class="proj-text"><b>${esc(titleOf(s))}</b><span class="muted">${s.items.length} item${s.items.length === 1 ? '' : 's'} · ${esc(new Date(s.updated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))}</span></span>${chev('right')}</button>`).join('')}
+        </div>
+      </section>
       ${isKiosk() ? '' : `<section class="section" aria-labelledby="tipsH"><h2 id="tipsH">Paint Department Tips</h2><div class="home-tips">${tips.map(([t, s]) => `<div class="tipcard"><b>${esc(t)}</b><span>${esc(s)}</span></div>`).join('')}</div></section>`}
     </div>`;
     SC.paintWoods(view(), 'none');
+    makeTileShots();
+  }
+  // The home pictures are small 3D product shots, drawn once and then kept. Until they're ready (or on devices
+  // without 3D) the flat drawings show; each 3D shot fades in over its drawing.
+  const tileShots = {};
+  let tileTimer = 0;
+  function makeTileShots() {
+    if (!R3().supported() || !R3().snapshot) return;
+    clearTimeout(tileTimer);
+    const todo = ['paint', 'stain', 'buy', 'lookup'].filter(k => !tileShots[k]);
+    const one = () => {
+      const k = todo.shift(); if (!k) return;
+      const url = R3().snapshot('tile-' + k, 720, 340);
+      if (url) {
+        tileShots[k] = url;
+        const art = $(`[data-start="${k}"] .tile-art`);
+        if (art && state.view === 'home') { const img = new Image(); img.alt = ''; img.className = 'fresh'; img.src = url; art.appendChild(img); }
+      }
+      tileTimer = setTimeout(one, 30);
+    };
+    if (todo.length) tileTimer = setTimeout(one, 60);
   }
   document.addEventListener('click', e => {
     const t = e.target.closest('button, a'); if (!t || !state.ready) return;
@@ -448,7 +481,6 @@
     }
     if (t.dataset.go) { e.preventDefault(); if (t.dataset.go === 'back') goBack(); else go(t.dataset.go === 'home' ? '' : t.dataset.go); }
   });
-  $('#listBtn').addEventListener('click', () => { if (state.ready) go('list'); });
   $('#settingsBtn').addEventListener('click', () => { if (state.ready) go('settings'); });
   $('#homeBtn').addEventListener('click', () => { if (state.ready) go(''); });
 
@@ -916,9 +948,21 @@
     else showBar(true, kind, f.step, flowSteps(kind));
     nudgeNext();
   });
+  // Enter goes to the next page, in the questions and in setup. A choice you've moved to with the keyboard but
+  // not picked yet is picked first; typing boxes, menus and other buttons keep their own Enter.
+  function enterGoesNext(e, next) {
+    if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || e.isComposing || !next || next.disabled) return;
+    const t = e.target;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+    if (t.closest && t.closest('.cg-pop, summary, [data-select], [data-colorpick]')) return;
+    if (t instanceof HTMLButtonElement && t !== next && t.getAttribute('aria-pressed') !== 'true') return;
+    e.preventDefault();
+    next.click();
+  }
   document.addEventListener('keydown', e => {
-    if (e.key !== 'Enter' || state.view !== 'flow' || !$('#modal').hidden || e.target instanceof HTMLButtonElement || e.target instanceof HTMLInputElement) return;
-    const n = $('[data-flow="next"]'); if (n && !n.disabled) n.click();
+    if (pop || !$('#modal').hidden) return;
+    if (!$('#onboard').hidden) { enterGoesNext(e, $('#onboard [data-ob="next"]')); return; }
+    if (state.view === 'flow') enterGoesNext(e, $('[data-flow="next"]'));
   });
 
   // style palettes: each look's two best light colors, a mid-tone and a deep color, one look per tick
@@ -1316,7 +1360,7 @@
     el.innerHTML = `<div class="chosen-top"><span class="chosen-sw"${stain ? '' : ' ' + swStyle(r.color.hex)}>${stain ? SC.woodCv({ sp: R.wood, stain: stainSpec(r), w: 160, h: 160, cm: 0.2, seed: 3, sheen: 0.5, label: name }) : ''}</span><div><h2>${esc(name)}</h2><p class="meta">${esc(meta)}</p></div></div>
       ${reasons.length ? `<ul class="why">${reasons.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       ${warns.length ? `<p class="muted">${warns.length === 1 ? 'There’s 1 thing to know' : `There are ${warns.length} things to know`} about it. See Everything to read ${warns.length === 1 ? 'it' : 'them'}.</p>` : ''}
-      <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(id)}">${onList ? checkIcon + ' On My List' : plusIcon + ' Add to My List'}</button><button type="button" class="btn big" data-go="color/${esc(encodeURIComponent(id))}">See Everything${chev('right')}</button></div>`;
+      <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-go="color/${esc(encodeURIComponent(id))}">See Everything${chev('right')}</button></div>`;
     if (stain) SC.paintWoods(el, 'none');
   }
   view().addEventListener('click', e => {
@@ -1430,7 +1474,7 @@
           <div class="id-top"><span class="id-sw" ${swStyle(c.hex)}></span><div><h1>${esc(c.name)}</h1><p class="meta">${esc(b.name || c.brand)} · <span class="mono">${esc(E.codeLabel(c))}</span></p></div></div>
           <div class="badges">${c.flags & E.F.POPULAR ? '<span class="badge good">Best Seller</span>' : ''}<span class="badge">${esc(d.familyName)}</span><span class="badge">${esc(d.undertone === 'neutral' ? 'True neutral' : cap(d.undertone) + ' undertone')}</span>${c.flags & E.F.DISC ? '<span class="badge">Discontinued</span>' : ''}</div>
           ${settings.showLrv ? `<div class="lrv-box"><div class="lrv-top"><span>Light Reflectance (LRV)</span><span class="mono">${c.lrv} of 100</span></div><div class="lrv-bar"><i style="left:${Math.max(0, Math.min(100, c.lrv))}%"></i></div><p>${esc(lrvWords(c.lrv))}.</p></div>` : ''}
-          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' On My List' : plusIcon + ' Add to My List'}</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
+          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
           ${sampleNote(c)}
         </div>
       </div>
@@ -1511,7 +1555,7 @@
         <div class="id-card">
           <div class="id-top"><span class="id-sw">${SC.woodCv({ sp, stain: st, w: 200, h: 200, cm: 0.2, seed: 3, sheen: 0.5, label: r.name })}</span><div><h1>${esc(r.name)}</h1><p class="meta">${esc(sBrand(r))} ${esc(sCode(r) === S.TYPES[r.type] ? '' : sCode(r))}</p></div></div>
           <div class="badges"><span class="badge">${r.kind === 'paint' ? 'Solid stain' : esc(S.TYPES[r.type] || 'Stain')}</span><span class="badge">On ${esc(spLabel(sp).toLowerCase())}</span>${R.guide && r.kind === 'stain' ? '<span class="badge">Tone guide</span>' : ''}</div>
-          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(r.id)}">${onList ? checkIcon + ' On My List' : plusIcon + ' Add to My List'}</button><button type="button" class="btn big" data-copy="${esc(`${r.name}, ${sBrand(r)} ${sCode(r)}`)}">Copy Name &amp; Code</button></div>
+          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(r.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-copy="${esc(`${r.name}, ${sBrand(r)} ${sCode(r)}`)}">Copy Name &amp; Code</button></div>
           <p class="muted small">${esc(WD.SPECIES[sp].note)} Stain always looks a little different on real wood, so try it on a scrap or a hidden spot first.</p>
         </div>
       </div>
@@ -1594,7 +1638,7 @@
           <div class="big-pick"><span class="k">Primer</span><b>${esc(P.primer.title)}</b><p>${esc(P.primer.why)}${P.primer.products[0] ? ` Try ${esc(P.primer.products[0].name)}.` : ''}</p></div>
           <div class="big-pick"><span class="k">How much</span><b id="planBuy">${esc(P.amount.buy)}</b><p id="planWhat">${esc(P.amount.what)}, ${P.coats} coats.</p></div>
         </div>
-        <div class="actions stack"><button type="button" class="btn big primary" data-add-plan="1">${plusIcon}Add to My List</button>${color ? '' : `<button type="button" class="btn big" data-color-for="${esc(a.space)}">${ic('swatch', 22)}Find a Color for This</button>`}<button type="button" class="btn big ghost" data-print-plan="1">${ic('print', 22)}Print</button></div>
+        <div class="actions stack"><button type="button" class="btn big primary" data-add-plan="1">${plusIcon}Add to Project</button>${color ? '' : `<button type="button" class="btn big" data-color-for="${esc(a.space)}">${ic('swatch', 22)}Find a Color for This</button>`}<button type="button" class="btn big ghost" data-print-plan="1">${ic('print', 22)}Print</button></div>
       </div>
       <div class="blocks">
         <div class="block"><h2><span class="ic">${ic('can', 24)}</span>The Paint</h2>
@@ -1644,7 +1688,7 @@
     if (state.view !== 'results' || current.kind !== 'buy') return;
     const t = e.target.closest('button'); if (!t) return;
     const P = state.results.buy;
-    if (t.dataset.addPlan) { addToList(planItem(P)); t.classList.add('done'); t.innerHTML = checkIcon + ' On My List'; }
+    if (t.dataset.addPlan) { addToList(planItem(P)); t.classList.add('done'); t.innerHTML = checkIcon + ' In Project'; }
     if (t.dataset.colorFor) { const a = flowOf('buy').a; startFlow('paint', { space: a.space, siding: a.siding }); }
     if (t.dataset.printPlan) printSheet({ name: `Shopping List: ${P.space.label}`, notes: [P.type, P.finish.name + ' finish', P.primer.title, P.amount.buy].join(' · '), items: [planItem(P)].concat(P.supplies.map(s => ({ area: 'Supplies', brand: '', name: s.name, code: '', hex: '', finish: '', product: '', primer: '', loc: '' }))) });
   });
@@ -1653,7 +1697,7 @@
   // LOOK UP: any color by name, code or number
   // ================================================================
   function renderLookup() {
-    view().innerHTML = `<div class="page">
+    view().innerHTML = `<div class="page narrow">
       ${backBtn('Home', 'data-go="home"')}
       <div class="page-head"><h1>Look Up a Color</h1><p>Type a color name, a code from a chip, or a color number like #D1CBC1.</p></div>
       <div class="search"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
@@ -1674,7 +1718,7 @@
     return `<div class="exact"><span class="exact-sw" ${swStyle(hex)}></span><div class="exact-info">
       <p class="eyebrow">${c ? `${esc(brandName(c.brand))} · ${esc(E.codeLabel(c))}` : 'Exact Color'}</p><h2>${c ? esc(c.name) : '#' + hex}</h2>
       <div class="vals"><button type="button" class="val" data-copy="#${hex}"><span>Hex · tap to copy</span><b>#${hex}</b></button><button type="button" class="val" data-copy="${rgb.join(', ')}"><span>RGB · tap to copy</span><b>${rgb.join(', ')}</b></button><div class="val"><span>Light Reflectance</span><b>${lrv}</b></div></div>
-      <div class="actions">${c ? `<button type="button" class="btn big" data-go="color/${esc(encodeURIComponent(c.id))}">See Everything${chev('right')}</button>` : ''}<button type="button" class="btn big primary${on ? ' done' : ''}" data-add="${esc(ref)}">${on ? checkIcon + ' On My List' : plusIcon + ' Add to My List'}</button></div></div></div>`;
+      <div class="actions">${c ? `<button type="button" class="btn big" data-go="color/${esc(encodeURIComponent(c.id))}">See Everything${chev('right')}</button>` : ''}<button type="button" class="btn big primary${on ? ' done' : ''}" data-add="${esc(ref)}">${on ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button></div></div></div>`;
   }
   function nearLists(all, title) {
     const en = brandsEnabled();
@@ -1711,9 +1755,9 @@
   }
 
   // ================================================================
-  // MY LIST: everything for one customer or project, ready to print
-  // Saved colors and customer sessions are one thing now. Starting a new list keeps the old one under
-  // Earlier Lists (the last 10 on this device; none on a shared kiosk).
+  // PROJECTS: everything for one job in one place, ready to print or email
+  // `session` is the open project. Starting a new one keeps the old one under Earlier Projects
+  // (the last 10 on this device; none on a shared kiosk).
   // ================================================================
   const PAST_MAX = 10;
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -1723,14 +1767,12 @@
   let past = (store.get('sessions', []) || []).filter(s => s && Array.isArray(s.items)).map(fixSession).slice(0, PAST_MAX);
   const saveSession = () => { session.updated = Date.now(); store.set('session', session); };
   const savePast = () => store.set('sessions', past);
-  const titleOf = s => (s.name || '').trim() || (s === session ? 'My List' : 'Untitled List');
+  const titleOf = s => (s.name || '').trim() || (s === session ? 'New Project' : 'Untitled Project');
   const sessionTitle = () => titleOf(session);
   const whenOf = t => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-  function updateListBtn(bump) {
-    const n = session.items.length, cnt = $('#listCount');
-    cnt.textContent = n; cnt.hidden = !n;
-    if (bump && n && !reduced()) { cnt.classList.remove('bump'); void cnt.offsetWidth; cnt.classList.add('bump'); }
-    $$('[data-add]').forEach(b => { const on = session.items.some(x => x.ref === b.dataset.add); b.classList.toggle('done', on); b.innerHTML = on ? checkIcon + ' On My List' : plusIcon + ' Add to My List'; });
+  // keeps every Add to Project button showing whether its color is already in the open project
+  function updateListBtn() {
+    $$('[data-add]').forEach(b => { const on = session.items.some(x => x.ref === b.dataset.add); b.classList.toggle('done', on); b.innerHTML = on ? checkIcon + ' In Project' : plusIcon + ' Add to Project'; });
   }
   function paintItem(c) {
     const R = state.results.paint;
@@ -1758,12 +1800,12 @@
     saveSession(); updateListBtn(true);
     toast(`Added ${item.kind === 'custom' ? '#' + item.hex : item.name} to ${sessionTitle()}`);
   }
-  // the Add to My List buttons: tap again to take it back off
+  // the Add to Project buttons: tap again to take it back off
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-add]'); if (!t || !state.ready) return;
     const ref = t.dataset.add;
     const i = session.items.findIndex(x => x.ref === ref);
-    if (i >= 0) { const was = session.items[i]; session.items.splice(i, 1); saveSession(); updateListBtn(); toast(`Took ${was.name} off your list`); return; }
+    if (i >= 0) { const was = session.items[i]; session.items.splice(i, 1); saveSession(); updateListBtn(); toast(`Took ${was.name} off ${sessionTitle()}`); return; }
     if (ref.startsWith('#')) addToList(customItem(ref.slice(1)));
     else {
       const stainHit = state.results.stain && state.results.stain.results.concat(state.results.stain.finalists || []).some(r => r.id === ref);
@@ -1773,7 +1815,8 @@
     updateListBtn();
   });
   function fileSession(s) {
-    if (isKiosk() || !s.items.length) return false;
+    // an empty project is only kept if someone gave it a name
+    if (isKiosk() || (!s.items.length && !(s.name || '').trim())) return false;
     past = [s].concat(past.filter(p => p.id !== s.id)).slice(0, PAST_MAX);
     savePast(); return true;
   }
@@ -1781,19 +1824,19 @@
   function renderList() {
     const items = session.items;
     const paintRefs = items.filter(x => E.findColor(x.ref));
-    view().innerHTML = `<div class="page">
+    view().innerHTML = `<div class="page narrow">
       ${backBtn('Home', 'data-go="home"')}
-      <div class="page-head"><h1>${esc(sessionTitle())}</h1><p>Everything for one customer or project. Print it, or bring it to the paint desk.</p></div>
-      <div class="list-head"><label class="field">Who is it for?<input type="text" class="input" id="listName" value="${esc(session.name || '')}" placeholder="A name or project" maxlength="60" autocomplete="off"></label>
+      <div class="page-head"><p class="eyebrow">Project</p><h1>${esc(sessionTitle())}</h1><p>Everything for this job in one place. Print it, email it, or bring it to the paint desk.</p></div>
+      <div class="list-head"><label class="field">What’s this project for?<input type="text" class="input" id="listName" value="${esc(session.name || '')}" placeholder="Smith kitchen, Mom’s porch..." maxlength="60" autocomplete="off"></label>
         <label class="field">Notes for the printout<input type="text" class="input" id="listNotes" value="${esc(session.notes || '')}" placeholder="Phone number, due date..." maxlength="160" autocomplete="off"></label></div>
       ${items.length ? `<ol class="items">${items.map((x, i) => `<li class="item"><span class="n">${i + 1}</span><button type="button" class="sw" ${x.hex ? swStyle(x.hex) : 'style="background:var(--surface-2)"'} data-open-item="${esc(x.ref)}" aria-label="Open ${esc(x.name)}"></button>
           <span class="what"><input type="text" class="area" data-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><b>${esc([x.brand, x.name, x.code].filter(Boolean).join(' '))}</b><span>${esc([x.finish, x.product, x.amount].filter(Boolean).join(' · '))}</span></span>
           <button type="button" class="icon-btn" data-del-item="${esc(x.id)}" aria-label="Remove ${esc(x.name)}">${xIcon}</button></li>`).join('')}</ol>
-        <div class="actions stack"><button type="button" class="btn big primary" data-list="print">${ic('print', 22)}Print My List</button><button type="button" class="btn big" data-go="home">${plusIcon}Add More</button><button type="button" class="btn big ghost" data-list="new">Start a New List</button></div>
-        <details class="more"><summary>More Things to Do</summary><div class="actions">${paintRefs.length ? '<button type="button" class="btn" data-list="present">Show Colors Full Screen</button>' : ''}${paintRefs.length > 1 ? '<button type="button" class="btn" data-list="compare">Compare the Colors</button>' : ''}<button type="button" class="btn" data-list="copy">Copy as Text</button></div></details>`
-        : `<div class="empty"><h2>Nothing on your list yet</h2><p class="muted">Open any color and tap Add to My List.</p><div class="actions stack"><button type="button" class="btn big primary" data-start="paint">Find a Paint Color</button>${jobOn('stain') ? '<button type="button" class="btn big" data-start="stain">Find a Stain</button>' : ''}<button type="button" class="btn big" data-go="lookup">Look Up a Color</button></div></div>`}
-      ${isKiosk() ? '' : `<section class="section" aria-labelledby="pastH"><h2 id="pastH">Earlier Lists</h2>${past.length ? `<div class="past">${past.map(s => `<div class="past-item"><span class="mini-sws">${s.items.slice(0, 5).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span><b>${esc(titleOf(s))}</b><span class="when">${s.items.length} item${s.items.length === 1 ? '' : 's'} · ${esc(whenOf(s.updated))}</span></span>
-          <span class="btns"><button type="button" class="btn small" data-past-open="${esc(s.id)}">Open</button><button type="button" class="btn small" data-past-print="${esc(s.id)}">Print</button><button type="button" class="btn small ghost${delArmed === s.id ? ' armed' : ''}" data-past-del="${esc(s.id)}">${delArmed === s.id ? 'Tap Again to Delete' : 'Delete'}</button></span></div>`).join('')}</div><p class="muted small">The last ${PAST_MAX} lists stay on this device.</p>` : '<p class="muted">When you start a new list, this one is kept here.</p>'}</section>`}
+        <div class="actions stack"><button type="button" class="btn big primary" data-list="print">${ic('print', 22)}Print</button><button type="button" class="btn big primary" data-list="email">${mailIcon}Email It</button><button type="button" class="btn big" data-go="home">${plusIcon}Add More</button></div>
+        <details class="more"><summary>More Things to Do</summary><div class="actions">${paintRefs.length ? '<button type="button" class="btn" data-list="present">Show Colors Full Screen</button>' : ''}${paintRefs.length > 1 ? '<button type="button" class="btn" data-list="compare">Compare the Colors</button>' : ''}<button type="button" class="btn" data-list="copy">Copy as Text</button><button type="button" class="btn ghost" data-project-new="1">Start a New Project</button></div></details>`
+        : `<div class="empty"><h2>Nothing in this project yet</h2><p class="muted">Find a color, then tap Add to Project. Everything you add lands here.</p><div class="actions stack"><button type="button" class="btn big primary" data-start="paint">Find a Paint Color</button>${jobOn('stain') ? '<button type="button" class="btn big" data-start="stain">Find a Stain</button>' : ''}<button type="button" class="btn big" data-go="lookup">Look Up a Color</button></div></div>`}
+      ${isKiosk() ? '' : `<section class="section" aria-labelledby="pastH"><h2 id="pastH">Earlier Projects</h2>${past.length ? `<div class="past">${past.map(s => `<div class="past-item"><span class="mini-sws">${s.items.slice(0, 5).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span><b>${esc(titleOf(s))}</b><span class="when">${s.items.length} item${s.items.length === 1 ? '' : 's'} · ${esc(whenOf(s.updated))}</span></span>
+          <span class="btns"><button type="button" class="btn small" data-past-open="${esc(s.id)}">Open</button><button type="button" class="btn small" data-past-print="${esc(s.id)}">Print</button><button type="button" class="btn small ghost${delArmed === s.id ? ' armed' : ''}" data-past-del="${esc(s.id)}">${delArmed === s.id ? 'Tap Again to Delete' : 'Delete'}</button></span></div>`).join('')}</div><p class="muted small">The last ${PAST_MAX} projects stay on this device.</p>` : '<p class="muted">When you start a new project, this one is kept here.</p>'}</section>`}
     </div>`;
     $('#listName').addEventListener('input', e => { session.name = e.target.value; saveSession(); $('.page-head h1').textContent = sessionTitle(); });
     $('#listNotes').addEventListener('input', e => { session.notes = e.target.value; saveSession(); });
@@ -1804,14 +1847,10 @@
     const t = e.target.closest('button'); if (!t) return;
     const act = t.dataset.list;
     if (act === 'print') printPreview(session);
-    if (act === 'new') {
-      const filed = fileSession(session), was = sessionTitle();
-      session = blankSession(); saveSession(); updateListBtn(); renderList();
-      toast(filed ? `Kept ${was} under Earlier Lists` : 'Started a new list');
-    }
+    if (act === 'email') openEmail(session);
     if (act === 'present') openPresent();
     if (act === 'compare') openCompare();
-    if (act === 'copy') copyText(sheetText(session), 'List copied');
+    if (act === 'copy') copyText(sheetText(session), 'Copied the whole project');
     if (t.dataset.delItem) { session.items = session.items.filter(x => x.id !== t.dataset.delItem); saveSession(); updateListBtn(); renderList(); }
     if (t.dataset.openItem) {
       const ref = t.dataset.openItem;
@@ -1827,6 +1866,65 @@
     if (t.dataset.pastDel) {
       if (delArmed !== t.dataset.pastDel) { delArmed = t.dataset.pastDel; renderList(); return; }
       past = past.filter(s => s.id !== delArmed); delArmed = ''; savePast(); renderList();
+    }
+  });
+
+  // ---- starting a project: name it, and the one that was open is kept under Earlier Projects ----
+  function openPast(id) {
+    const p = past.find(s => s.id === id); if (!p) return;
+    fileSession(session); past = past.filter(s => s.id !== p.id); savePast();
+    session = p; saveSession(); updateListBtn();
+  }
+  function openStartProject() {
+    openModal('Start a Project', `<p style="font-size:1.1rem">A project keeps the colors, stains and shopping lists for one job together, so you can print or email them all at once.</p>
+      <label class="field">What’s it for?<input type="text" class="input" id="projName" placeholder="Smith kitchen, Mom’s porch, back deck..." maxlength="60" autocomplete="off" enterkeyhint="go"></label>
+      ${session.items.length ? `<p class="muted">${esc(sessionTitle())} (${session.items.length} item${session.items.length === 1 ? '' : 's'}) will be kept under Earlier Projects.</p>` : ''}
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big primary" data-project-start="1">${plusIcon}Start Project</button></div>`);
+    const inp = $('#projName'); inp.focus();
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('[data-project-start]').click(); } });
+  }
+  function startProject(name) {
+    const filed = fileSession(session);
+    session = Object.assign(blankSession(), { name: (name || '').trim().slice(0, 60) });
+    saveSession(); updateListBtn(); closeModal();
+    if (state.view === 'list') { renderList(); window.scrollTo(0, 0); } else go('list');
+    toast(`Started ${sessionTitle()}${filed ? '. The last project is under Earlier Projects.' : ''}`);
+  }
+  document.addEventListener('click', e => {
+    const t = e.target.closest('button'); if (!t || !state.ready) return;
+    if (t.dataset.projectNew) { openStartProject(); return; }
+    if (t.dataset.projectStart) { startProject(($('#projName') || {}).value); return; }
+    if (t.dataset.pastHome) { openPast(t.dataset.pastHome); go('list'); toast(`Opened ${sessionTitle()}`); }
+  });
+
+  // ---- emailing a project: the person's email app opens with the whole list written in ----
+  function openEmail(s) {
+    const canShare = !!(navigator.share && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
+    openModal('Email This Project', `<p style="font-size:1.1rem">Your email app opens with <b>${esc(titleOf(s))}</b> written in: every color, code, finish and product, one per line. Check it, then press Send.</p>
+      <label class="field">Their email address<input type="email" class="input" id="mailTo" placeholder="name@example.com" autocomplete="email" inputmode="email" enterkeyhint="send"><span class="muted small" style="font-weight:500">Optional. You can also type it in the email.</span></label>
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span>${canShare ? `<button type="button" class="btn big" data-mail-share="1">Share…</button>` : ''}<button type="button" class="btn big primary" data-mail-open="1">${mailIcon}Open Email</button></div>`);
+    const inp = $('#mailTo'); inp.focus();
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('[data-mail-open]').click(); } });
+    emailOf = s;
+  }
+  let emailOf = null;
+  function mailBody(s) { return sheetText(s) + '\n\nColors look different on screens and paper. Check a real chip or sample before buying.'; }
+  document.addEventListener('click', async e => {
+    const t = e.target.closest('button'); if (!t || !emailOf) return;
+    if (t.dataset.mailOpen) {
+      // keep only characters an address can have, so nothing typed can add extra mailto fields
+      const to = ($('#mailTo').value || '').trim().replace(/[^\w.@+-]/g, '');
+      const body = mailBody(emailOf);
+      const url = `mailto:${to}?subject=${encodeURIComponent('Paint and stain list: ' + titleOf(emailOf))}&body=${encodeURIComponent(body.replace(/\n/g, '\r\n'))}`;
+      closeModal(); emailOf = null;
+      // some email apps cut off very long links, so a long list is also copied to paste in
+      if (url.length > 1800) { copyText(body, 'The list is long, so it’s also copied. Paste it in if the email is cut short.'); }
+      else toast('Opening your email app');
+      window.location.href = url;
+    }
+    if (t.dataset.mailShare) {
+      const s = emailOf;
+      try { await navigator.share({ title: 'Paint and stain list: ' + titleOf(s), text: mailBody(s) }); closeModal(); emailOf = null; } catch (err) { /* closed the share sheet */ }
     }
   });
 
@@ -1887,7 +1985,7 @@
   document.addEventListener('click', e => {
     const t = e.target.closest('button'); if (!t || !t.closest('#modal')) return;
     if (t.dataset.printNow && previewOf) printSheet(previewOf);
-    if (t.dataset.copyList && previewOf) copyText(sheetText(previewOf), 'List copied');
+    if (t.dataset.copyList && previewOf) copyText(sheetText(previewOf), 'Copied the whole project');
   });
 
   // ---- full screen colors and compare ----
@@ -1932,14 +2030,15 @@
   let modalFocus = null;
   function openModal(title, body, opts) {
     const el = $('#modal');
-    if (el.hidden) modalFocus = document.activeElement;
-    el.innerHTML = `<div class="modal-card${opts && opts.wide ? ' wide' : ''}" role="document"><div class="modal-head"><h2 id="modalTitle">${esc(title)}</h2><button type="button" class="icon-btn" data-modal-close="1" aria-label="Close">${xIcon}</button></div><div class="modal-body">${body}</div></div>`;
+    const swap = !el.hidden; // already open: change what's in it without playing the pop-in again
+    if (!swap) modalFocus = document.activeElement;
+    el.innerHTML = `<div class="modal-card${opts && opts.wide ? ' wide' : ''}${swap ? ' swap' : ''}" role="document"><div class="modal-head"><h2 id="modalTitle">${esc(title)}</h2><button type="button" class="icon-btn" data-modal-close="1" aria-label="Close">${xIcon}</button></div><div class="modal-body">${body}</div></div>`;
     el.hidden = false;
     $('[data-modal-close]', el).focus({ preventScroll: true });
   }
   function closeModal() {
     const el = $('#modal'); if (el.hidden) return;
-    el.hidden = true; el.innerHTML = ''; state.duel = null;
+    el.hidden = true; el.innerHTML = ''; state.duel = null; pad = null;
     if (modalFocus && document.contains(modalFocus)) modalFocus.focus({ preventScroll: true });
   }
   $('#modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.target.closest('[data-modal-close]')) closeModal(); else if (e.target.closest('[data-go]')) closeModal(); });
@@ -1995,7 +2094,8 @@
       ${backBtn('Home', 'data-go="home"')}
       <div class="page-head"><h1>Settings</h1><p>Everything here is saved on this device.</p></div>
       <div class="set-group"><h2>Who Uses This</h2><div class="set-card">
-        ${segRow('audience', 'This device is for', settings.audience === 'kiosk' ? 'Kiosk: big buttons, and it starts over when nobody has touched it for 2 minutes. Hold the logo for 3 seconds to get back here.' : home() ? 'Simple tips for buying and testing samples.' : 'Chip locations and paint lines for the paint desk.', { store: 'Store Staff', home: 'My Home', kiosk: 'Kiosk' }, settings.audience || 'store')}
+        ${segRow('audience', 'This device is for', settings.audience === 'kiosk' ? 'Kiosk: big buttons, and it starts over when nobody has touched it for 2 minutes. The Staff button at the top unlocks it with the PIN.' : home() ? 'Simple tips for buying and testing samples.' : 'Chip locations and paint lines for the paint desk.', { store: 'Store Staff', home: 'My Home', kiosk: 'Kiosk' }, settings.audience || 'store')}
+        <div class="set-row"><span class="pin-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/><circle cx="12" cy="15.3" r="1.4" fill="currentColor" stroke="none"/></svg></span><div class="set-text"><b>Kiosk PIN</b><span>${hasPin() ? 'Set. Staff use it to unlock kiosk mode.' : 'Not made yet. You’ll make one (4 to 8 numbers) before kiosk mode turns on.'}</span></div><button type="button" class="btn" data-pin-change="1">${hasPin() ? 'Change PIN' : 'Make a PIN'}</button></div>
       </div></div>
       <div class="set-group"><h2>${home() ? 'Where You Shop' : 'Your Store'}</h2><div class="set-card">
         <div class="set-row"><div class="set-text"><b>Store</b><span>Turns on the brands that store carries</span></div>${selectHtml('setChain', [['', 'Choose a Store']].concat(Object.entries(CHAINS).filter(([, ch]) => !ch.other).map(([k, ch]) => [k, ch.label])), settings.chain, 'Store', v => { settings.chain = v; if (chainPreset(v, settings)) { settings.stainBrands = Object.fromEntries(Object.entries(settings.stainBrands).filter(([, on]) => on === false)); toast(`Brands set for ${CHAINS[v].label}`); } saveSettings(); afterSettingsChange(); renderKeep(); })}</div>
@@ -2074,8 +2174,12 @@
       if (k === 'calEnabled') renderKeep();
       return;
     }
+    if (t.dataset.pinChange) { makePin(() => renderKeep(), hasPin() ? 'Make a New Kiosk PIN' : 'Make a Kiosk PIN'); return; }
     if (t.dataset.seg) {
       const k = t.dataset.seg, v = t.dataset.val;
+      // kiosk mode only turns on with a PIN to get back out
+      // once it's on, settings close and lock behind the PIN straight away
+      if (k === 'audience' && v === 'kiosk') { if (!isKiosk()) turnOnKiosk(() => { afterSettingsChange('audience'); state.unlocked = false; go(''); }); return; }
       settings[k] = k === 'resultCount' ? +v : v;
       if (k === 'audience') { settings.inStoreSamples = v !== 'home'; applyAudience(); }
       saveSettings(); applyTheme(); afterSettingsChange(k); renderKeep(); return;
@@ -2180,16 +2284,16 @@
   function openOnboarding() {
     ob = { step: 0, audience: settings.audience || '', chain: settings.chain || '', jobs: Object.assign({ paint: true, stain: true }, settings.jobs), brands: Object.assign({}, brandsEnabled()), stainBrands: Object.fromEntries(S.brands().map(b => [b.id, settings.stainBrands[b.id] !== false])), storeBrand: settings.storeBrand || '' };
     closeModal();
-    const el = $('#onboard'); el.hidden = false; document.documentElement.classList.add('ob-open');
-    drawOnboarding();
+    const el = $('#onboard'); el.innerHTML = ''; el.hidden = false; document.documentElement.classList.add('ob-open');
+    drawOnboarding(0);
   }
   function closeOnboarding() { $('#onboard').hidden = true; document.documentElement.classList.remove('ob-open'); ob = null; }
-  function drawOnboarding() {
-    const id = obSteps()[ob.step];
+  // what one setup screen shows: its body, the Next label, and whether Next works yet
+  function obView(id) {
     let body = '', next = 'Next', nextOff = false;
     if (id === 'who') {
       body = `<h1 id="obTitle">Welcome to ColorGenius</h1><p class="muted" style="font-size:1.15rem">Who will use this device? You can change it later in Settings.</p>
-        <div class="choices big">${choice('data-ob-aud="store"', ob.audience === 'store', 'Paint Store Staff', 'Help customers at the paint desk', ic('can'))}${choice('data-ob-aud="home"', ob.audience === 'home', 'Me, for My Home', 'Pick colors and paint for my own projects', ic('ext_body'))}${choice('data-ob-aud="kiosk"', ob.audience === 'kiosk', 'A Store Kiosk', 'A touch screen for shoppers. Starts over by itself.', ic('media'))}</div>`;
+        <div class="choices three">${choice('data-ob-aud="store"', ob.audience === 'store', 'Paint Store Staff', 'Help customers at the paint desk', ic('can'))}${choice('data-ob-aud="home"', ob.audience === 'home', 'Me, for My Home', 'Pick colors and paint for my own projects', ic('ext_body'))}${choice('data-ob-aud="kiosk"', ob.audience === 'kiosk', 'A Store Kiosk', 'A touch screen for shoppers that starts over by itself', ic('media'))}</div>`;
       nextOff = !ob.audience;
     }
     if (id === 'store') {
@@ -2204,13 +2308,39 @@
       nextOff = !brandList().some(b => ob.brands[b.id]);
     }
     if (id === 'done') {
-      body = `<h1 id="obTitle">You’re all set!</h1><p class="muted" style="font-size:1.15rem">${ob.audience === 'kiosk' ? 'The kiosk starts over after 2 minutes with nobody using it. Hold the ColorGenius logo for 3 seconds to open Settings.' : 'Tap Paint Colors, Stain Colors or Which Paint to Buy to begin. Settings has more choices, like bigger text and 3D rooms.'}</p>`;
+      body = `<h1 id="obTitle">You’re all set!</h1><p class="muted" style="font-size:1.15rem">${ob.audience === 'kiosk' ? 'The kiosk starts over after 2 minutes with nobody using it. To unlock it, tap the Staff button at the top and enter your PIN.' : 'Tap Paint Colors, Stain Colors or Which Paint to Buy to begin. Settings has more choices, like bigger text and 3D rooms.'}</p>`;
       next = 'Start';
     }
-    $('#onboard').innerHTML = `<div class="ob-shell"><div class="ob-top"><span class="logo" aria-hidden="true"><span class="fan"><i></i><i></i><i></i></span>ColorGenius</span><span class="ob-dots">${obSteps().map((s, i) => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</span>${id !== 'done' ? '<button type="button" class="btn small ghost" data-ob="skip">Skip Setup</button>' : '<span></span>'}</div><div class="ob-body">${body}</div></div>
-      <nav class="ob-nav" aria-label="Setup buttons"><div class="bottom-in">${ob.step ? `<button type="button" class="btn big ghost" data-ob="back">${chev('left')}Back</button>` : ''}<span class="grow"></span><button type="button" class="btn big primary" data-ob="next" ${nextOff ? 'disabled' : ''}>${esc(next)}${chev('right')}</button></div></nav>`;
-    $('#onboard').scrollTo(0, 0);
+    return { body, next, nextOff };
+  }
+  // The frame (logo, dots, Back and Next) is built once and stays put. Only a change of screen slides the new
+  // screen in; tapping a choice just marks it, so nothing on the page moves.
+  function drawOnboarding(dir) {
+    const el = $('#onboard');
+    if (!$('.ob-shell', el)) el.innerHTML = `<div class="ob-shell"><div class="ob-top"><span class="logo" aria-hidden="true"><span class="fan"><i></i><i></i><i></i></span>ColorGenius</span><span class="ob-dots" aria-hidden="true"></span><span class="ob-skip"></span></div><div class="ob-body" id="obBody"></div></div>
+      <nav class="ob-nav" aria-label="Setup buttons"><div class="bottom-in"><button type="button" class="btn big ghost" data-ob="back">${chev('left')}Back</button><span class="grow"></span><button type="button" class="btn big primary" data-ob="next"><span class="enter-hint" aria-hidden="true">Enter <span class="ret">↵</span></span><span class="next-label">Next</span>${chev('right')}</button></div></nav>`;
+    const id = obSteps()[ob.step], v = obView(id);
+    obDots();
+    $('.ob-skip', el).innerHTML = id !== 'done' ? '<button type="button" class="btn small ghost" data-ob="skip">Skip Setup</button>' : '';
+    const body = $('#obBody');
+    body.innerHTML = v.body;
+    body.classList.remove('slide', 'slide-back');
+    if (dir && !reduced()) { void body.offsetWidth; body.classList.add(dir > 0 ? 'slide' : 'slide-back'); }
+    const back = $('[data-ob="back"]', el);
+    back.style.visibility = ob.step ? '' : 'hidden'; back.disabled = !ob.step;
+    $('.next-label', el).textContent = v.next;
+    $('[data-ob="next"]', el).disabled = v.nextOff;
+    el.scrollTo(0, 0);
     const h = $('#obTitle'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+  }
+  function obDots() { const d = $('#onboard .ob-dots'); if (d) d.innerHTML = obSteps().map((s, i) => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join(''); }
+  // a choice was tapped: mark it, and let Next work once there's an answer
+  function obPicked(attr, value) {
+    $$(`#obBody [${attr}]`).forEach(b => b.setAttribute('aria-pressed', b.getAttribute(attr) === value));
+    const n = $('#onboard [data-ob="next"]'), was = n.disabled;
+    n.disabled = obView(obSteps()[ob.step]).nextOff;
+    if (!n.disabled && !reduced()) { n.classList.remove('nudge'); void n.offsetWidth; n.classList.add('nudge'); }
+    return was;
   }
   function finishOnboarding(skipped) {
     if (!skipped) {
@@ -2230,13 +2360,17 @@
   }
   $('#onboard').addEventListener('click', e => {
     const t = e.target.closest('button'); if (!t || !ob) return;
-    if (t.dataset.obAud) { ob.audience = t.dataset.obAud; drawOnboarding(); return; }
-    if (t.dataset.obChain) { ob.chain = t.dataset.obChain; if (ob.chain !== 'other') chainPreset(ob.chain, ob); drawOnboarding(); return; }
-    if (t.dataset.obJob) { const j = t.dataset.obJob, other = j === 'paint' ? 'stain' : 'paint'; if (ob.jobs[j] && !ob.jobs[other]) { toast('Keep paint or stain on'); return; } ob.jobs[j] = !ob.jobs[j]; drawOnboarding(); return; }
-    if (t.dataset.obBrand) { ob.brands[t.dataset.obBrand] = !ob.brands[t.dataset.obBrand]; const y = $('#onboard').scrollTop; drawOnboarding(); $('#onboard').scrollTop = y; return; }
+    if (t.dataset.obAud) { ob.audience = t.dataset.obAud; obPicked('data-ob-aud', ob.audience); return; }
+    if (t.dataset.obChain) { ob.chain = t.dataset.obChain; if (ob.chain !== 'other') chainPreset(ob.chain, ob); obPicked('data-ob-chain', ob.chain); obDots(); return; }
+    if (t.dataset.obJob) { const j = t.dataset.obJob, other = j === 'paint' ? 'stain' : 'paint'; if (ob.jobs[j] && !ob.jobs[other]) { toast('Keep paint or stain on'); return; } ob.jobs[j] = !ob.jobs[j]; t.setAttribute('aria-pressed', ob.jobs[j]); return; }
+    if (t.dataset.obBrand) { ob.brands[t.dataset.obBrand] = !ob.brands[t.dataset.obBrand]; t.setAttribute('aria-pressed', ob.brands[t.dataset.obBrand]); const n = $('#onboard [data-ob="next"]'); n.disabled = obView('brands').nextOff; return; }
     const a = t.dataset.ob;
-    if (a === 'next') { if (ob.step >= obSteps().length - 1) finishOnboarding(false); else { ob.step++; drawOnboarding(); } }
-    if (a === 'back') { ob.step = Math.max(0, ob.step - 1); drawOnboarding(); }
+    if (a === 'next') {
+      // choosing a kiosk: make its PIN before going on
+      if (obSteps()[ob.step] === 'who' && ob.audience === 'kiosk' && !hasPin()) { makePin(() => { if (ob) { ob.step++; drawOnboarding(1); } }); return; }
+      if (ob.step >= obSteps().length - 1) finishOnboarding(false); else { ob.step++; drawOnboarding(1); }
+    }
+    if (a === 'back') { ob.step = Math.max(0, ob.step - 1); drawOnboarding(-1); }
     if (a === 'skip') finishOnboarding(true);
   });
 
@@ -2282,8 +2416,9 @@
   // KIOSK: a touch screen on the store floor. Starts over by itself after 2 minutes with nobody using it.
   // ================================================================
   const KIOSK_IDLE = 120000, KIOSK_WARN = 15;
-  let kioskTimer = 0, kioskTick = 0, kioskLeft = 0, holdTimer = 0, holdFired = false;
-  function applyAudience() { document.documentElement.classList.toggle('kiosk', isKiosk()); $('#settingsBtn').hidden = isKiosk(); kioskArm(); }
+  let kioskTimer = 0, kioskTick = 0, kioskLeft = 0;
+  // in a kiosk, the Settings button is swapped for a Staff button with a lock: it asks for the PIN
+  function applyAudience() { const k = isKiosk(); document.documentElement.classList.toggle('kiosk', k); $('#settingsBtn').hidden = k; $('#lockBtn').hidden = !k; kioskArm(); }
   const kioskAtStart = () => state.view === 'home' && !session.items.length && $('#modal').hidden && $('#present').hidden;
   function kioskArm() { clearTimeout(kioskTimer); clearInterval(kioskTick); const w = $('#kioskIdle'); if (w) w.hidden = true; if (isKiosk()) kioskTimer = setTimeout(kioskWarn, KIOSK_IDLE); }
   function kioskWarn() {
@@ -2298,17 +2433,139 @@
     clearInterval(kioskTick);
     closeModal(); closePresent();
     session = blankSession(); saveSession(); updateListBtn();
-    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null }; state.query = ''; state.duelPick = '';
+    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null }; state.query = ''; state.duelPick = ''; state.unlocked = false;
     go('', { replace: true });
     window.scrollTo(0, 0);
     kioskArm();
   }
   ['pointerdown', 'keydown', 'wheel'].forEach(ev => document.addEventListener(ev, () => { if (isKiosk()) kioskArm(); }, { passive: true, capture: true }));
-  const homeBtn = $('#homeBtn');
-  homeBtn.addEventListener('pointerdown', () => { holdFired = false; clearTimeout(holdTimer); if (isKiosk()) holdTimer = setTimeout(() => { holdFired = true; go('settings'); }, 3000); });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => homeBtn.addEventListener(ev, () => clearTimeout(holdTimer)));
-  homeBtn.addEventListener('click', e => { if (holdFired) { holdFired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
-  homeBtn.addEventListener('contextmenu', e => { if (isKiosk()) e.preventDefault(); });
+  $('#homeBtn').addEventListener('contextmenu', e => { if (isKiosk()) e.preventDefault(); });
+
+  // ================================================================
+  // KIOSK PIN: 4 to 8 numbers. It has to be made before kiosk mode can turn on, it's the only way out of kiosk
+  // mode, and it can be changed in Settings in normal store mode. Only a scrambled copy (a SHA-256 hash with a
+  // random salt) is kept on the device, never the numbers themselves.
+  // ================================================================
+  const PIN_MIN = 4, PIN_MAX = 8;
+  async function hashPin(pin, salt) {
+    const data = new TextEncoder().encode(salt + ':' + pin);
+    if (window.crypto && crypto.subtle) { const buf = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join(''); }
+    let h = 2166136261; for (const c of data) { h ^= c; h = Math.imul(h, 16777619) >>> 0; } return 'f' + h.toString(16); // pages opened as a file have no crypto
+  }
+  const hasPin = () => !!(settings.kioskPin && settings.kioskPin.hash);
+  async function setPin(pin) { const salt = newId(); settings.kioskPin = { salt, hash: await hashPin(pin, salt) }; saveSettings(); }
+  async function checkPin(pin) { return hasPin() && (await hashPin(pin, settings.kioskPin.salt)) === settings.kioskPin.hash; }
+
+  // the number pad: big keys, dots for what's typed, and the keyboard works too
+  let pad = null, padFails = 0, padLockUntil = 0;
+  function openPinPad(o) {
+    pad = Object.assign({ pin: '', error: '', ok: 'OK' }, o);
+    openModal(pad.title, `<p class="pin-sub">${esc(pad.sub)}</p>
+      <div class="pin-dots" aria-hidden="true">${Array.from({ length: PIN_MAX }, (_, i) => `<i data-i="${i}"></i>`).join('')}</div>
+      <p class="pin-count muted" aria-live="polite"></p>
+      <p class="pin-error" role="alert"></p>
+      <div class="pin-keys" role="group" aria-label="Number pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button type="button" class="pin-key" data-pin-key="${n}">${n}</button>`).join('')}
+        <button type="button" class="pin-key soft" data-pin-key="clear">Clear</button><button type="button" class="pin-key" data-pin-key="0">0</button><button type="button" class="pin-key soft" data-pin-key="del" aria-label="Delete the last number">${chev('left', 24)}</button></div>
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big primary" data-pin-ok="1">${esc(pad.ok)}</button></div>`);
+    $('#modal .modal-card').classList.add('pin-card');
+    updatePinPad();
+  }
+  function updatePinPad() {
+    if (!pad) return;
+    const locked = Date.now() < padLockUntil;
+    $$('#modal .pin-dots i').forEach((d, i) => { d.className = i < pad.pin.length ? 'on' : i >= PIN_MIN ? 'opt' : ''; });
+    $('#modal .pin-count').textContent = pad.pin.length ? `${pad.pin.length} number${pad.pin.length === 1 ? '' : 's'}` : `${PIN_MIN} to ${PIN_MAX} numbers`;
+    $('#modal .pin-error').textContent = locked ? `Too many tries. Wait ${Math.ceil((padLockUntil - Date.now()) / 1000)} seconds.` : pad.error;
+    $('#modal [data-pin-ok]').disabled = locked || pad.pin.length < PIN_MIN;
+    $$('#modal .pin-key').forEach(k => { k.disabled = locked; });
+  }
+  function padKey(k) {
+    if (!pad || Date.now() < padLockUntil) return;
+    pad.error = '';
+    if (k === 'del') pad.pin = pad.pin.slice(0, -1);
+    else if (k === 'clear') pad.pin = '';
+    else if (/^\d$/.test(k) && pad.pin.length < PIN_MAX) pad.pin += k;
+    updatePinPad();
+  }
+  async function padSubmit() {
+    if (!pad || pad.pin.length < PIN_MIN || Date.now() < padLockUntil) return;
+    const p = pad, res = await p.onDone(p.pin);
+    if (res === true || pad !== p) return;
+    // wrong: say so, shake the dots, start again
+    pad.error = res || 'Try again.'; pad.pin = '';
+    const dots = $('#modal .pin-dots'); if (dots && !reduced()) { dots.classList.remove('shake'); void dots.offsetWidth; dots.classList.add('shake'); }
+    updatePinPad();
+  }
+  $('#modal').addEventListener('click', e => {
+    if (!pad) return;
+    const k = e.target.closest('[data-pin-key]'); if (k) { padKey(k.dataset.pinKey); return; }
+    if (e.target.closest('[data-pin-ok]')) padSubmit();
+  });
+  document.addEventListener('keydown', e => {
+    if (!pad || $('#modal').hidden) return;
+    if (/^\d$/.test(e.key)) { e.preventDefault(); padKey(e.key); }
+    else if (e.key === 'Backspace') { e.preventDefault(); padKey('del'); }
+    else if (e.key === 'Enter') { e.preventDefault(); padSubmit(); }
+  });
+
+  // the Staff button in a kiosk: the PIN, then leave kiosk mode or open Settings
+  const lockOpenIcon = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 017.6-1.7"/><circle cx="12" cy="15.3" r="1.4" fill="currentColor" stroke="none"/></svg>';
+  const gearIcon = () => $('#settingsBtn svg').outerHTML.replace(/width="22" height="22"/, 'width="24" height="24"');
+  function openUnlock() {
+    if (!isKiosk()) return;
+    openPinPad({
+      title: 'Staff Only', sub: 'Enter the kiosk PIN to unlock this screen.', ok: 'Unlock',
+      onDone: async pin => {
+        if (await checkPin(pin)) {
+          padFails = 0;
+          pad = null;
+          openModal('Unlocked', `<p style="font-size:1.1rem">What would you like to do?</p>
+            <div class="unlock-acts">
+              <button type="button" class="btn big primary" data-unlock="leave">${lockOpenIcon}<span><b>Leave Kiosk Mode</b><small>Back to normal store mode</small></span></button>
+              <button type="button" class="btn big" data-unlock="settings">${gearIcon()}<span><b>Open Settings</b><small>Change something, then it locks again</small></span></button>
+            </div>
+            <div class="modal-foot"><span class="grow"></span><button type="button" class="btn big ghost" data-modal-close="1">Stay Locked</button></div>`);
+          return true;
+        }
+        if (++padFails >= 5) { padFails = 0; padLockUntil = Date.now() + 30000; const tick = setInterval(() => { updatePinPad(); if (Date.now() >= padLockUntil) clearInterval(tick); }, 1000); }
+        return 'That PIN isn’t right. Try again.';
+      },
+    });
+  }
+  $('#lockBtn').addEventListener('click', () => { if (state.ready) openUnlock(); });
+  $('#modal').addEventListener('click', e => {
+    const t = e.target.closest('[data-unlock]'); if (!t) return;
+    closeModal();
+    if (t.dataset.unlock === 'leave') { settings.audience = 'store'; settings.inStoreSamples = true; saveSettings(); applyAudience(); go('settings'); toast('Kiosk mode is off'); }
+    else { state.unlocked = true; go('settings'); }
+  });
+
+  // making a PIN: type it, then type it again to be sure
+  function makePin(then, title) {
+    openPinPad({
+      title: title || 'Make a Kiosk PIN', sub: 'Pick 4 to 8 numbers. Staff will need it to unlock the kiosk, so write it down somewhere safe.', ok: 'Next',
+      onDone: async first => {
+        openPinPad({
+          title: 'Type It Again', sub: 'Enter the same PIN once more to make sure.', ok: 'Save PIN',
+          onDone: async again => {
+            if (again !== first) { makePin(then, title); pad.error = 'Those didn’t match. Make the PIN again.'; updatePinPad(); return true; }
+            await setPin(again); closeModal(); toast('Kiosk PIN saved'); if (then) then(); return true;
+          },
+        });
+        return true;
+      },
+    });
+  }
+  // turning kiosk mode on: a PIN first if there isn't one, otherwise a quick confirm
+  function turnOnKiosk(done) {
+    const on = () => { settings.audience = 'kiosk'; settings.inStoreSamples = true; saveSettings(); applyAudience(); if (done) done(); toast('Kiosk mode is on. The Staff button unlocks it.'); };
+    if (!hasPin()) { makePin(on); return; }
+    openModal('Turn On Kiosk Mode?', `<p style="font-size:1.1rem">Shoppers will use this screen. Settings will be locked, and the <b>Staff</b> button at the top asks for your kiosk PIN to unlock it.</p>
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big primary" data-kiosk-on="1">Turn On Kiosk Mode</button></div>`);
+    pendingKiosk = on;
+  }
+  let pendingKiosk = null;
+  $('#modal').addEventListener('click', e => { if (e.target.closest('[data-kiosk-on]') && pendingKiosk) { const f = pendingKiosk; pendingKiosk = null; closeModal(); f(); } });
 
   // ================================================================
   // START
@@ -2323,7 +2580,7 @@
     S.init(window.CG_STAINS);
     const custom = store.get('custom', {});
     for (const name of Object.keys(custom)) E.addBrand(customMeta(name), custom[name]);
-    // Saved Colors are now part of My List: an old saved list is kept as an earlier list, so nothing is lost
+    // Saved Colors from older versions are kept as an earlier project, so nothing is lost
     const oldSaved = store.get('shortlist', null);
     if (Array.isArray(oldSaved) && oldSaved.length) {
       const items = oldSaved.map(id => E.findColor(id)).filter(Boolean).map(c => Object.assign({ id: newId() }, { kind: 'paint', ref: c.id, area: '', brand: brandName(c.brand), name: c.name, code: E.codeLabel(c), hex: c.hex, lrv: String(c.lrv), finish: '', product: '', primer: '', loc: '' }));

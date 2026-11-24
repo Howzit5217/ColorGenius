@@ -849,22 +849,63 @@
     b.box(mat, x0, 0.12, z, x1, 0.84, z + 0.55); b.box('black', x0 + 0.02, 0, z + 0.04, x1 - 0.02, 0.12, z + 0.5);
     const n = Math.max(2, Math.round(w / 0.45)), dw = w / n;
     for (let i = 0; i < n; i++) cabDoor(b, mat, x0 + i * dw + 0.01, x0 + (i + 1) * dw - 0.01, 0.14, 0.82, z + 0.55, true);
-    b.box('counter', x0 - 0.02, 0.84, z, x1 + 0.02, 0.87, z + 0.58);
-    b.sphere('ceramic', x, 0.87, z + 0.3, 0.2, 0.06, 0.15, 16);
-    b.cyl('steel', x, 0.87, z + 0.06, 0.02, 0.2, 8); b.rod('steel', 'z', x, 1.06, z + 0.13, 0.013, 0.14, 8);
-    b.box('black', x - 0.36, 1.12, z, x + 0.36, 1.92, z + 0.03); b.mat('mirror', { color: 'C9D2D7', gloss: 1, pat: PAT.plain, emit: 'mirror' }); b.box('mirror', x - 0.33, 1.15, z + 0.03, x + 0.33, 1.89, z + 0.032);
-    for (const s of [-1, 1]) { b.box('brass', x + s * 0.5 - 0.02, 1.55, z, x + s * 0.5 + 0.02, 1.62, z + 0.08); b.cyl('shade', x + s * 0.5, 1.6, z + 0.12, 0.06, 0.18, 14, 0.06); b.lamp(x + s * 0.5, 1.7, z + 0.25, 0.5); }
+    // a stone top with a white vessel sink, a tall faucet, and a framed mirror between two sconces
+    b.rbox('counter', x0 - 0.02, 0.84, z, x1 + 0.02, 0.875, z + 0.58, 0.008, 1);
+    b.lathe('ceramic', x, 0.875, z + 0.3, [[0.0, 0.002], [0.11, 0.004], [0.17, 0.03], [0.2, 0.1], [0.205, 0.13], [0.195, 0.13], [0.18, 0.1], [0.12, 0.035], [0.0, 0.02]], 32);
+    b.cyl('steel', x, 0.875, z + 0.07, 0.017, 0.3, 12); b.rod('steel', 'z', x, 1.17, z + 0.15, 0.013, 0.17, 10); b.cyl('steel', x, 1.11, z + 0.23, 0.01, 0.06, 8);
+    b.cyl('steel', x + 0.09, 0.875, z + 0.07, 0.012, 0.06, 8);
+    b.mat('mirror', { color: 'C9D2D7', gloss: 1, pat: PAT.plain, emit: 'mirror' });
+    b.rbox('black', x - 0.34, 1.22, z, x + 0.34, 2.0, z + 0.035, 0.03, 2); b.box('mirror', x - 0.31, 1.25, z + 0.035, x + 0.31, 1.97, z + 0.037);
+    for (const s of [-1, 1]) { const sx = x + s * 0.5; b.cyl('brass', sx, 1.6, z + 0.002, 0.035, 0.012, 14, 0.035); b.push().at(sx, 1.6, z + 0.012, 0); b.rod('brass', 'z', 0, 0.02, 0.05, 0.006, 0.1, 8); b.pop(); b.lathe('shade', sx, 1.56, z + 0.1, [[0.03, 0], [0.055, 0.05], [0.06, 0.12], [0.045, 0.16], [0.0, 0.165]], 16); b.lamp(sx, 1.66, z + 0.25, 0.5); }
     b.shadow(x, z + 0.3, w + 0.1, 0.7, 0.4);
   }
-  function tub(b, x0, x1, z0, z1) {
-    b.rbox('ceramic', x0, 0, z0, x1, 0.56, z1, 0.08);
-    b.box('black', x0 + 0.08, 0.5, z0 + 0.1, x1 - 0.08, 0.561, z1 - 0.1);
-    b.box('tile', x0, 0.56, z0 - 0.002, x1, 2.0, z0 + 0.003);
+  // an alcove tub: a white shell with a real basin inside, a tiled surround, a shower head and a curtain
+  function tub(b, x0, x1, z0, z1, H) {
+    const t = 0.075, h = 0.56;
+    b.rbox('ceramic', x0, 0, z0, x0 + t, h, z1, 0.03, 2);
+    b.rbox('ceramic', x1 - t, 0, z0, x1, h, z1, 0.03, 2);
+    b.rbox('ceramic', x0, 0, z0, x1, h, z0 + t, 0.03, 2);
+    b.rbox('ceramic', x0, 0, z1 - t, x1, h, z1, 0.03, 2);
+    b.box('ceramic', x0 + t, 0.08, z0 + t, x1 - t, 0.12, z1 - t);
+    b.cyl('steel', x0 + (x1 - x0) / 2, 0.12, z0 + 0.25, 0.025, 0.004, 14);
+    // white subway tile up the walls around it
+    b.box('tile', x1 - 0.006, h, z0, x1, 2.05, z1); b.box('tile', x0, h, z0, x1, 2.05, z0 + 0.006);
+    // tub spout, handle and shower head on the end wall
+    b.push().at(x0 + (x1 - x0) / 2, 0, z0 + 0.006, 0);
+    b.rod('steel', 'z', 0, 0.68, 0.06, 0.02, 0.12, 10); b.cyl('steel', 0, 1.0, 0.02, 0.035, 0.04, 14);
+    b.rod('steel', 'z', 0, 1.92, 0.07, 0.012, 0.14, 8); b.cyl('steel', 0, 1.86, 0.15, 0.07, 0.06, 18, 0.04);
+    b.pop();
+    // a curtain rod with the curtain drawn back
+    b.rod('steel', 'z', x0 + 0.03, 2.08, (z0 + z1) / 2, 0.012, z1 - z0, 8);
+    b.mat('showercurtain', { role: 'art2', color: 'E8E2D6', pat: PAT.fabric, twoSided: true });
+    const g = b.grp('showercurtain'), seg = 28, w = (z1 - z0) * 0.3, ids = [];
+    for (let i = 0; i <= seg; i++) {
+      const tt = i / seg, off = Math.sin(tt * Math.PI * 9) * 0.03;
+      const zz = z0 + 0.04 + w * tt, nn = norm([Math.cos(tt * Math.PI * 9) * 0.9, 0, 1]);
+      ids.push([b.vert(g, [x0 + 0.03 + off, 0.25, zz], nn), b.vert(g, [x0 + 0.03 + off, 2.06, zz], nn)]);
+    }
+    for (let i = 0; i < seg; i++) { const [a, c] = ids[i], [d, e] = ids[i + 1]; g.i.push(a, d, e, a, e, c); }
+    b.shadow((x0 + x1) / 2, (z0 + z1) / 2, x1 - x0 + 0.1, z1 - z0 + 0.1, 0.35);
   }
+  // a toilet: tank against the wall, an elongated bowl, seat and lid
   function toilet(b, x, z, ry) {
     b.push().at(x, 0, z, ry);
-    b.rbox('ceramic', -0.2, 0.36, -0.36, 0.2, 0.78, -0.2, 0.05); b.lathe('ceramic', 0, 0, 0.05, [[0.12, 0], [0.15, 0.2], [0.19, 0.38], [0.18, 0.4], [0, 0.4]], 18); b.rbox('ceramic', -0.18, 0.4, -0.2, 0.18, 0.43, 0.25, 0.04);
+    b.rbox('ceramic', -0.21, 0.42, -0.2, 0.21, 0.8, -0.02, 0.04);
+    b.rbox('ceramic', -0.22, 0.8, -0.215, 0.22, 0.83, -0.005, 0.015, 1);
+    b.cyl('steel', -0.15, 0.71, -0.02, 0.012, 0.01, 10);
+    b.lathe('ceramic', 0, 0, 0.17, [[0.1, 0], [0.105, 0.05], [0.12, 0.22], [0.0, 0.22]], 18);
+    b.sphere('ceramic', 0, 0.3, 0.17, 0.19, 0.1, 0.25, 20);
+    b.rbox('ceramic', -0.185, 0.385, -0.03, 0.185, 0.41, 0.42, 0.04);
+    b.rbox('ceramic', -0.18, 0.41, -0.03, 0.18, 0.43, 0.4, 0.04);
+    b.shadow(0, 0.15, 0.5, 0.7, 0.4);
     b.pop();
+  }
+  // a towel hanging over a bar
+  function towelBar(b, x, y, z, w, mat) {
+    for (const s of [-1, 1]) b.cyl('steel', x + s * w / 2, y - 0.01, z + 0.002, 0.016, 0.06, 10);
+    b.rod('steel', 'x', x, y + 0.03, z + 0.06, 0.009, w, 8);
+    b.rbox(mat, x - w * 0.42, y - 0.42, z + 0.035, x + w * 0.42, y + 0.05, z + 0.085, 0.02);
+    b.rbox(mat, x - w * 0.42, y - 0.12, z + 0.083, x + w * 0.42, y + 0.05, z + 0.095, 0.01, 1);
   }
   function washer(b, x, z) {
     b.rbox('ceramic', x - 0.33, 0, z, x + 0.33, 0.92, z + 0.66, 0.03);
@@ -1015,14 +1056,20 @@
     kitchen(b, ctx) { return kitchenScene(b, ctx, false); },
     island(b, ctx) { return kitchenScene(b, ctx, true); },
     bath(b, ctx) {
-      const wins = winsFor(ctx, { left: { at: 2.0, w: 0.9, y0: 1.2, y1: 2.15 }, back: { at: 1.9, w: 0.8, y0: 1.4, y1: 2.2 }, right: { at: 2.4, w: 0.8, y0: 1.2, y1: 2.15 } }, ['left', 'right']);
-      const r = interior(b, ctx, { windows: wins, floor: 'tile', w: 4.2, d: 3.8, wainscot: ctx.wainscot });
-      vanity(b, -0.5, r.z0, 1.3);
-      tub(b, 0.55, r.x1, r.z0, r.z0 + 0.8);
-      toilet(b, 1.55, -0.2, -Math.PI / 2);
-      b.box('steel', r.x0 + 0.01, 1.2, -0.6, r.x0 + 0.04, 1.22, 0.2); b.rbox('linen', r.x0 + 0.03, 0.75, -0.55, r.x0 + 0.08, 1.22, 0.15, 0.02);
-      b.mat('bathmat', { color: 'D9D3C8', pat: PAT.carpet }); b.box('bathmat', -0.9, 0.002, -1.05, -0.1, 0.012, -0.55);
-      return { cam: { eye: [0.4, 1.45, 1.8], target: [-0.3, 1.1, -1.9], fov: 58 } };
+      // a frosted window high on the left wall; the tub along the right wall, the vanity and toilet on the back
+      const wins = winsFor(ctx, { left: { at: 1.5, w: 0.8, y0: 1.3, y1: 2.05 } }, ['left']);
+      const r = interior(b, ctx, { windows: wins, floor: 'tile', w: 3.8, d: 3.4, h: 2.55, wainscot: ctx.wainscot });
+      b.mats.floor.scale = 0.55;
+      vanity(b, -0.25, r.z0, 1.15);
+      toilet(b, -1.4, r.z0, 0);
+      tub(b, r.x1 - 0.78, r.x1, r.z0, r.z0 + 1.6, r.H);
+      b.mat('towel', { role: 'art', color: '8FA6A0', pat: PAT.fabric });
+      towelBar(b, 0.82, 1.2, r.z0, 0.5, 'towel');
+      b.mat('bathmat', { role: 'rug', color: 'D9D3C8', pat: PAT.carpet }); b.rbox('bathmat', r.x1 - 1.45, 0.0, -1.0, r.x1 - 0.85, 0.014, -0.2, 0.006, 1);
+      plant(b, -0.62, r.z0 + 0.42, 0.42, 0.875);
+      b.mat('soap', { color: 'D9CFC0', gloss: 0.4 }); b.lathe('soap', 0.18, 0.875, r.z0 + 0.12, [[0, 0], [0.03, 0.005], [0.035, 0.1], [0.012, 0.12], [0.006, 0.15], [0, 0.15]], 14);
+      ceilingLight(b, r.H, -0.2, -0.3);
+      return { cam: { eye: [-0.6, 1.58, 1.62], target: [0.3, 0.72, -1.7], fov: 64 } };
     },
     dining(b, ctx) {
       ctx.curtains = true;
@@ -1556,6 +1603,100 @@
     for (const [x, zz, s] of [[-8, -8, 1.5], [-2, -10, 1.6], [5, -9, 1.5], [11, -11, 1.4], [-13, -11, 1.3]]) tree(b, x, zz, s);
     return { cam: { eye: [2.2, 1.55, 5.6], target: [-0.4, 1.0, -3], fov: 50 }, outside: true };
   }
+
+  // ---------------- product shots for the home screen ----------------
+  // A soft studio sweep (floor curving up into the back wall), one key light, and the objects on it.
+  function studio(b, bg) {
+    b.mat('bd', { color: bg, gloss: 0.04 });
+    const zc = -0.32, r = 0.3, W = 3;
+    b.quad('bd', [-W, 0, zc], [W, 0, zc], [W, 0, 2.5], [-W, 0, 2.5], [0, 1, 0]);
+    const N = 12;
+    for (let i = 0; i < N; i++) {
+      const a0 = i / N * Math.PI / 2, a1 = (i + 1) / N * Math.PI / 2;
+      const p = a => [zc - Math.sin(a) * r, r - Math.cos(a) * r];
+      const [z0, y0] = p(a0), [z1, y1] = p(a1), am = (a0 + a1) / 2;
+      b.quad('bd', [-W, y0, z0], [W, y0, z0], [W, y1, z1], [-W, y1, z1], norm([0, Math.cos(am), Math.sin(am)]));
+    }
+    b.quad('bd', [-W, r, zc - r], [W, r, zc - r], [W, 3, zc - r], [-W, 3, zc - r], [0, 0, 1]);
+  }
+  // a paint chip strip: a white card with three shades of one color on it
+  function chipStrip(b, name, hex, len) {
+    const L = C.hexToLinear(hex), shade = k => C.linearToHex(L.map(v => Math.min(1, Math.max(0, k > 1 ? v + (1 - v) * (k - 1) : v * k))));
+    b.mat(name + 'w', { color: 'F7F6F2', gloss: 0.15 });
+    b.rbox(name + 'w', -0.03, 0, -len, 0.03, 0.0035, 0.012, 0.004, 1);
+    [[1.35, 0.06], [1, 0.36], [0.62, 0.66]].forEach(([k, t], i) => { b.mat(name + i, { color: shade(k), gloss: 0.2 }); b.box(name + i, -0.026, 0.0036, -len * (t + 0.28), 0.026, 0.0042, -len * t); });
+  }
+  Object.assign(SCENES, {
+    'tile-paint'(b) {
+      studio(b, 'EAE4D9');
+      const hues = ['E8DFCF', 'C9B79C', 'A9B8A0', '6F8F85', '4F6B7D', '2F3B4C', 'C47F5E'];
+      hues.forEach((h, i) => { b.push().at(-0.1, i * 0.0046, 0.14, (i - 3) * 0.24 + 0.05); chipStrip(b, 'chip' + i, h, 0.28); b.pop(); });
+      b.cyl('brass', -0.1, 0, 0.14, 0.011, 0.038, 14);
+      b.shadow(-0.1, -0.02, 0.5, 0.32, 0.25);
+      // a roller with sage paint on it
+      b.mat('cover', { color: '6F8F85', pat: PAT.fabric, gloss: 0.25 });
+      b.rod('cover', 'x', 0.27, 0.038, 0.06, 0.038, 0.2, 24);
+      b.mat('wire', { color: 'B9BCBE', gloss: 0.8 });
+      b.rod('wire', 'x', 0.39, 0.038, 0.06, 0.005, 0.04, 8); b.rod('wire', 'z', 0.41, 0.038, 0.115, 0.005, 0.11, 8);
+      b.mat('grip', { color: 'B5362E', gloss: 0.45 }); b.rod('grip', 'z', 0.41, 0.038, 0.26, 0.016, 0.19, 14);
+      b.shadow(0.3, 0.12, 0.3, 0.38, 0.28);
+      return { cam: { eye: [0.07, 0.43, 0.66], target: [0.08, 0.0, 0.01], fov: 33 }, studio: true, shadowC: [0.08, 0, 0.05], shadowR: 0.55 };
+    },
+    'tile-stain'(b) {
+      studio(b, 'E8DFD3');
+      const boards = [['b1', null, -0.13, 0.06], ['b2', { hex: 'A3794A', type: 'semi' }, 0.02, -0.03], ['b3', { hex: '5A3E2B', type: 'semi' }, 0.17, 0.04]];
+      for (const [n, st, z, ry] of boards) { b.mat(n, { color: 'C9A77A', wood: { sp: 'red_oak', board: 32, cm: 0.12, stain: st, seed: n.length + z * 100 }, gloss: st ? 0.35 : 0.12 }); b.push().at(-0.06, 0, z, ry); b.rbox(n, -0.26, 0, -0.06, 0.26, 0.022, 0.06, 0.003, 1); b.pop(); }
+      b.shadow(-0.06, 0.02, 0.6, 0.48, 0.3);
+      // a can of stain with a dark label
+      b.mat('tin', { color: 'BFC2C4', gloss: 0.85 }); b.mat('label', { color: '3A2A20', gloss: 0.35 }); b.mat('labelB', { color: 'C9A15E', gloss: 0.35 });
+      b.cyl('tin', 0.33, 0, -0.02, 0.07, 0.115, 28); b.cyl('label', 0.33, 0.016, -0.02, 0.0708, 0.08, 28, 0.0708, ''); b.cyl('labelB', 0.33, 0.05, -0.02, 0.0712, 0.012, 28, 0.0712, '');
+      b.cyl('tin', 0.33, 0.115, -0.02, 0.068, 0.006, 28, 0.066);
+      b.shadow(0.33, -0.02, 0.2, 0.2, 0.35);
+      return { cam: { eye: [0.06, 0.42, 0.62], target: [0.07, 0.0, 0.0], fov: 34 }, studio: true, shadowC: [0.08, 0, 0.0], shadowR: 0.55 };
+    },
+    'tile-buy'(b) {
+      studio(b, 'DFE8E3');
+      // a gallon of paint
+      b.mat('tin', { color: 'C4C7C9', gloss: 0.85 }); b.mat('label', { color: '2F6B5E', gloss: 0.35 }); b.mat('labelW', { color: 'F4F2EC', gloss: 0.3 });
+      const cx = -0.12, cz = -0.02;
+      b.cyl('tin', cx, 0, cz, 0.085, 0.19, 32); b.cyl('label', cx, 0.03, cz, 0.0856, 0.12, 32, 0.0856, ''); b.cyl('labelW', cx, 0.085, cz, 0.0862, 0.018, 32, 0.0862, ''); b.cyl('labelW', cx, 0.115, cz, 0.0862, 0.008, 32, 0.0862, '');
+      b.lathe('tin', cx, 0.19, cz, [[0.086, 0], [0.088, 0.006], [0.08, 0.008], [0.077, 0.004], [0, 0.004]], 32);
+      b.shadow(cx, cz, 0.22, 0.22, 0.4);
+      // an angled brush
+      b.push().at(0.14, 0, 0.12, -0.55);
+      b.mat('handle', { color: 'B48A63', wood: { sp: 'birch', board: 30 }, gloss: 0.3 }); b.rbox('handle', -0.17, 0, -0.016, -0.02, 0.022, 0.016, 0.01);
+      b.mat('ferrule', { color: 'B9BCBE', gloss: 0.9 }); b.rbox('ferrule', -0.025, 0, -0.03, 0.03, 0.026, 0.03, 0.004);
+      b.mat('bristle', { color: '2F3B4C', pat: PAT.bead, gloss: 0.1 }); b.rbox('bristle', 0.03, 0.002, -0.028, 0.1, 0.02, 0.028, 0.006);
+      b.shadow(-0.03, 0, 0.3, 0.09, 0.3);
+      b.pop();
+      // a roller resting in a tray of paint
+      b.mat('tray', { color: '4A4D50', gloss: 0.4 }); b.mat('pool', { color: 'D9CDB8', gloss: 0.6 });
+      b.rbox('tray', 0.12, 0, -0.2, 0.42, 0.028, 0.02, 0.01); b.box('pool', 0.14, 0.028, -0.18, 0.4, 0.0285, -0.01);
+      b.mat('cover', { color: 'D9CDB8', pat: PAT.fabric }); b.rod('cover', 'x', 0.27, 0.06, -0.1, 0.03, 0.2, 24);
+      b.mat('wire', { color: 'B9BCBE', gloss: 0.8 }); b.rod('wire', 'x', 0.385, 0.06, -0.1, 0.004, 0.03, 8);
+      b.shadow(0.27, -0.09, 0.34, 0.26, 0.3);
+      return { cam: { eye: [0.09, 0.4, 0.74], target: [0.1, 0.075, -0.03], fov: 34 }, studio: true, shadowC: [0.1, 0, -0.02], shadowR: 0.55 };
+    },
+    'tile-lookup'(b) {
+      studio(b, 'E7E5EF');
+      const hues = ['D1CBC1', 'A7B3A0', '8C9FB3', 'C58F73', 'E3D5B8'];
+      hues.forEach((h, i) => {
+        b.mat('card' + i, { color: 'F8F7F4', gloss: 0.15 }); b.mat('cardc' + i, { color: h, gloss: 0.2 });
+        const x = -0.28 + i * 0.13, ry = (i - 2) * 0.05;
+        b.push().at(x, 0, 0.02 + Math.abs(i - 2) * 0.012, ry); b.rbox('card' + i, -0.05, 0, -0.08, 0.05, 0.003, 0.08, 0.004, 1); b.box('cardc' + i, -0.044, 0.003, -0.074, 0.044, 0.0036, 0.035); b.pop();
+      });
+      b.shadow(0, 0.03, 0.75, 0.24, 0.22);
+      // a magnifying glass over the middle chip: the glass shows that color, a little larger
+      const mx = 0.0, mz = -0.01, R = 0.075, t = 0.009;
+      b.mat('ring', { color: '2B2B2C', gloss: 0.6, twoSided: true });
+      const prof = []; for (let i = 0; i <= 20; i++) { const a = i / 20 * Math.PI * 2; prof.push([R + Math.cos(a) * t, 0.05 + Math.sin(a) * t]); }
+      b.lathe('ring', mx, 0, mz, prof, 36);
+      b.mat('lens', { color: '8C9FB3', gloss: 1, emit: 'none' }); b.cyl('lens', mx, 0.048, mz, R - 0.004, 0.004, 36);
+      b.push().at(mx, 0, mz, -0.6); b.rod('ring', 'x', R + 0.08, 0.05, 0, 0.012, 0.15, 14); b.pop();
+      b.shadow(mx + 0.06, mz + 0.03, 0.32, 0.2, 0.28);
+      return { cam: { eye: [0.0, 0.42, 0.6], target: [0.0, 0.0, 0.0], fov: 34 }, studio: true, shadowC: [0, 0, 0], shadowR: 0.55 };
+    },
+  });
   // where a stain goes, by the stain job
   const STAIN_PARTS = { floors: ['floor'], stairs: ['floor'], cabinets: ['cab'], builtins: ['cab'], furniture: ['furn'], tabletop: ['furn'], trim: ['trim', 'door'], doors: ['door'], paneling: ['wain'], deck: ['deck'], dock: ['deck'], outdoor: ['deck'], pergola: ['deck'], playset: ['deck'], fence: ['fence'], siding: ['body'], shed: ['body'], log: ['body'], front_door: ['xdoor'], garage_door: ['gdoor'], shutters: ['shut'] };
 
@@ -1614,7 +1755,7 @@
         if (d.emit) { m.emit = emitFor(d.emit, L, !info.outside); if (d.emit === 'win' || d.emit === 'fire' || d.emit === 'screen') m.lin = [0, 0, 0]; }
         const stained = look.tex && ctx.parts.includes(d.part);
         if (stained) { m.tex = woodTexture({ sp: look.tex.sp, stain: look.tex.stain, board: (d.wood && d.wood.board) || 12, vertical: d.wood && d.wood.vertical, cm: (d.wood && d.wood.cm) || 0.3, seed: 3 }, gain); m.gloss = Math.max(m.gloss, 0.3); if (d.pat === PAT.lap || d.pat === PAT.batten || d.pat === PAT.shake) m.pat = d.pat; else m.pat = 0; m.lin = [1, 1, 1]; }
-        else if (d.wood) { m.tex = woodTexture({ sp: d.wood.sp, tint: d.role ? hex : null, board: d.wood.board, vertical: d.wood.vertical, cm: d.wood.cm || 0.3, seed: 2 }, gain); m.pat = d.pat === PAT.lap || d.pat === PAT.batten ? d.pat : 0; }
+        else if (d.wood) { m.tex = woodTexture({ sp: d.wood.sp, stain: d.wood.stain || null, tint: d.role && !d.wood.stain ? hex : null, board: d.wood.board, vertical: d.wood.vertical, cm: d.wood.cm || 0.3, seed: d.wood.seed || 2 }, gain); m.pat = d.pat === PAT.lap || d.pat === PAT.batten ? d.pat : 0; }
         else if (d.stone) { m.tex = stoneTexture(hex); }
         const prev = mats[name];
         if (anim && prev && anim.names.includes(name)) { m.prev = anim.prev[name]; m.wipe = 0; }
@@ -1640,7 +1781,7 @@
     function eye() { const cp = Math.cos(orbit.pitch); return add(orbit.target, [Math.sin(orbit.yaw) * cp * orbit.dist, Math.sin(orbit.pitch) * orbit.dist, Math.cos(orbit.yaw) * cp * orbit.dist]); }
     function size() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = Math.max(2, Math.round((container.clientWidth || 600) * dpr)), h = Math.max(2, Math.round((container.clientHeight || 360) * dpr));
+      const w = Math.max(2, Math.round((o.width || container.clientWidth || 600) * dpr)), h = Math.max(2, Math.round((o.height || container.clientHeight || 360) * dpr));
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
     }
     function draw(now) {
@@ -1655,7 +1796,10 @@
       let sunOn = false, sunDir = [0, 1, 0], sunCol = [0, 0, 0];
       const lamps = [];
       let amb = L.amb;
-      if (info.outside) {
+      if (info.studio) {
+        // a product shot: one soft key light from the upper left, an even fill, nothing else
+        sunDir = norm([-0.5, 0.95, 0.42]); sunCol = [0.95, 0.93, 0.9]; sunOn = true; amb = 0.78;
+      } else if (info.outside) {
         if (L.sun > 0) { const az = lightId === 'golden' ? -1.15 : -0.7; sunDir = norm([Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)]); sunCol = scl(L.sunTint || [1, 1, 1], L.sun * 1.05); sunOn = true; }
         if (L.night) for (const l of b.lamps.filter(l => l.kind === 'porch').slice(0, 6)) lamps.push({ p: l.p, c: scl(L.lampTint || [1, 0.9, 0.8], 2.2), r: 3.5 });
       } else {
@@ -1676,8 +1820,8 @@
       let lvp = new Float32Array(16);
       if (sunOn) {
         const lo = b.lo, hi = b.hi;
-        const c = info.outside ? [orbit.target[0], 0, orbit.target[2]] : [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
-        const R = info.outside ? 22 : Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2 + 0.5;
+        const c = info.shadowC || (info.outside ? [orbit.target[0], 0, orbit.target[2]] : [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2]);
+        const R = info.shadowR || (info.outside ? 22 : Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2 + 0.5);
         const lv = lookAt(add(c, scl(sunDir, R * 2)), c, Math.abs(sunDir[1]) > 0.95 ? [0, 0, 1] : [0, 1, 0]);
         lvp = mmul(ortho(-R, R, -R, R, 0.1, R * 4), lv);
       }
@@ -1741,5 +1885,16 @@
     };
   }
   root.CG = root.CG || {};
-  root.CG.room3d = { supported, has: id => !!SCENES[id], mount, scenes: () => Object.keys(SCENES) };
+  // a scene drawn once to a picture (the home screen's product shots): no live 3D left running
+  function snapshot(scene, w, h) {
+    if (!supported()) return '';
+    const host = document.createElement('div');
+    const v = mount(host, { scene, width: w, height: h, light: 'daylight', interactive: false, reduced: true });
+    if (!v) return '';
+    let url = '';
+    try { url = host.querySelector('canvas').toDataURL('image/jpeg', 0.9); } catch (e) { url = ''; }
+    v.destroy();
+    return url;
+  }
+  root.CG.room3d = { supported, has: id => !!SCENES[id], mount, snapshot, scenes: () => Object.keys(SCENES).filter(k => !k.startsWith('tile-')) };
 })(window);

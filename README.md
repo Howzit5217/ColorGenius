@@ -8,11 +8,11 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 
 ## Easy to use
 
-- **Four big choices on the home screen:** Paint Colors, Stain Colors, Which Paint to Buy, and Look Up a Color. Each has a picture and one line saying what it does.
-- **One question per screen**, each choice with a picture. Tap your answer, then press the big **Next** button to go on. Nothing moves on by itself, and Next gives a small nudge once an answer is picked so it's clear what to press. Questions you can leave alone start with a sensible answer picked ("Any Style", "Not Sure"), so there is no Skip button to puzzle over.
+- **Four big choices on the home screen:** Paint Colors, Stain Colors, Which Paint to Buy, and Look Up a Color. Each has a 3D product picture (a fanned paint deck and roller, stained oak boards, a paint can with brush and tray, chips under a magnifier) and one line saying what it does.
+- **One question per screen**, each choice with a picture. Tap your answer, then press the big **Next** button to go on (or press **Enter** on a computer; a small Enter key shows above Next). Nothing moves on by itself, and Next gives a small nudge once an answer is picked so it's clear what to press. Questions you can leave alone start with a sensible answer picked ("Any Style", "Not Sure"), so there is no Skip button to puzzle over.
 - **A Back button on every screen**, and the phone's own back button and the browser's back arrow work too. Every screen has its own address.
 - **Large text and buttons** in an easy-to-read typeface (Atkinson Hyperlegible, made for people with low vision). Settings → Easy to See → **Bigger text** makes everything larger still.
-- **The top bar has only three things:** the logo (home), **My List** with a count, and **Settings**.
+- **The top bar has only two things:** the logo (home) and **Settings** (on a kiosk, a **Staff** lock button instead).
 - Light and dark screens, and **Less motion** for anyone who prefers no sliding.
 
 ## Paint Colors
@@ -76,16 +76,19 @@ Every paint color's page has the same "What You'll Need" summary, with a button 
 
 Type a color name, a code from a chip (`SW 7029`, `OC-17`, `behr swiss coffee`), a hex value (`#D1CBC1`, `D1CBC1`, `#DCB`) or an RGB value (`209 203 193`, `rgb(209, 203, 193)`), or pick a color to match. You get its exact hex, RGB and LRV (tap to copy), then the closest color in every brand, with brands that are turned off folded away underneath.
 
-## My List
+## Projects
 
-Saved colors and customer sessions are now one thing: **My List**.
+A project keeps everything for one job in one place (one customer, one room, one deck), so it can be printed or emailed all at once.
 
-- Tap **Add to My List** on any paint, stain, exact color or shopping list (tap again to take it back off). The top bar shows the count.
-- Give the list a name ("Who is it for?") and notes for the printout, and type where each item goes.
-- **Print My List** shows the page at real letter size first, then prints it: black and white, text only, one line per item, with area, brand, color, code, hex, finish, product, primer, amount, roller and brush, and where to find the chip. Columns nothing fills in are left out, and a wide list prints sideways. **Copy as Text** puts the same list on the clipboard.
-- **More Things to Do:** show the colors full screen, compare them side by side, or copy the list.
-- **Start a New List** keeps the current one under **Earlier Lists** (the last 10 on this device). Earlier lists can be opened, printed or deleted.
-- Colors saved in the older Saved Colors list are kept as an earlier list called "Saved Colors".
+- **On the home screen:** the open project (with an **Open Project** button), a big **Start a Project** button, and the last three earlier projects to tap back into.
+- **Start a Project** asks what it's for ("Smith kitchen", "Mom's porch"); press Enter or **Start Project**. The project that was open is kept under **Earlier Projects**.
+- Tap **Add to Project** on any paint, stain, exact color or shopping list (tap again to take it back off).
+- On the project page, rename it, add notes for the printout, and type where each item goes.
+- **Print** shows the page at real letter size first, then prints it: black and white, text only, one line per item, with area, brand, color, code, hex, finish, product, primer, amount, roller and brush, and where to find the chip. Columns nothing fills in are left out, and a wide list prints sideways.
+- **Email It** opens the device's email app with the whole project written in, one line per item. Type their address in the box (or in the email), check it, and press Send. On phones, **Share…** can send it by text or another app instead. A very long project is also copied, in case the email app cuts it short.
+- **More Things to Do:** show the colors full screen, compare them side by side, copy the project as text, or start a new project.
+- **Earlier Projects** (the last 10 on this device) can be opened, printed or deleted. Kiosks don't keep earlier projects.
+- Colors saved in the older Saved Colors list are kept as an earlier project called "Saved Colors".
 
 ## Setup, kiosks and settings
 
@@ -104,7 +107,8 @@ Saved colors and customer sessions are now one thing: **My List**.
   | Dunn-Edwards / Diamond Vogel | Their own brand | — |
 
   "Another store" lets you pick the brands yourself. Paint or stain can be switched off if the store only does one.
-- **Kiosk mode:** bigger text and buttons, no settings button (hold the logo for 3 seconds), and after 2 minutes with nobody using it, it asks "Still there?" and starts over with an empty list.
+- **Kiosk mode:** bigger text and buttons, no Settings button, and after 2 minutes with nobody using it, it asks "Still there?" and starts over with an empty project.
+- **Kiosk PIN:** kiosk mode can't be turned on until a PIN of 4 to 8 numbers is made (and typed twice to make sure). On the kiosk, the **Staff** lock button at the top asks for it, then offers **Leave Kiosk Mode** or **Open Settings** (settings lock again as soon as you leave them). Five wrong tries locks the keypad for 30 seconds. In normal store mode, Settings → Who Uses This → **Change PIN** makes a new one. The PIN is stored on the device only as a salted hash.
 - **Settings:** who uses it; store, store brand and "only suggest the store brand"; paint and stain on or off; quick or detailed questions and how many colors to show; bigger text, 3D rooms, light or dark, the light picker, less motion; LRV, warnings, matches, chip locations and discontinued colors; screen tuning; paint and stain brands, color collections and paint lines; importing colors from a CSV file; getting the app, running setup again and resetting everything.
 - **Color collections:** brands that split their colors into collections can have each switched off (Benjamin Moore's Classic, Color Preview, Historical, Off-White, Affinity, Color Stories, Designer Classics, Williamsburg and stain colors; Magnolia Home's collections; Clark+Kensington's cards; PPG and Glidden code sets; Diamond Vogel's collections). Picks, matches and pairings skip collections that are off.
 - **Screen tuning:** a one-minute calibration matches the screen to white paper and a real chip, then adjusts every swatch and the 3D rooms. Browsers can't read a monitor's brightness, color profile or night-light setting, which is why this exists.
