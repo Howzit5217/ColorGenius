@@ -1297,8 +1297,8 @@
     diningset(b, ctx) {
       const wins = winsFor(ctx, SPOT, ['left', 'back']);
       const r = interior(b, ctx, { windows: wins });
-      const mat = ctx.part === 'furn' || ctx.paintFurn ? 'piece' : 'wood';
-      b.mat('piece', { role: 'cab', color: 'F2F1EC', gloss: 0.35, part: 'furn', wood: ctx.part === 'furn' ? { sp: 'pine', board: 14 } : null });
+      const mat = ctx.has('furn') || ctx.paintFurn ? 'piece' : 'wood';
+      b.mat('piece', { role: 'cab', color: 'F2F1EC', gloss: 0.35, part: 'furn', wood: ctx.has('furn') ? { sp: 'pine', board: 14 } : null });
       rug(b, 0.1, -0.9, 3.0, 2.4);
       diningTable(b, 0.1, -0.9, mat, mat);
       pendant(b, r.H, 0.1, -0.9, 0.7, 0.3);
@@ -1307,7 +1307,7 @@
     dresser(b, ctx) {
       const wins = winsFor(ctx, SPOT, ['left']);
       const r = interior(b, ctx, { windows: wins, w: 4.6, d: 4.2 });
-      b.mat('piece', { role: 'cab', color: 'F2F1EC', gloss: 0.35, part: 'furn', wood: ctx.part === 'furn' ? { sp: 'pine', board: 14 } : null });
+      b.mat('piece', { role: 'cab', color: 'F2F1EC', gloss: 0.35, part: 'furn', wood: ctx.has('furn') ? { sp: 'pine', board: 14 } : null });
       dresser(b, 0.2, r.z0 + 0.26, 0, 'piece', 1.4);
       tableLamp(b, -0.25, 0.95, r.z0 + 0.2);
       plant(b, 0.6, r.z0 + 0.22, 0.45, 0.95);
@@ -1320,7 +1320,7 @@
       const wins = winsFor(ctx, SPOT, ['left', 'right']);
       const r = interior(b, ctx, { windows: wins });
       desk(b, 0.3, r.z0 + 0.4, 0);
-      shelves(b, -1.5, r.z0 + 0.18, 0, 1.4, 2.1, ctx.part === 'cab' || ctx.paintCab ? 'cab' : 'wood', 5);
+      shelves(b, -1.5, r.z0 + 0.18, 0, 1.4, 2.1, ctx.has('cab') || ctx.paintCab ? 'cab' : 'wood', 5);
       rug(b, 0.3, -1.0, 2.4, 1.8);
       armchair(b, 1.8, -0.4, -Math.PI / 2 + 0.4);
       art(b, [0.3, 1.72, r.z0], [1, 0, 0], [0, 0, 1], 1.0, 0.6);
@@ -1348,7 +1348,7 @@
     stairway(b, ctx) {
       const wins = winsFor(ctx, { right: { at: 1.6, w: 1.0, y0: 1.2, y1: 2.3 }, back: { at: 3.4, w: 1.0, y0: 1.3, y1: 2.4 } }, ['right', 'back']);
       const r = interior(b, ctx, { windows: wins, h: 3.4, w: 4.8, d: 5.2, wainscot: ctx.wainscot });
-      stairs(b, r.x0 + 0.02, r.x0 + 1.05, 0.9, 0.26, 0.19, 12, ctx.part === 'floor' ? 'tread' : null);
+      stairs(b, r.x0 + 0.02, r.x0 + 1.05, 0.9, 0.26, 0.19, 12, ctx.has('floor') ? 'tread' : null);
       art(b, [r.x1, 1.6, -0.5], [0, 0, 1], [-1, 0, 0], 0.8, 1.0);
       b.mat('runner', { role: 'rug', color: 'B8AD9C', pat: PAT.carpet }); b.box('runner', 0.2, 0.002, -1.5, 1.6, 0.012, 1.4);
       plant(b, 1.7, -2.2, 1.0);
@@ -1442,7 +1442,7 @@
     bookcase(b, ctx) {
       const wins = winsFor(ctx, SPOT, ['left']);
       const r = interior(b, ctx, { windows: wins });
-      const mat = ctx.part === 'cab' ? 'builtin' : 'cab';
+      const mat = ctx.has('cab') ? 'builtin' : 'cab';
       b.mat('builtin', { role: 'cab', color: 'F2F1EC', gloss: 0.3, part: 'cab', wood: { sp: 'birch', board: 14 } });
       shelves(b, -1.35, r.z0 + 0.18, 0, 1.3, 2.4, mat, 6); shelves(b, 1.35, r.z0 + 0.18, 0, 1.3, 2.4, mat, 6);
       // a window seat between them
@@ -1481,7 +1481,7 @@
       : { wall: w.wall, at: 2.4, w: 1.1, y0: 1.1, y1: 2.15, dir: w.dir });
     const r = room(b, { windows: wins, floor: ctx.floor || 'wood', w: W, d: 5.0, crown: ctx.a && ctx.a.crown });
     const z = r.z0;
-    b.mat('cab', { role: 'cab', color: 'F2F1EC', gloss: 0.3, part: 'cab', wood: ctx.part === 'cab' ? { sp: 'maple', board: 16 } : null });
+    b.mat('cab', { role: 'cab', color: 'F2F1EC', gloss: 0.3, part: 'cab', wood: ctx.has('cab') ? { sp: 'maple', board: 16 } : null });
     b.mat('hood', { role: 'hood', color: 'B9BDBF', gloss: 0.7 });
     // the fridge, with a cabinet over it
     const [f0, f1] = span(x0 + 0.02, x0 + 0.92);
@@ -1549,7 +1549,7 @@
   }
   function bodyMat(b, siding, ctx) {
     const pat = { brick: PAT.brick, stucco: PAT.stucco, shake: PAT.shake, board: PAT.batten, vinyl: PAT.lap, fiber: PAT.lap, wood: PAT.lap }[siding] || PAT.lap;
-    const stained = ctx.part === 'body';
+    const stained = ctx.has ? ctx.has('body') : ctx.part === 'body';
     return b.mat('body', { role: 'body', color: 'CFC8BC', pat: stained ? (siding === 'board' ? PAT.batten : siding === 'shake' ? PAT.shake : PAT.lap) : pat, gloss: siding === 'vinyl' ? 0.25 : 0.08, part: 'body', wood: stained ? { sp: 'cedar', board: 14, vertical: siding === 'board' } : null, swap: siding === 'board' });
   }
   function ground(b, size) {
@@ -1614,8 +1614,8 @@
     let siding = ctx.siding || a.siding || (style === 'farmhouse' ? 'board' : style === 'modern' ? 'fiber' : 'wood');
     bodyMat(b, siding, ctx);
     ground(b, 60);
-    const shutters = style === 'colonial' || sp === 'shutters' || ctx.part === 'shut';
-    const wantGarage = sp === 'garage_door' || ctx.part === 'gdoor';
+    const shutters = style === 'colonial' || sp === 'shutters' || ctx.has('shut');
+    const wantGarage = sp === 'garage_door' || ctx.has('gdoor');
     let cam;
     if (style === 'colonial') {
       const W = 10, D = 7.5, H = 5.8, x0 = -W / 2, x1 = W / 2, z0 = -D / 2, z1 = D / 2;
@@ -1648,7 +1648,7 @@
       porch3(b, x0 + 0.2, x1 - 0.2, z1, 2.6, 0.5, ctx);
       for (const x of [-4.2, 4.2]) shrub(b, x, z1 + 3.0, 1.1);
       b.box('walk', -0.8, 0.003, z1 + 2.8, 0.8, 0.012, z1 + 12);
-      cam = sp === 'porch_floor' || ctx.part === 'step' ? { eye: [3.2, 1.8, 11], target: [0, 1.0, z1 + 1.2], fov: 46 } : { eye: [3.6, 1.9, 20], target: [0, 3.1, 0], fov: 46 };
+      cam = sp === 'porch_floor' || ctx.has('step') ? { eye: [3.2, 1.8, 11], target: [0, 1.0, z1 + 1.2], fov: 46 } : { eye: [3.6, 1.9, 20], target: [0, 3.1, 0], fov: 46 };
     } else if (style === 'cottage') {
       const W = 7.4, D = 9, H = 3.1, x0 = -W / 2, x1 = W / 2, z0 = -D / 2, z1 = D / 2;
       b.box('body', x0, 0.4, z0, x1, H, z1, 'b'); b.box('found', x0, 0, z0, x1, 0.4, z1);
@@ -1681,7 +1681,7 @@
       for (const sx of [x0, x1]) b.box('xtrim', sx - 0.07, 0.3, z1 - 0.07, sx + 0.07, H, z1 + 0.07);
       xWindow(b, -4.0, 1.0, z1, 1.3, 1.3, { shutters }); xWindow(b, -1.9, 1.0, z1, 1.3, 1.3, { shutters });
       frontDoor(b, 0.4, z1, {});
-      const garage = sp === 'garage_door' || ctx.part === 'gdoor' || !shutters;
+      const garage = sp === 'garage_door' || ctx.has('gdoor') || !shutters;
       if (garage) garageDoor3(b, 3.6, z1, 3.6, 2.2); else xWindow(b, 3.4, 1.0, z1, 1.3, 1.3, { shutters });
       b.box('walk', -0.25, 0.003, z1 + 1.1, 1.05, 0.012, z1 + 11);
       for (const x of [-4.9, -3.0, -1.1]) shrub(b, x, z1 + 0.75, 1.0);
@@ -1693,7 +1693,7 @@
     return { cam, outside: true };
   }
   function porch3(b, x0, x1, z1, depth, y, ctx, small) {
-    b.mat('porchfloor', { role: 'step', color: 'A8A39A', wood: ctx.part === 'step' ? null : null, pat: PAT.lap, gloss: 0.3, part: 'step' });
+    b.mat('porchfloor', { role: 'step', color: 'A8A39A', wood: ctx.has('step') ? null : null, pat: PAT.lap, gloss: 0.3, part: 'step' });
     b.box('porchfloor', x0, y - 0.15, z1, x1, y, z1 + depth);
     b.box('xtrim', x0, 0, z1 + depth - 0.05, x1, y - 0.15, z1 + depth);
     for (let i = 0; i < 3; i++) b.box('porchfloor', -0.9 + i * 0.0, y - 0.15 - i * 0.17 - 0.0, z1 + depth + i * 0.3, 0.9, y - i * 0.17, z1 + depth + (i + 1) * 0.3);
@@ -1754,7 +1754,7 @@
   });
   // the stained wood on a deck, fence or outdoor furniture
   function deckWood(b, ctx, name, o) {
-    return b.mat(name, Object.assign({ color: 'B58A5C', wood: { sp: ctx.tex ? ctx.tex.sp : 'cedar', board: 14 }, gloss: 0.15, part: 'deck' }, o || {}));
+    return b.mat(name, Object.assign({ color: 'B58A5C', wood: { sp: (ctx.texFor('deck') || {}).sp || 'cedar', board: 14 }, gloss: 0.15, part: 'deck' }, o || {}));
   }
   function adirondack(b, x, z, ry, mat) {
     b.push().at(x, 0, z, ry);
@@ -1833,8 +1833,8 @@
   }
   function fenceScene(b, ctx, picket) {
     yardMats(b); ground(b, 70);
-    const fw = deckWood(b, ctx, 'fenceb', { part: 'fence', wood: { sp: ctx.tex ? ctx.tex.sp : 'cedar', board: 14, vertical: true }, swap: true, color: picket ? 'F2F1EC' : 'B58A5C' });
-    if (!ctx.tex && picket) b.mats.fenceb.wood = null;
+    const fw = deckWood(b, ctx, 'fenceb', { part: 'fence', wood: { sp: (ctx.texFor('fence') || {}).sp || 'cedar', board: 14, vertical: true }, swap: true, color: picket ? 'F2F1EC' : 'B58A5C' });
+    if (!ctx.texFor('fence') && picket) b.mats.fenceb.wood = null;
     if (picket) {
       bodyMat(b, 'wood', { part: '' });
       b.box('body', -5, 0.3, -10, 5, 3.0, -4, 'b'); b.box('found', -5, 0, -10, 5, 0.3, -4); gableRoof(b, -5, 5, -10, -4, 3.0, 1.6, 0.45, false);
@@ -2025,8 +2025,13 @@
     if (!r.gl) { canvas.remove(); return null; }
     const a = o.answers || {};
     const target = o.stain ? a.target : '';
-    const ctx = { a, useAnswers: !o.stain && !!a.space, stain: !!o.stain, tex: o.tex || null, parts: o.stain ? (STAIN_PARTS[target] || ['floor']) : [], wainscot: a.space === 'wainscot' || target === 'paneling', siding: a.space === 'shed' ? 'board' : '', paintFurn: a.space === 'furniture', paintCab: a.space === 'builtins' };
+    // texParts: a stain for each of several parts at once ({ deck: tex, fence: tex }), as a project shows them all
+    // together. show: extra parts to build (shutters, a garage door) because something's picked for them.
+    const texParts = o.texParts || {};
+    const ctx = { a, useAnswers: !o.stain && !!a.space, stain: !!o.stain || Object.keys(texParts).length > 0, tex: o.tex || null, parts: (o.stain ? (STAIN_PARTS[target] || ['floor']) : []).concat(Object.keys(texParts)), wainscot: a.space === 'wainscot' || target === 'paneling' || !!texParts.wain || (o.show || []).includes('wain'), siding: a.space === 'shed' ? 'board' : '', paintFurn: a.space === 'furniture', paintCab: a.space === 'builtins' };
     ctx.part = ctx.parts[0] || '';
+    ctx.has = p => ctx.parts.includes(p) || (o.show || []).includes(p);
+    ctx.texFor = p => texParts[p] || (o.tex && ctx.parts.includes(p) ? o.tex : null);
     ctx.layout = o.layout || null;
     if (o.floor) ctx.floor = o.floor;
     if (a.space === 'floor_paint') ctx.floor = 'concrete';
@@ -2034,7 +2039,9 @@
     const b = new Builder();
     let info;
     try { info = (SCENES[o.scene] || SCENES.living)(b, ctx) || {}; r.upload(b); } catch (e) { r.dispose(); canvas.remove(); if (window.console) console.warn('3D scene failed:', e && e.message); return null; }
-    let look = { roles: Object.assign({}, o.roles || {}), tex: o.tex || null, furn: Object.assign({}, o.furniture || {}) };
+    let look = { roles: Object.assign({}, o.roles || {}), tex: o.tex || null, texParts: Object.assign({}, texParts), furn: Object.assign({}, o.furniture || {}) };
+    // the stain on a part, if it has one: its own from texParts, or the one being looked at
+    const texOf = d => (look.texParts && look.texParts[d.part]) || (look.tex && ctx.parts.includes(d.part) ? look.tex : null);
     let lightId = o.light || 'daylight';
     const cal = o.cal || null;
     let mats = {};
@@ -2049,12 +2056,13 @@
       for (const [name, d] of Object.entries(b.mats)) {
         const base = d.base || name, part = PART_OF[base];
         const ov = part && look.furn ? look.furn[(d.piece || '') + '|' + part] : null;
-        const useOv = ov && /^[0-9A-F]{6}$/i.test(ov.hex || '') && !(look.tex && ctx.parts.includes(d.part));
+        const ptex = d.part ? texOf(d) : null;
+        const useOv = ov && /^[0-9A-F]{6}$/i.test(ov.hex || '') && !ptex;
         const hex = useOv ? toneHex(base, ov.hex.toUpperCase()) : d.role && look.roles[d.role] && /^[0-9A-F]{6}$/i.test(look.roles[d.role]) ? look.roles[d.role] : d.color;
         const m = { lin: linOf(hex, lightObj, cal), gloss: d.gloss || 0, pat: d.pat || 0, scale: d.scale || 1, twoSided: !!d.twoSided, noShadow: !!d.noShadow, swap: !!d.swap, flatN: !!d.flatN, hex };
         if (d.emit) { m.emit = emitFor(d.emit, L, !info.outside); if (d.emit === 'win' || d.emit === 'fire' || d.emit === 'screen') m.lin = [0, 0, 0]; }
-        const stained = look.tex && ctx.parts.includes(d.part);
-        if (stained) { m.tex = woodTexture({ sp: look.tex.sp, stain: look.tex.stain, board: (d.wood && d.wood.board) || 12, vertical: d.wood && d.wood.vertical, cm: (d.wood && d.wood.cm) || 0.3, seed: 3 }, gain); m.gloss = Math.max(m.gloss, 0.3); if (d.pat === PAT.lap || d.pat === PAT.batten || d.pat === PAT.shake) m.pat = d.pat; else m.pat = 0; m.lin = [1, 1, 1]; }
+        const stained = !!ptex;
+        if (stained) { m.tex = woodTexture({ sp: ptex.sp, stain: ptex.stain, board: (d.wood && d.wood.board) || 12, vertical: d.wood && d.wood.vertical, cm: (d.wood && d.wood.cm) || 0.3, seed: 3 }, gain); m.gloss = Math.max(m.gloss, 0.3); if (d.pat === PAT.lap || d.pat === PAT.batten || d.pat === PAT.shake) m.pat = d.pat; else m.pat = 0; m.lin = [1, 1, 1]; }
         else if (d.wood) { m.tex = woodTexture({ sp: d.wood.sp, stain: d.wood.stain || null, tint: d.role && !d.wood.stain ? hex : null, board: d.wood.board, vertical: d.wood.vertical, cm: d.wood.cm || 0.3, seed: d.wood.seed || 2 }, gain); m.pat = d.pat === PAT.lap || d.pat === PAT.batten ? d.pat : 0; }
         else if (d.stone) { m.tex = stoneTexture(hex); }
         if (useOv) {
@@ -2211,7 +2219,7 @@
       const key = (d.piece || '') + '|' + part;
       // role: which painted part it is (walls, trim, siding...); stained: it's showing the stain being looked at
       return { name: hit, base, part, piece: d.piece || '', key, hex: (mats[hit] || {}).hex || d.color, finish: (look.furn[key] || {}).finish || '',
-        role: d.role || '', stained: !!(look.tex && ctx.parts.includes(d.part)) };
+        role: d.role || '', stained: !!(d.part && texOf(d)) };
     }
     // turning it: drag to orbit, pinch or scroll to zoom, double-tap to reset, arrow keys too
     let hint = null;
@@ -2257,8 +2265,8 @@
       setLook(next) {
         const old = {}; for (const [n, m] of Object.entries(mats)) old[n] = m.lin;
         const oldHex = {}; for (const [n, m] of Object.entries(mats)) oldHex[n] = m.hex;
-        const texChanged = JSON.stringify(next.tex || null) !== JSON.stringify(look.tex || null);
-        look = { roles: Object.assign({}, next.roles || {}), tex: next.tex || null, furn: look.furn };
+        const texChanged = JSON.stringify([next.tex || null, next.texParts || look.texParts || {}]) !== JSON.stringify([look.tex || null, look.texParts || {}]);
+        look = { roles: Object.assign({}, next.roles || {}), tex: next.tex || null, texParts: Object.assign({}, next.texParts || look.texParts || {}), furn: look.furn };
         // the parts whose color changed roll on with the paint roller
         const names = Object.keys(b.mats).filter(n => { const d = b.mats[n]; const hex = d.role && look.roles[d.role] ? look.roles[d.role] : d.color; return d.role && oldHex[n] && hex !== oldHex[n] && !d.emit; });
         if (names.length && !o.reduced && !texChanged) {

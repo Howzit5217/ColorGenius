@@ -351,7 +351,7 @@
     if (a === 'color' && b) return { view: 'color', id: b };
     if (a === 'p' && b) return { view: 'shared', data: b };
     if (a === 'kiosk' && b) return { view: 'kiosk', data: b };
-    if (['lookup', 'list', 'settings'].includes(a)) return { view: a };
+    if (['lookup', 'list', 'settings', 'together'].includes(a)) return { view: a };
     return { view: 'home' };
   }
   const pathOf = r => r.view === 'home' ? '' : r.view === 'flow' ? `${r.kind}/${r.step}` : r.view === 'results' ? `${r.kind}/results` : r.view === 'color' ? `color/${r.id}` : r.view === 'shared' ? `p/${r.data}` : r.view;
@@ -403,6 +403,7 @@
     else if (r.view === 'color') renderColor(r.id);
     else if (r.view === 'lookup') renderLookup();
     else if (r.view === 'list') renderList();
+    else if (r.view === 'together') renderTogether();
     else if (r.view === 'shared') renderShared(r.data);
     else if (r.view === 'settings') {
       // a locked kiosk keeps Settings behind the PIN
@@ -1324,7 +1325,7 @@
     if (r3.supported() && r3.has && r3.has(sceneId)) {
       pic.innerHTML = '';
       const floor = (SCN[sceneId] || {}).floor || (spec.answers && !spec.stain ? SC.floorTypeOf(Object.assign({}, E.DEFAULT_ANSWERS, spec.answers)) : null);
-      L.viewer = r3.mount(pic, { scene: sceneId, roles, tex: spec.tex || null, stain: !!spec.stain, answers: spec.answers || {}, layout: state.layout, furniture: state.furniture, onPick: what => onScenePick(id, what), light: state.light, interactive: !!settings.view3d, reduced: reduced(), cal: settings.cal, floor, onLost: () => { if (live[id] && live[id].viewer) { live[id].viewer = null; pic.innerHTML = svgScene(spec, sceneId, roles); pic.dataset.roles = JSON.stringify(roles); pic.dataset.scene = (SCN[sceneId] || {}).kind === 'house' ? 'house' : 'room'; SC.paintScene(pic, state.light); } } });
+      L.viewer = r3.mount(pic, { scene: sceneId, roles, tex: spec.tex || null, texParts: spec.texParts || null, show: spec.show || null, stain: !!spec.stain, answers: spec.answers || {}, layout: state.layout, furniture: state.furniture, onPick: what => onScenePick(id, what), light: state.light, interactive: !!settings.view3d, reduced: reduced(), cal: settings.cal, floor, onLost: () => { if (live[id] && live[id].viewer) { live[id].viewer = null; pic.innerHTML = svgScene(spec, sceneId, roles); pic.dataset.roles = JSON.stringify(roles); pic.dataset.scene = (SCN[sceneId] || {}).kind === 'house' ? 'house' : 'room'; SC.paintScene(pic, state.light); } } });
       if (L.viewer) { setTag(id); showTapCoach(box); return; }
     }
     pic.innerHTML = svgScene(spec, sceneId, roles);
@@ -1375,7 +1376,7 @@
   const ROOF_COLORS = [['3F4246', 'Charcoal Shingles'], ['2B2C2E', 'Black Shingles'], ['7B6F63', 'Weathered Wood'], ['594536', 'Brown Shingles'], ['6D7378', 'Slate Gray'], ['A65B3B', 'Clay Tile'], ['3F5A47', 'Green Metal'], ['8E9497', 'Silver Metal']];
   const FLOOR_COLORS = [['C9A77A', 'Light Oak'], ['A9784B', 'Medium Oak'], ['6B4A32', 'Walnut'], ['3B2A20', 'Espresso'], ['9A958E', 'Gray Wood'], ['E8E6E1', 'White Tile'], ['9E9B96', 'Gray Tile'], ['BDB3A5', 'Beige Carpet']];
   const PLAIN_COLORS = [['F2F1EC', 'White'], ['ECE6DA', 'Cream'], ['D9D3C8', 'Greige'], ['B9B5AE', 'Light Gray'], ['6B7378', 'Slate'], ['2F3B4C', 'Navy'], ['4E5B47', 'Green'], ['2A2A2B', 'Black']];
-  const partKey = spec => spec.color ? spec.color.id : spec.key;
+  const partKey = spec => spec.partKey || (spec.color ? spec.color.id : spec.key);
   // a scene's colors with the parts that were changed by tapping
   function rolesFor(spec, sceneId) {
     const roles = Object.assign({}, spec.roles(sceneId));
@@ -1485,7 +1486,7 @@
     for (const k of Object.keys(live)) {
       const L = live[k]; if (partKey(L.spec) !== key) continue;
       const sceneId = state.sceneFor[L.spec.key];
-      if (L.viewer && L.viewer.setLook) L.viewer.setLook({ roles: rolesFor(L.spec, sceneId), tex: L.spec.tex || null }); else drawScene(k);
+      if (L.viewer && L.viewer.setLook) L.viewer.setLook({ roles: rolesFor(L.spec, sceneId), tex: L.spec.tex || null, texParts: L.spec.texParts || null }); else drawScene(k);
     }
   }
   function partSet(choice) {
@@ -1501,7 +1502,7 @@
     if (t.dataset.partI != null) { const x = partPick.choices[+t.dataset.partI]; if (x) partSet({ hex: x.hex.toUpperCase(), name: x.name, id: x.id }); }
     if (t.dataset.partAdd) {
       const cur = (state.parts[partPick.key] || {})[partPick.group], c = cur && cur.id ? E.findColor(cur.id) : null;
-      if (c && !session.items.some(x => x.ref === c.id)) { addToList(Object.assign(paintItem(c), { area: PARTS[partPick.group].label })); showPartPicked(); }
+      if (c && !session.items.some(x => x.ref === c.id)) { addToList(Object.assign(paintItem(c), { area: PARTS[partPick.group].label, part: partPick.group, space: '' })); showPartPicked(); }
     }
     if (t.dataset.partReset) {
       const own = state.parts[partPick.key]; if (own) delete own[partPick.group];
@@ -2573,7 +2574,7 @@
     const R = state.results.paint;
     const res = R && R.results.concat(R.finalists || []).some(r => r.color.id === c.id);
     const a = res ? R.answers : null, sp = a ? E.SPACES[a.space] : null;
-    const item = { kind: 'paint', ref: c.id, area: sp ? sp.label : '', brand: brandName(c.brand), name: c.name, code: E.codeLabel(c), hex: c.hex, lrv: String(c.lrv), finish: sp ? sheenName(sp.sheens[0]) : '', product: '', primer: '', loc: '' };
+    const item = { kind: 'paint', ref: c.id, space: a ? a.space : '', area: sp ? sp.label : '', brand: brandName(c.brand), name: c.name, code: E.codeLabel(c), hex: c.hex, lrv: String(c.lrv), finish: sp ? sheenName(sp.sheens[0]) : '', product: '', primer: '', loc: '' };
     item.loc = (c.flags & E.F.RACK) && c.extra && ['sw', 'valspar', 'hgsw'].includes(c.brand) ? c.extra : (c.flags & E.F.RACK) ? 'Rack' : '';
     const lb = lineBrandFor(c);
     if (lb) { const r = E.recommendLines(lb, c, a || { space: 'living' }, { lines: settings.lines }); if (r.best) item.product = lineLabel(lb, r.best.line); }
@@ -2583,7 +2584,7 @@
   function stainItem(R, r) {
     const job = S.JOBS[R.answers.target] || S.JOBS.floors;
     const prods = S.productsFor(R.answers, stainSettings(), [r]);
-    return { kind: 'stain', ref: r.id, area: `${job.label}, ${spLabel(R.wood)}`, brand: sBrand(r), name: r.name, code: sCode(r) === S.TYPES[r.type] ? '' : sCode(r), hex: r.predicted || r.hex, lrv: '', finish: S.TYPES[r.type] || '', product: (prods[0] || {}).name || '', primer: '', loc: '' };
+    return { kind: 'stain', ref: r.id, target: R.answers.target, wood: R.wood, area: `${job.label}, ${spLabel(R.wood)}`, brand: sBrand(r), name: r.name, code: sCode(r) === S.TYPES[r.type] ? '' : sCode(r), hex: r.predicted || r.hex, lrv: '', finish: S.TYPES[r.type] || '', product: (prods[0] || {}).name || '', primer: '', loc: '' };
   }
   function customItem(hex) {
     const best = E.closestByBrand(hex, { brands: brandsEnabled() })[0];
@@ -2615,6 +2616,129 @@
     past = [s].concat(past.filter(p => p.id !== s.id)).slice(0, PAST_MAX);
     savePast(); return true;
   }
+  // ================================================================
+  // SEE IT ALL TOGETHER: every color in the project at once, each where it goes: the walls, trim and cabinets
+  // inside; the siding, trim and front door on the house; the stain on the deck out back (with the back of the
+  // house, so the house color and the deck stain are seen side by side) and on the fence.
+  // ================================================================
+  const WHERE = {
+    walls: ['Walls', 'in'], ceil: ['Ceiling', 'in'], trim: ['Trim', 'in'], door: ['Doors', 'in'], cab: ['Cabinets', 'in'], wain: ['Wainscoting', 'in'],
+    fire: ['Fireplace', 'in'], floor: ['Floor', 'in'], furn: ['Furniture', 'in'],
+    body: ['House Siding', 'out'], xtrim: ['House Trim', 'out'], xdoor: ['Front Door', 'out'], shut: ['Shutters', 'out'], gdoor: ['Garage Door', 'out'], step: ['Porch Floor', 'out'],
+    deck: ['Deck', 'deck'], fence: ['Fence', 'fence'], none: ['Don’t Show It', ''],
+  };
+  const PAINT_WHERE = ['walls', 'ceil', 'trim', 'door', 'cab', 'wain', 'fire', 'floor', 'body', 'xtrim', 'xdoor', 'shut', 'gdoor', 'step', 'deck', 'fence', 'none'];
+  const STAIN_WHERE = ['floor', 'cab', 'furn', 'trim', 'door', 'wain', 'body', 'xdoor', 'gdoor', 'shut', 'deck', 'fence', 'none'];
+  const STAIN_TO = { floors: 'floor', stairs: 'floor', cabinets: 'cab', builtins: 'cab', furniture: 'furn', tabletop: 'furn', trim: 'trim', doors: 'door', paneling: 'wain', deck: 'deck', dock: 'deck', outdoor: 'deck', pergola: 'deck', playset: 'deck', fence: 'fence', siding: 'body', shed: 'body', log: 'body', front_door: 'xdoor', garage_door: 'gdoor', shutters: 'shut' };
+  const ZONES = [['in', 'Inside'], ['out', 'Front of the House'], ['deck', 'Out Back'], ['fence', 'The Fence']];
+  // words people type in "Where it goes" (and older items, saved before the app kept the job)
+  const PLACE_WORDS = [[/front door|entry door/, 'xdoor'], [/garage/, 'gdoor'], [/shutter/, 'shut'], [/deck|dock|pergola|patio|playset|swing ?set|outdoor/, 'deck'], [/fence/, 'fence'], [/porch/, 'step'],
+    [/siding|exterior|outside|house body/, 'body'], [/ceiling/, 'ceil'], [/cabinet|vanity|built.?in|island/, 'cab'], [/wainscot|panel/, 'wain'], [/fireplace|mantel/, 'fire'], [/floor|stair/, 'floor'],
+    [/trim|baseboard|molding|moulding|casing/, 'trim'], [/door/, 'door'], [/furniture|table|dresser|chair/, 'furn'],
+    [/wall|room|living|bed|kitchen|bath|dining|office|entry|hall|nursery|kid|laundry|basement|den/, 'walls']];
+  const isStainItem = x => x.kind === 'stain' && !!S.find(x.ref);
+  const placeOfTarget = t => (t === 'accent' ? 'walls' : t);
+  function guessPlace(x) {
+    const stain = isStainItem(x), ok = stain ? STAIN_WHERE : PAINT_WHERE;
+    if (x.place && ok.includes(x.place)) return x.place;
+    if (x.part && ok.includes(x.part)) return x.part;
+    if (stain && STAIN_TO[x.target]) return STAIN_TO[x.target];
+    if (!stain && x.space && E.SPACES[x.space]) { const t = placeOfTarget(targetFor(x.space)); return ok.includes(t) ? t : 'walls'; }
+    const txt = String(x.area || '').toLowerCase().trim();
+    if (!stain) { const sp = Object.entries(E.SPACES).find(([, v]) => v.label.toLowerCase() === txt); if (sp) { const t = placeOfTarget(targetFor(sp[0])); if (ok.includes(t)) return t; } }
+    else { const j = Object.entries(S.JOBS).find(([, v]) => txt.startsWith(v.label.toLowerCase())); if (j && STAIN_TO[j[0]]) return STAIN_TO[j[0]]; }
+    for (const [re, p] of PLACE_WORDS) if (re.test(txt) && ok.includes(p)) return p === 'trim' && /house|exterior|outside/.test(txt) ? 'xtrim' : p;
+    return '';
+  }
+  // every item's place: the ones it can tell, then the others where nothing's been put yet
+  function placements(items) {
+    const out = new Map(), used = new Set();
+    for (const x of items) { const p = guessPlace(x); if (p) { out.set(x.id, p); if (p !== 'none') used.add(p); } }
+    const side = s => [...used].some(p => WHERE[p] && WHERE[p][1] === s);
+    const outside = side('out') || side('deck') || side('fence'), inside = side('in');
+    for (const x of items) {
+      if (out.has(x.id)) continue;
+      let order;
+      if (isStainItem(x)) order = S.find(x.ref).use === 'exterior' ? ['deck', 'fence', 'body'] : ['floor', 'cab', 'furn'];
+      else {
+        const c = E.findColor(x.ref), white = (c ? c.lrv : C.lrvFromHex(x.hex || 'CCCCCC')) >= 80;
+        const ins = white ? ['trim', 'ceil', 'door'] : ['walls', 'cab', 'door', 'fire'], outs = white ? ['xtrim', 'body', 'xdoor'] : ['body', 'xdoor', 'shut'];
+        // a project that's only outside keeps it outside; otherwise inside first, then the house
+        order = outside && !inside ? outs : ins.concat(outs);
+      }
+      const p = order.find(q => !used.has(q)) || order[0];
+      out.set(x.id, p); used.add(p);
+    }
+    return out;
+  }
+  // a stain item's look on its wood (the wood it was picked for, or the usual one for that job)
+  function stainTexOf(x) {
+    const st = S.find(x.ref); if (!st) return null;
+    let sp = x.wood && WD.SPECIES[x.wood] ? x.wood : '';
+    if (!sp) { const lbl = String(x.area || '').split(',').pop().trim().toLowerCase(); const hit = Object.entries(WD.SPECIES).find(([, v]) => v.label.toLowerCase() === lbl); if (hit) sp = hit[0]; }
+    if (!sp) sp = (S.JOBS[x.target] || {}).wood || st.ref || 'pine';
+    if (!WD.SPECIES[sp]) sp = 'pine';
+    return { sp, stain: stainSpec(st) };
+  }
+  // a paint color on a deck or fence: a solid color over the boards
+  const solidTex = hex => ({ sp: 'pine', stain: { hex, type: 'solid', solid: true, solidHex: hex, ref: '', refMix: 0 } });
+  function togetherZones(items, place) {
+    const zones = {};
+    for (const x of items) { const p = place.get(x.id), z = p && WHERE[p] ? WHERE[p][1] : ''; if (z) (zones[z] = zones[z] || []).push({ x, p }); }
+    // the deck picture has the back of the house in it, so the siding and house trim show there too
+    if (zones.deck) for (const e of zones.out || []) if (['body', 'xtrim'].includes(e.p)) zones.deck.push(e);
+    return zones;
+  }
+  const ROOMS_TOGETHER = ['living', 'bedroom', 'dining', 'kitchen', 'office', 'entry', 'bath'];
+  function togetherSpec(zone, list) {
+    const at = p => list.filter(e => e.p === p).map(e => e.x).pop();   // two colors in one place: the later one shows
+    const mainItem = zone === 'in' ? at('walls') : at('body');
+    const main = mainItem && mainItem.kind !== 'stain' ? E.findColor(mainItem.ref) : null;
+    const places = new Set(list.map(e => e.p));
+    let ids;
+    if (zone === 'in') {
+      ids = places.has('cab') ? ['kitchen', 'island', 'bath', 'laundry'] : places.has('furn') ? ['diningset', 'dresser', 'office'] : places.has('fire') ? ['fireplace', 'living'] : places.has('wain') ? ['dining', 'living', 'bath', 'entry'] : null;
+      if (!ids) { const own = list.map(e => OWN_SCENE[e.x.space]).find(Boolean); ids = own ? [own].concat(ROOMS_TOGETHER.filter(s => s !== own)) : ROOMS_TOGETHER.slice(); }
+    }
+    if (zone === 'out') ids = places.has('shut') ? ['colonial', 'house', 'cottage', 'farmhouse'] : places.has('step') ? ['porch', 'farmhouse', 'colonial'] : places.has('gdoor') ? ['house', 'colonial', 'modern'] : HOUSES.slice();
+    if (zone === 'deck') ids = ['deck', 'pergola', 'patioset', 'dock'];
+    if (zone === 'fence') ids = ['fence', 'picket'];
+    const texParts = {}, show = [];
+    for (const e of list) {
+      if (e.x.kind === 'stain') { const t = stainTexOf(e.x); if (t) texParts[e.p] = t; }
+      else if (['deck', 'fence'].includes(e.p) && e.x.hex) texParts[e.p] = solidTex(e.x.hex.toUpperCase());
+      if (['shut', 'gdoor'].includes(e.p)) show.push(e.p);
+    }
+    const pairs = main ? E.pairings(main, { collections: settings.collections }) : null;
+    const roles = sceneId => {
+      const r = main ? paintRoles(sceneId, main, { space: zone === 'in' ? 'living' : 'ext_body' }, pairs) : Object.assign({}, STAIN_ROLES);
+      for (const e of list) {
+        if (e.x.kind === 'stain' || !e.x.hex || ['deck', 'fence'].includes(e.p)) continue;
+        const hex = e.x.hex.toUpperCase();
+        for (const role of (PARTS[e.p] || { roles: [] }).roles) r[role] = hex;
+        if (e.p === 'cab') r.vanity = hex;
+      }
+      return r;
+    };
+    return { key: 'together:' + zone, partKey: 'together:' + zone, ids, answers: null, label: (ZONES.find(z => z[0] === zone) || [])[1], roles, texParts, show, stain: false, color: main };
+  }
+  function renderTogether() {
+    const items = session.items.filter(x => /^[0-9A-F]{6}$/i.test(x.hex || ''));
+    const place = placements(items), zones = togetherZones(items, place);
+    const shown = ZONES.filter(([z]) => zones[z] && zones[z].length);
+    const whereOpts = x => (isStainItem(x) ? STAIN_WHERE : PAINT_WHERE).map(k => [k, WHERE[k][0]]);
+    const line = x => [x.brand, x.name, x.code].filter(Boolean).join(' ');
+    view().innerHTML = `<div class="page together">
+      ${backBtn('Back to the Project', 'data-go="list"')}
+      <div class="page-head"><p class="eyebrow">${esc(sessionTitle())}</p><h1>See It All Together</h1><p>Every color in the project at once, each where it goes. Change where a color goes at the bottom, or tap any part of a picture to try something else.</p></div>
+      ${!items.length ? `<div class="empty"><h2>Nothing to show yet</h2><p class="muted">Add paint or stain colors to the project, then come back to see them together.</p><div class="actions stack"><button type="button" class="btn big primary" data-go="list">Back to the Project</button></div></div>`
+        : !shown.length ? '<p class="muted">Every color is set to “Don’t Show It”. Pick where one goes below.</p>' : ''}
+      ${shown.map(([z, label]) => `<section class="tg-zone" aria-labelledby="tg-${z}-h"><h2 id="tg-${z}-h">${esc(label)}</h2>${sceneBox('tg-' + z)}
+        <ul class="tg-legend">${zones[z].map(e => `<li><span class="sw" ${swStyle(e.x.hex)}></span><span><b>${esc(WHERE[e.p][0])}:</b> ${esc(line(e.x))}</span></li>`).join('')}</ul></section>`).join('')}
+      ${items.length ? `<section class="section tg-where-sec" aria-labelledby="tgWhereH"><h2 id="tgWhereH">Where Each Color Goes</h2><div class="tg-where">${items.map(x => `<div class="tg-row"><span class="sw" ${swStyle(x.hex)}></span><span class="tg-name"><b>${esc(x.name)}</b><small>${esc([x.brand, x.code, x.kind === 'stain' ? 'Stain' : ''].filter(Boolean).join(' · '))}</small></span>${selectHtml('tgw-' + x.id, whereOpts(x), place.get(x.id), 'Goes on', v => { x.place = v; saveSession(); const y = window.scrollY; teardownScenes(); renderTogether(); window.scrollTo(0, y); })}</div>`).join('')}</div></section>` : ''}
+    </div>`;
+    for (const [z] of shown) mountScene('tg-' + z, togetherSpec(z, zones[z]));
+  }
   function renderList() {
     const items = session.items;
     const paintRefs = items.filter(x => E.findColor(x.ref));
@@ -2625,6 +2749,7 @@
       ${items.length ? `<ol class="items">${items.map((x, i) => `<li class="item"><span class="n">${i + 1}</span><button type="button" class="sw" ${x.hex ? swStyle(x.hex) : 'style="background:var(--surface-2)"'} data-open-item="${esc(x.ref)}" aria-label="Open ${esc(x.name)}"></button>
           <span class="what"><input type="text" class="area" data-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><b>${esc([x.brand, x.name, x.code].filter(Boolean).join(' '))}</b><span>${esc([x.finish, x.product, x.amount].filter(Boolean).join(' · '))}</span></span>
           <button type="button" class="icon-btn" data-del-item="${esc(x.id)}" aria-label="Remove ${esc(x.name)}">${xIcon}</button></li>`).join('')}</ol>
+        <button type="button" class="tg-cta" data-go="together"><span class="tg-cta-sws" aria-hidden="true">${items.slice(0, 4).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span class="tg-cta-txt"><b>See It All Together</b><span>Every color in this project at once, each where it goes${items.some(x => x.kind === 'stain') ? ', the stain too' : ''}</span></span>${chev('right', 22)}</button>
         <div class="actions stack"><button type="button" class="btn big primary" data-list="print">${ic('print', 22)}Print</button><button type="button" class="btn big primary" data-list="email">${mailIcon}Email It</button><button type="button" class="btn big" data-go="home">${plusIcon}Add More</button></div>
         <details class="more"><summary>More Things to Do</summary><div class="actions">${paintRefs.length ? '<button type="button" class="btn" data-list="present">Show Colors Full Screen</button>' : ''}${paintRefs.length > 1 ? '<button type="button" class="btn" data-list="compare">Compare the Colors</button>' : ''}<button type="button" class="btn" data-list="copy">Copy as Text</button><button type="button" class="btn" data-list="link">Copy a Link to It</button><button type="button" class="btn ghost" data-project-new="1">Start a New Project</button></div></details>`
         : `<div class="empty"><h2>Nothing in this project yet</h2><p class="muted">Find a color, then tap Add to Project. Everything you add lands here.</p><div class="actions stack"><button type="button" class="btn big primary" data-start="paint">Find a Paint Color</button>${jobOn('stain') ? '<button type="button" class="btn big" data-start="stain">Find a Stain</button>' : ''}<button type="button" class="btn big" data-go="lookup">Look Up a Color</button></div></div>`}
