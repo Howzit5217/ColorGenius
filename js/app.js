@@ -3216,7 +3216,8 @@
   const applyUpdate = () => { if (reloading) return; reloading = true; location.reload(); };
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     const hadController = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadController) return; updateWaiting = true; if (idleForUpdate()) applyUpdate(); });
+    const openedAt = Date.now();
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadController || Date.now() - openedAt < 30000) return; updateWaiting = true; if (idleForUpdate()) applyUpdate(); });
     window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').then(reg => { swReg = reg; }).catch(() => {}); });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
@@ -3449,12 +3450,17 @@
       store.set('shortlist', []);
     }
     state.ready = true;
-    const ld = $('#loading');
-    if (reduced()) ld.hidden = true; else { ld.classList.add('done'); setTimeout(() => { ld.hidden = true; }, 320); }
     updateListBtn();
     if (!history.state) history.replaceState({ d: 0 }, '', location.hash || '#/');
+    // The page is drawn behind the loading screen, which only lifts once its words and first pictures are ready (a
+    // second at most), so nothing pops in or changes font after it shows. Then it rises in once.
     render(0);
     if (!settings.onboarded && parseHash().view !== 'shared') openOnboarding();
+    const ready = [document.fonts && document.fonts.ready].concat($$('#view img').slice(0, 8).map(i => i.decode ? i.decode().catch(() => {}) : null));
+    await Promise.race([Promise.all(ready), new Promise(r => setTimeout(r, 1100))]);
+    const ld = $('#loading'), v = view();
+    if (reduced()) ld.hidden = true;
+    else { v.style.animation = 'none'; void v.offsetWidth; v.style.animation = ''; ld.classList.add('done'); setTimeout(() => { ld.hidden = true; }, 320); }
     if (failed.length) toast(`Couldn’t load: ${failed.join(', ')}`);
   }
   window.ColorGenius = { state, settings: () => settings, go, kioskReset, kioskWarn };

@@ -129,7 +129,9 @@ html.bar-on .main { padding-bottom: calc(var(--bar-h) + 48px); }
 .section > h2 { display: flex; align-items: center; gap: 10px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--shadow); }
 .card.flat { box-shadow: none; }
-.loading { display: grid; place-items: center; gap: 18px; padding: 18vh 0; color: var(--ink-2); font-size: 1.1rem; }
+/* the loading screen covers everything (top bar too) until the page behind it is ready, then fades away */
+.loading { position: fixed; inset: 0; z-index: 85; display: grid; place-content: center; justify-items: center; gap: 18px; padding: 24px; background: var(--bg); color: var(--ink-2); font-size: 1.1rem; text-align: center; }
+.loading[hidden] { display: none; }
 .loading-fan { position: relative; width: 76px; height: 70px; }
 .loading-fan i { position: absolute; left: 30px; bottom: 4px; width: 16px; height: 60px; border-radius: 5px; transform-origin: 50% 94%; animation: fanOpen 1.5s var(--ease) infinite alternate; }
 .loading-fan i:nth-child(1) { background: #e3d9c9; --r: -48deg; } .loading-fan i:nth-child(2) { background: #c9b79c; --r: -24deg; } .loading-fan i:nth-child(3) { background: #8fa588; --r: 0deg; } .loading-fan i:nth-child(4) { background: #6f8f85; --r: 24deg; } .loading-fan i:nth-child(5) { background: #2f3b4c; --r: 48deg; }
