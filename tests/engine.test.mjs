@@ -633,3 +633,18 @@ test('who a bedroom is for leans the picks, without taking any colors away', () 
   // the choices exist for bedrooms, kids' rooms and nurseries only
   assert.deepEqual(Object.keys(E.WHO_FOR).sort(), ['bedroom', 'kids', 'nursery']);
 });
+
+test('stains can be looked up by name, number, brand word or color', () => {
+  const ids = (q, o) => ST.search(q, o).map(r => r.stain.id);
+  assert.equal(ids('special walnut')[0], 'minwax:224');
+  assert.equal(ids('1199')[0], 'minwax:1199');                     // a stain number
+  assert.ok(ids('minwax early').every(id => id.startsWith('minwax:')));  // a brand word narrows it
+  assert.equal(ST.search('superdeck cedar')[0].stain.name, 'Cedar');
+  // a switched-off brand is left out
+  assert.ok(ids('early american', { stainBrands: { minwax: false } }).every(id => !id.startsWith('minwax:')));
+  // a color value gives the closest stains, nearest first
+  const near = ST.search('', { hex: '8E4A32', limit: 5 });
+  assert.equal(near.length, 5);
+  assert.ok(near.every((r, i) => i === 0 || r.dE >= near[i - 1].dE));
+  assert.deepEqual(ST.search(''), []);
+});

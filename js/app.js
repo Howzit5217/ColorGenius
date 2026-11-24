@@ -1719,7 +1719,8 @@
     h += `<p class="muted small pop-note">${info.checked ? `From each paint company’s own website, checked ${esc(popDate(info.checked))}.` : ''}${none.length ? ` Nothing posted where the app can read it yet for ${esc(andList(none))}.` : ''}</p>`;
     return h;
   }
-  const colorRow = (c, dE, tag) =>`<button type="button" class="row" data-go="color/${esc(encodeURIComponent(c.id))}"><span class="sw" ${swStyle(c.hex)}></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${esc(brandName(c.brand))} · <span class="mono">${esc(E.codeLabel(c))}</span>${c.flags & E.F.DISC ? ' · discontinued' : ''}</span></span><span class="end">${tag ? `<span class="badge good">${esc(tag)}</span>` : dE != null ? `<span class="badge${dE < 2.5 ? ' good' : ''}">${esc(C.matchLabel(dE))}</span><span class="mono">ΔE ${dE}</span>` : settings.showLrv ? `<span class="mono">LRV ${c.lrv}</span>` : ''}</span></button>`;
+  const stainRow = (s, dE) => `<button type="button" class="row" data-go="color/${esc(encodeURIComponent(s.id))}"><span class="sw" ${swStyle(s.hex)}></span><span><span class="nm">${esc(s.name)}</span><span class="sub">${esc([S.brandName(s.brand), S.codeLabel(s) === S.TYPES[s.type] ? '' : S.codeLabel(s), S.TYPES[s.type] + ' stain'].filter(Boolean).join(' · '))}</span></span><span class="end">${dE != null ? `<span class="badge${dE < 2.5 ? ' good' : ''}">${esc(C.matchLabel(dE))}</span><span class="mono">ΔE ${dE}</span>` : '<span class="badge">Stain</span>'}</span></button>`;
+  const colorRow = (c, dE, tag) => `<button type="button" class="row" data-go="color/${esc(encodeURIComponent(c.id))}"><span class="sw" ${swStyle(c.hex)}></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${esc(brandName(c.brand))} · <span class="mono">${esc(E.codeLabel(c))}</span>${c.flags & E.F.DISC ? ' · discontinued' : ''}</span></span><span class="end">${tag ? `<span class="badge good">${esc(tag)}</span>` : dE != null ? `<span class="badge${dE < 2.5 ? ' good' : ''}">${esc(C.matchLabel(dE))}</span><span class="mono">ΔE ${dE}</span>` : settings.showLrv ? `<span class="mono">LRV ${c.lrv}</span>` : ''}</span></button>`;
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-plan-for]'); if (!t) return;
     const c = E.findColor(t.dataset.planFor); if (!c) return;
@@ -1739,7 +1740,7 @@
     const R0 = state.results.stain;
     if (R0) { const r = R0.results.concat(R0.finalists || []).find(x => x.id === id); if (r) return { R: R0, r }; }
     const item = S.find(id); if (!item) return null;
-    const a = Object.assign({}, S.DEFAULT, state.flows.stain ? state.flows.stain.a : {});
+    const a = Object.assign({}, S.DEFAULT, state.flows.stain ? state.flows.stain.a : item.use === 'exterior' ? { inout: 'exterior', target: 'deck' } : {});
     const base = S.recommend(Object.assign({}, a, { looks: ['natural'] }), Object.assign(stainSettings(), { resultCount: 1 }));
     const st = { hex: item.hex, type: item.type, solid: a.grain === 'hide', solidHex: item.solidHex };
     const predicted = WD.predictHex(base.wood, st);
@@ -1965,7 +1966,7 @@
         <input type="search" id="lookupInput" aria-label="Search colors" placeholder="Agreeable Gray, SW 7029 or #D1CBC1" value="${esc(state.query)}" autocomplete="off" spellcheck="false" enterkeyhint="search">
         <button type="button" class="clear" id="lookupClear" aria-label="Clear" ${state.query ? '' : 'hidden'}>${xIcon}</button></div>
       <div class="actions"><button type="button" class="btn" data-camera="1">${ic('camera', 22)}Match With the Camera</button><span class="muted">or pick a color:</span>${colorHtml('lookupColor', state.lookupHex || 'D1CBC1', 'Match a color', hex => { state.lookupHex = hex; const i = $('#lookupInput'); i.value = '#' + hex; state.query = i.value; $('#lookupClear').hidden = false; clearTimeout(lookTimer); lookTimer = setTimeout(showLookup, 60); })}</div>
-      <p class="muted small">Searching ${fmt(enabledCount())} colors from ${Object.values(brandsEnabled()).filter(Boolean).length} brands. Brand words work too, like “behr swiss coffee”.</p>
+      <p class="muted small">Searching ${fmt(enabledCount())} colors from ${Object.values(brandsEnabled()).filter(Boolean).length} brands. Stains too. Brand words work, like “behr swiss coffee” or “minwax early american”.</p>
       <div id="lookupResults" class="section"></div></div>`;
     const input = $('#lookupInput'), clear = $('#lookupClear');
     input.addEventListener('input', () => { clear.hidden = !input.value; clearTimeout(lookTimer); lookTimer = setTimeout(() => { state.query = input.value; showLookup(); }, 90); });
@@ -2314,20 +2315,28 @@
     if (hex) {
       state.lookupHex = hex;
       const pick = $('#lookupColor'); if (pick) { COLORS.lookupColor.hex = hex; $('.sw', pick).style.background = '#' + hex; $('.mono', pick).textContent = '#' + hex; }
-      host.innerHTML = exactCard(hex) + nearLists(E.closestByBrand(hex, { showDiscontinued: settings.showDiscontinued, collections: settings.collections }), 'Closest in Each Brand');
+      const near = jobOn('stain') ? S.search('', { hex, stainBrands: settings.stainBrands, limit: 6 }) : [];
+      host.innerHTML = exactCard(hex) + nearLists(E.closestByBrand(hex, { showDiscontinued: settings.showDiscontinued, collections: settings.collections }), 'Closest in Each Brand')
+        + (near.length ? `<h2>Closest Stains</h2><div class="rows">${near.map(r => stainRow(r.stain, r.dE)).join('')}</div>` : '');
       return;
     }
     let res = E.search(q, opts);
     if (!res.length) res = E.search(q, Object.assign({}, opts, { brands: null }));
-    if (!res.length) { host.innerHTML = `<div class="empty"><h2>No colors match “${esc(q)}”</h2><p class="muted">Try just the number from the chip, or a color number like #D1CBC1.</p></div>`; return; }
+    // stains too (when the store does stain), in their own list
+    const stains = jobOn('stain') ? S.search(q, { stainBrands: settings.stainBrands, limit: 24 }) : [];
+    const stainList = (title, list) => list.length ? `<h2>${esc(title)}</h2><div class="rows">${list.map(r => stainRow(r.stain, r.dE)).join('')}</div>` : '';
+    if (!res.length && !stains.length) { host.innerHTML = `<div class="empty"><h2>No colors or stains match “${esc(q)}”</h2><p class="muted">Try just the number from the chip, or a color number like #D1CBC1.</p></div>`; return; }
+    if (!res.length) { host.innerHTML = stainList(stains.length === 1 ? '1 stain' : `${stains.length} stains`, stains); return; }
     const top = res[0].color, norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, ''), nq = norm(q);
     const exact = nq && (norm(top.name) === nq || norm(E.codeLabel(top)) === nq || norm(top.code) === nq || norm(brandName(top.brand) + top.name) === nq || norm(brandName(top.brand) + top.code) === nq);
     if (exact) {
       host.innerHTML = exactCard(top.hex, top) + nearLists(E.matchesFor(top, { showDiscontinued: settings.showDiscontinued, collections: settings.collections }), 'Closest in Other Brands')
-        + (res.length > 1 ? `<h2>Other Names Like This</h2><div class="rows">${res.slice(1).map(r => colorRow(r.color)).join('')}</div>` : '');
+        + (res.length > 1 ? `<h2>Other Names Like This</h2><div class="rows">${res.slice(1).map(r => colorRow(r.color)).join('')}</div>` : '') + stainList('Stains', stains);
       return;
     }
-    host.innerHTML = `<h2>${res.length === 60 ? 'Top 60 matches' : res.length + ' match' + (res.length > 1 ? 'es' : '')}</h2><div class="rows">${res.map(r => colorRow(r.color)).join('')}</div>`;
+    const paintList = `<h2>${res.length === 60 ? 'Top 60 paint colors' : res.length + ' paint color' + (res.length > 1 ? 's' : '')}</h2><div class="rows">${res.map(r => colorRow(r.color)).join('')}</div>`;
+    // a stain named exactly (or by its number) comes first
+    host.innerHTML = stains.length && stains[0].score >= 95 ? stainList('Stains', stains) + paintList : paintList + stainList('Stains', stains);
   }
 
   // ================================================================

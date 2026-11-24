@@ -89,6 +89,40 @@
   const codeLabel = x => ((BRANDS[x.brand] || {}).codeless ? (x.line || TYPES[x.type] || '') : x.code);
   const woodFor = a => (W.SPECIES[a.wood] ? a.wood : (JOBS[a.target] || JOBS.floors).wood);
 
+  // Look Up: stains by name, number or brand word ("early american", "minwax 230", "superdeck cedar"), or with a
+  // color value the stains closest to it. opts: { stainBrands (switched-off brands), hex, limit }
+  const words = s => String(s || '').toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const BRAND_WORDS = { minwax: 'minwax', cabot: 'cabot', olympic: 'olympic', superdeck: 'swstain', 'super deck': 'swstain', 'sherwin williams superdeck': 'swstain', 'sw superdeck': 'swstain', varathane: 'varathane' };
+  function search(query, opts) {
+    opts = opts || {};
+    const limit = opts.limit || 30;
+    const pool = STAINS.filter(s => brandOn(s.brand, opts));
+    if (opts.hex) {
+      const lab = C.hexToLab(opts.hex);
+      return pool.map(s => ({ stain: s, dE: Math.round(C.deltaE2000(lab, s.lab) * 10) / 10, score: 0 })).sort((a, b) => a.dE - b.dE).slice(0, limit);
+    }
+    let q = words(query);
+    if (!q) return [];
+    let brand = null;
+    for (const k of Object.keys(BRAND_WORDS).sort((a, b) => b.length - a.length)) if (q === k || q.startsWith(k + ' ')) { brand = BRAND_WORDS[k]; q = q.slice(k.length).trim(); break; }
+    const ws = q.split(' ').filter(Boolean), qc = q.replace(/ /g, '');
+    const out = [];
+    for (const s of pool) {
+      if (brand && s.brand !== brand) continue;
+      const name = words(s.name), code = words(s.code).replace(/ /g, '');
+      let score = 0;
+      if (!q) score = 10;                                   // just a brand word: its stains
+      else if (code && code === qc) score = 100;
+      else if (name === q) score = 95;
+      else if (code && qc.length >= 2 && /\d/.test(qc) && code.startsWith(qc)) score = 60;
+      else if (name.startsWith(q)) score = 50;
+      else if (ws.every(w => name.split(' ').some(t => t.startsWith(w)))) score = 35;
+      else if (ws.every(w => name.includes(w))) score = 25;
+      if (score) out.push({ stain: s, score });
+    }
+    return out.sort((a, b) => b.score - a.score || a.stain.name.localeCompare(b.stain.name)).slice(0, limit);
+  }
+
   function lchOf(hex) { const l = C.labToLch(C.hexToLab(hex)); return { L: l[0], C: l[1], h: l[2] }; }
   const hueDist = (h, lo, hi) => (h >= lo && h <= hi ? 0 : Math.min(Math.abs(h - lo), Math.abs(h - hi), 360 - Math.abs(h - lo), 360 - Math.abs(h - hi)));
   const rangeDist = (v, r) => (v < r[0] ? r[0] - v : v > r[1] ? v - r[1] : 0);
@@ -302,7 +336,7 @@
     return (list || ['red_oak', 'white_oak', 'pine', 'maple', 'cherry', 'cedar']).map(sp => ({ sp, label: W.SPECIES[sp].label, hex: W.predictHex(sp, st), bare: W.bareHex(sp) }));
   }
 
-  const api = { JOBS, LOOKS, GRAIN, CONDITION, DEFAULT, TYPES, MATCH_WOOD, WALL_TONES, SHEENS, init, all, find, brandName, brands, brandOn, codeLabel, woodFor, recommend, warningsFor, tipsFor, productsFor, onOtherWoods, lookScore };
+  const api = { search, JOBS, LOOKS, GRAIN, CONDITION, DEFAULT, TYPES, MATCH_WOOD, WALL_TONES, SHEENS, init, all, find, brandName, brands, brandOn, codeLabel, woodFor, recommend, warningsFor, tipsFor, productsFor, onOtherWoods, lookScore };
   root.CG = root.CG || {};
   root.CG.stain = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
