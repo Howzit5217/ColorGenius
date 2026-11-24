@@ -201,7 +201,11 @@
       return this;
     }
     // a soft shadow under furniture, on the floor
-    shadow(x, z, w, d, strength, ry, y) { const c = this.tp([x, y || 0.003, z]); this.decals.push({ x: c[0], y: c[1], z: c[2], w, d, s: strength == null ? 0.45 : strength, ry: (ry || 0) + Math.atan2(this.M[2], this.M[0]) }); return this; }
+    // (turned the same way as the thing it's under: local x points along M's first column, M[0] and M[6])
+    shadow(x, z, w, d, strength, ry, y, round) { const c = this.tp([x, y || 0.003, z]); this.decals.push({ x: c[0], y: c[1], z: c[2], w, d, s: strength == null ? 0.45 : strength, ry: Math.atan2(this.M[6], this.M[0]) - (ry || 0), round: !!round }); return this; }
+    // a product-photo shadow under something resting on the floor: a soft, darker core where it touches and a
+    // wide faint fall-off around it (round under round things)
+    contact(x, z, w, d, ry, round, s) { s = s || 1; this.shadow(x, z, w * 0.9, d * 0.9, 0.3 * s, ry, 0.002, round); this.shadow(x, z, w * 1.15, d * 1.15, 0.1 * s, ry, 0.0025, round); return this; }
     lamp(x, y, z, power, kind) { this.lamps.push({ p: this.tp([x, y, z]), power: power || 1, kind: kind || 'lamp' }); return this; }
   }
 
@@ -226,7 +230,7 @@
     uniform vec3 uColor, uPrev, uEmit; uniform float uWipe; uniform vec4 uWipePlane;
     uniform float uGloss; uniform int uPat; uniform float uTexMode; uniform sampler2D uTex; uniform vec2 uTexScale; uniform float uTexSwap; uniform float uScale;
     uniform vec3 uSunDir, uSunCol; uniform float uSunOn; uniform sampler2DShadow uShadow; uniform highp sampler2D uShadowRaw; uniform float uTexel;
-    uniform mat4 uLVP; uniform float uSunSoft, uSunSearch, uSunNO, uDepthM;
+    uniform mat4 uLVP; uniform float uSunSoft, uSunSearch, uSunNO, uDepthM, uCast, uFlatN;
     uniform highp sampler2DArray uAoRaw; uniform vec3 uAoDir[${AO_N}]; uniform vec3 uAoC; uniform float uAoR, uAoOn, uAoNO, uAoBias, uAoAmt, uAoFar, uAoTexel;
     uniform vec3 uSky, uGround, uHorizon; uniform float uAmb; uniform vec3 uEye;
     uniform vec4 uLamp[6]; uniform vec3 uLampCol[6]; uniform int uLampN;
@@ -348,6 +352,8 @@
     }
     void main() {
       vec3 n = normalize(vNor); if (!gl_FrontFacing) n = -n;
+      // a studio sweep is lit as if it were all floor, so it reads as one even, seamless color
+      if (uFlatN > 0.5) n = vec3(0.0, 1.0, 0.0);
       vec2 uv = uTexSwap > 0.5 ? vUv.yx : vUv;
       vec3 base = uColor;
       if (uWipe > -0.5) { float d = dot(vPos, uWipePlane.xyz) - uWipePlane.w; base = mix(uColor, uPrev, smoothstep(-0.04, 0.04, d)); }
@@ -356,7 +362,7 @@
       base = pattern(base, uv, vPos, n);
       vec3 V = normalize(uEye - vPos);
       float ndl = dot(n, uSunDir);
-      float sh = (uSunOn > 0.5 && ndl > 0.0) ? shadowAt(vPos, n, ndl) : 0.0;
+      float sh = (uSunOn > 0.5 && ndl > 0.0) ? (uCast > 0.5 ? shadowAt(vPos, n, ndl) : 1.0) : 0.0;
       vec3 light = uSunCol * max(ndl, 0.0) * sh;
       float ao = 1.0;
       if (uRoomAO > 0.0) {
@@ -397,7 +403,12 @@
   // ambient shadow does the work (uK scales it)
   const FS_DEC = `#version 300 es
     precision mediump float; in vec2 vUv; in float vS; uniform float uK; out vec4 o;
-    void main() { vec2 q = abs(vUv); float d = length(max(q - 0.55, 0.0)) / 0.45; float a = vS * uK * (1.0 - smoothstep(0.0, 1.0, d)); o = vec4(0.0, 0.0, 0.0, a); }`;
+    void main() {
+      vec2 q = abs(vUv);
+      // a negative strength marks a round one: darkest in the middle, fading smoothly to nothing at the edge
+      float a = vS < 0.0 ? -vS * uK * pow(1.0 - clamp(length(vUv), 0.0, 1.0), 2.0)
+                         : vS * uK * (1.0 - smoothstep(0.0, 1.0, length(max(q - 0.55, 0.0)) / 0.45));
+      o = vec4(0.0, 0.0, 0.0, a); }`;
   const VS_SKY = `#version 300 es
     in vec2 aPos; uniform mat4 uInv; out vec3 vDir;
     void main() { vec4 p = uInv * vec4(aPos, 1.0, 1.0); vDir = p.xyz / p.w; gl_Position = vec4(aPos, 0.9999, 1.0); }`;
@@ -534,7 +545,7 @@
       const dp = [], du = [], ds = [], di = [];
       for (const d of b.decals) {
         const c = Math.cos(d.ry), s = Math.sin(d.ry), base = dp.length / 3;
-        for (const [ux, uz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const lx = ux * d.w / 2 * 1.25, lz = uz * d.d / 2 * 1.25; dp.push(d.x + lx * c - lz * s, d.y, d.z + lx * s + lz * c); du.push(ux, uz); ds.push(d.s); }
+        for (const [ux, uz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const lx = ux * d.w / 2 * 1.25, lz = uz * d.d / 2 * 1.25; dp.push(d.x + lx * c - lz * s, d.y, d.z + lx * s + lz * c); du.push(ux, uz); ds.push(d.round ? -d.s : d.s); }
         di.push(base, base + 2, base + 1, base, base + 3, base + 2);
       }
       this.decal = null;
@@ -582,8 +593,8 @@
     // frame: { vp, eye, lvp, sunDir, sunCol, sunOn, sky..., mats: { name -> resolved material }, lamps, room, wipe }
     draw(fr) {
       const gl = this.gl, W = this.canvas.width, H = this.canvas.height;
-      // 1. shadow map from the sun
-      if (fr.sunOn) {
+      // 1. shadow map from the sun (product shots light with it but don't cast its shadow)
+      if (fr.sunOn && fr.cast !== false) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFb);
         gl.viewport(0, 0, this.shadowSize, this.shadowSize);
         gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -612,7 +623,7 @@
       gl.useProgram(P.p);
       gl.uniformMatrix4fv(u.uVP, false, fr.vp); gl.uniformMatrix4fv(u.uLVP, false, fr.lvp);
       gl.uniform3fv(u.uSunDir, fr.sunDir); gl.uniform3fv(u.uSunCol, fr.sunCol); gl.uniform1f(u.uSunOn, fr.sunOn ? 1 : 0);
-      gl.uniform1f(u.uTexel, 1 / this.shadowSize);
+      gl.uniform1f(u.uTexel, 1 / this.shadowSize); gl.uniform1f(u.uCast, fr.cast === false ? 0 : 1);
       gl.uniform3fv(u.uSky, fr.sky); gl.uniform3fv(u.uGround, fr.ground); gl.uniform3fv(u.uHorizon, fr.horizon); gl.uniform1f(u.uAmb, fr.amb);
       gl.uniform3fv(u.uEye, fr.eye); gl.uniform1f(u.uExposure, fr.exp); gl.uniform1f(u.uTime, fr.time || 0);
       gl.uniform3fv(u.uRoomMin, fr.room ? fr.room.min : [0, 0, 0]); gl.uniform3fv(u.uRoomMax, fr.room ? fr.room.max : [0, 0, 0]); gl.uniform1f(u.uRoomAO, fr.room ? 1 : 0);
@@ -636,7 +647,7 @@
         if (m.twoSided) gl.disable(gl.CULL_FACE); else gl.enable(gl.CULL_FACE);
         gl.uniform3fv(u.uColor, m.lin); gl.uniform3fv(u.uPrev, m.prev || m.lin); gl.uniform3fv(u.uEmit, m.emit || [0, 0, 0]);
         gl.uniform1f(u.uWipe, m.wipe != null ? m.wipe : -1); gl.uniform4fv(u.uWipePlane, fr.wipePlane || [1, 0, 0, 0]);
-        gl.uniform1f(u.uGloss, m.gloss || 0); gl.uniform1i(u.uPat, m.pat || 0); gl.uniform1f(u.uScale, m.scale || 1);
+        gl.uniform1f(u.uGloss, m.gloss || 0); gl.uniform1i(u.uPat, m.pat || 0); gl.uniform1f(u.uScale, m.scale || 1); gl.uniform1f(u.uFlatN, m.flatN ? 1 : 0);
         gl.activeTexture(gl.TEXTURE0);
         if (m.tex) { gl.bindTexture(gl.TEXTURE_2D, this.texFor(m.tex)); gl.uniform1f(u.uTexMode, m.texMul ? 2 : 1); gl.uniform2fv(u.uTexScale, [1 / m.tex.meters, 1 / m.tex.meters]); }
         else { gl.bindTexture(gl.TEXTURE_2D, this.white); gl.uniform1f(u.uTexMode, 0); }
@@ -1764,7 +1775,7 @@
   // ---------------- product shots for the home screen ----------------
   // A soft studio sweep (floor curving up into the back wall), one key light, and the objects on it.
   function studio(b, bg) {
-    b.mat('bd', { color: bg, gloss: 0.04 });
+    b.mat('bd', { color: bg, gloss: 0, flatN: true });
     const zc = -0.32, r = 0.3, W = 3;
     b.quad('bd', [-W, 0, zc], [W, 0, zc], [W, 0, 2.5], [-W, 0, 2.5], [0, 1, 0]);
     const N = 12;
@@ -1784,74 +1795,100 @@
     [[1.35, 0.06], [1, 0.36], [0.62, 0.66]].forEach(([k, t], i) => { b.mat(name + i, { color: shade(k), gloss: 0.2 }); b.box(name + i, -0.026, 0.0036, -len * (t + 0.28), 0.026, 0.0042, -len * t); });
   }
   Object.assign(SCENES, {
+    // Each shot keeps everything inside the middle of the frame (the home tiles crop the sides on wide screens and
+    // the top and bottom on mid-size ones), nothing floats or passes through anything else, and each thing has one
+    // soft shadow right under it.
     'tile-paint'(b) {
       studio(b, 'EAE4D9');
+      // a fan deck, fanned out from its rivet
       const hues = ['E8DFCF', 'C9B79C', 'A9B8A0', '6F8F85', '4F6B7D', '2F3B4C', 'C47F5E'];
-      hues.forEach((h, i) => { b.push().at(-0.1, i * 0.0046, 0.14, (i - 3) * 0.24 + 0.05); chipStrip(b, 'chip' + i, h, 0.28); b.pop(); });
-      b.cyl('brass', -0.1, 0, 0.14, 0.011, 0.038, 14);
-      b.shadow(-0.1, -0.02, 0.5, 0.32, 0.25);
-      // a roller with sage paint on it
+      const px = -0.17, pz = 0.1;
+      // (thin cards lying flat cast only a faint shadow right along their own edges)
+      hues.forEach((h, i) => { b.push().at(px, i * 0.0055, pz, (i - 3) * 0.2); chipStrip(b, 'chip' + i, h, 0.24); b.contact(0, -0.114, 0.064, 0.256, 0, false, 0.3); b.pop(); });
+      b.cyl('brass', px, 0, pz, 0.01, 0.0055 * 7 + 0.002, 14);
+      // a roller lying on its side with sage paint on it, handle pointing back
+      b.push().at(0.17, 0, 0.06, 0.55);
       b.mat('cover', { color: '6F8F85', pat: PAT.fabric, gloss: 0.25 });
-      b.rod('cover', 'x', 0.27, 0.038, 0.06, 0.038, 0.2, 24);
+      b.rod('cover', 'x', 0, 0.036, 0, 0.036, 0.19, 24);
       b.mat('wire', { color: 'B9BCBE', gloss: 0.8 });
-      b.rod('wire', 'x', 0.39, 0.038, 0.06, 0.005, 0.04, 8); b.rod('wire', 'z', 0.41, 0.038, 0.115, 0.005, 0.11, 8);
-      b.mat('grip', { color: 'B5362E', gloss: 0.45 }); b.rod('grip', 'z', 0.41, 0.038, 0.26, 0.016, 0.19, 14);
-      b.shadow(0.3, 0.12, 0.3, 0.38, 0.28);
-      return { cam: { eye: [0.07, 0.43, 0.66], target: [0.08, 0.0, 0.01], fov: 33 }, studio: true, shadowC: [0.08, 0, 0.05], shadowR: 0.55 };
+      b.rod('wire', 'x', 0.11, 0.036, 0, 0.005, 0.03, 8); b.rod('wire', 'z', 0.125, 0.036, -0.05, 0.005, 0.1, 8);
+      b.mat('grip', { color: 'B5362E', gloss: 0.45 }); b.rod('grip', 'z', 0.125, 0.036, -0.18, 0.016, 0.17, 14);
+      b.contact(0, 0, 0.21, 0.06, 0, false); b.contact(0.125, -0.17, 0.04, 0.2, 0, false, 0.5);
+      b.pop();
+      return { cam: { eye: [0.0, 0.46, 0.6], target: [0.0, 0.0, -0.02], fov: 34 }, studio: true };
     },
     'tile-stain'(b) {
       studio(b, 'E8DFD3');
-      const boards = [['b1', null, -0.13, 0.06], ['b2', { hex: 'A3794A', type: 'semi' }, 0.02, -0.03], ['b3', { hex: '5A3E2B', type: 'semi' }, 0.17, 0.04]];
-      for (const [n, st, z, ry] of boards) { b.mat(n, { color: 'C9A77A', wood: { sp: 'red_oak', board: 32, cm: 0.12, stain: st, seed: n.length + z * 100 }, gloss: st ? 0.35 : 0.12 }); b.push().at(-0.06, 0, z, ry); b.rbox(n, -0.26, 0, -0.06, 0.26, 0.022, 0.06, 0.003, 1); b.pop(); }
-      b.shadow(-0.06, 0.02, 0.6, 0.48, 0.3);
+      // bare oak, then two stains on it. (The shot sits off to one side, OX/OZ, so each board falls inside one
+      // repeat of the wood texture and doesn't show the seam where it repeats.)
+      const OX = 0.42, OZ = 0.3;
+      const boards = [['b1', null, OX - 0.1, OZ - 0.11, 0.05], ['b2', { hex: 'A3794A', type: 'semi' }, OX - 0.12, OZ + 0.02, -0.03], ['b3', { hex: '5A3E2B', type: 'semi' }, OX - 0.09, OZ + 0.15, 0.04]];
+      for (const [n, st, x, z, ry] of boards) {
+        b.mat(n, { color: 'C9A77A', wood: { sp: 'red_oak', board: 60, cm: 0.12, stain: st, seed: n.length + z * 100 }, gloss: st ? 0.35 : 0.12 });
+        b.push().at(x, 0, z, ry); b.rbox(n, -0.2, 0, -0.052, 0.2, 0.022, 0.052, 0.003, 1); b.contact(0, 0, 0.41, 0.11, 0, false, 0.6); b.pop();
+      }
       // a can of stain with a dark label
       b.mat('tin', { color: 'BFC2C4', gloss: 0.85 }); b.mat('label', { color: '3A2A20', gloss: 0.35 }); b.mat('labelB', { color: 'C9A15E', gloss: 0.35 });
-      b.cyl('tin', 0.33, 0, -0.02, 0.07, 0.115, 28); b.cyl('label', 0.33, 0.016, -0.02, 0.0708, 0.08, 28, 0.0708, ''); b.cyl('labelB', 0.33, 0.05, -0.02, 0.0712, 0.012, 28, 0.0712, '');
-      b.cyl('tin', 0.33, 0.115, -0.02, 0.068, 0.006, 28, 0.066);
-      b.shadow(0.33, -0.02, 0.2, 0.2, 0.35);
-      return { cam: { eye: [0.06, 0.42, 0.62], target: [0.07, 0.0, 0.0], fov: 34 }, studio: true, shadowC: [0.08, 0, 0.0], shadowR: 0.55 };
+      const cx = OX + 0.25, cz = OZ;
+      b.cyl('tin', cx, 0, cz, 0.07, 0.115, 28); b.cyl('label', cx, 0.016, cz, 0.0708, 0.08, 28, 0.0708, ''); b.cyl('labelB', cx, 0.05, cz, 0.0712, 0.012, 28, 0.0712, '');
+      b.cyl('tin', cx, 0.115, cz, 0.068, 0.006, 28, 0.066);
+      b.contact(cx, cz, 0.15, 0.15, 0, true);
+      return { cam: { eye: [OX + 0.04, 0.46, OZ + 0.6], target: [OX + 0.04, 0.0, OZ], fov: 34 }, studio: true };
     },
     'tile-buy'(b) {
       studio(b, 'DFE8E3');
       // a gallon of paint
       b.mat('tin', { color: 'C4C7C9', gloss: 0.85 }); b.mat('label', { color: '2F6B5E', gloss: 0.35 }); b.mat('labelW', { color: 'F4F2EC', gloss: 0.3 });
-      const cx = -0.12, cz = -0.02;
+      const cx = -0.17, cz = -0.03;
       b.cyl('tin', cx, 0, cz, 0.085, 0.19, 32); b.cyl('label', cx, 0.03, cz, 0.0856, 0.12, 32, 0.0856, ''); b.cyl('labelW', cx, 0.085, cz, 0.0862, 0.018, 32, 0.0862, ''); b.cyl('labelW', cx, 0.115, cz, 0.0862, 0.008, 32, 0.0862, '');
       b.lathe('tin', cx, 0.19, cz, [[0.086, 0], [0.088, 0.006], [0.08, 0.008], [0.077, 0.004], [0, 0.004]], 32);
-      b.shadow(cx, cz, 0.22, 0.22, 0.4);
-      // an angled brush
-      b.push().at(0.14, 0, 0.12, -0.55);
-      b.mat('handle', { color: 'B48A63', wood: { sp: 'birch', board: 30 }, gloss: 0.3 }); b.rbox('handle', -0.17, 0, -0.016, -0.02, 0.022, 0.016, 0.01);
+      b.contact(cx, cz, 0.18, 0.18, 0, true);
+      // an angled brush lying flat
+      b.push().at(0.03, 0, 0.14, -0.4);
+      b.mat('handle', { color: 'B48A63', wood: { sp: 'birch', board: 30 }, gloss: 0.3 }); b.rbox('handle', -0.15, 0, -0.016, -0.02, 0.022, 0.016, 0.01);
       b.mat('ferrule', { color: 'B9BCBE', gloss: 0.9 }); b.rbox('ferrule', -0.025, 0, -0.03, 0.03, 0.026, 0.03, 0.004);
-      b.mat('bristle', { color: '2F3B4C', pat: PAT.bead, gloss: 0.1 }); b.rbox('bristle', 0.03, 0.002, -0.028, 0.1, 0.02, 0.028, 0.006);
-      b.shadow(-0.03, 0, 0.3, 0.09, 0.3);
+      b.mat('bristle', { color: '2F3B4C', pat: PAT.bead, gloss: 0.1 }); b.rbox('bristle', 0.03, 0.002, -0.028, 0.09, 0.02, 0.028, 0.006);
+      b.contact(-0.03, 0, 0.25, 0.06, 0, false, 0.8);
       b.pop();
       // a roller resting in a tray of paint
       b.mat('tray', { color: '4A4D50', gloss: 0.4 }); b.mat('pool', { color: 'D9CDB8', gloss: 0.6 });
-      b.rbox('tray', 0.12, 0, -0.2, 0.42, 0.028, 0.02, 0.01); b.box('pool', 0.14, 0.028, -0.18, 0.4, 0.0285, -0.01);
-      b.mat('cover', { color: 'D9CDB8', pat: PAT.fabric }); b.rod('cover', 'x', 0.27, 0.06, -0.1, 0.03, 0.2, 24);
-      b.mat('wire', { color: 'B9BCBE', gloss: 0.8 }); b.rod('wire', 'x', 0.385, 0.06, -0.1, 0.004, 0.03, 8);
-      b.shadow(0.27, -0.09, 0.34, 0.26, 0.3);
-      return { cam: { eye: [0.09, 0.4, 0.74], target: [0.1, 0.075, -0.03], fov: 34 }, studio: true, shadowC: [0.1, 0, -0.02], shadowR: 0.55 };
+      const tx0 = 0.07, tx1 = 0.33, tz0 = -0.19, tz1 = 0.01;
+      b.rbox('tray', tx0, 0, tz0, tx1, 0.028, tz1, 0.01); b.box('pool', tx0 + 0.02, 0.028, tz0 + 0.02, tx1 - 0.02, 0.0285, tz1 - 0.02);
+      b.contact((tx0 + tx1) / 2, (tz0 + tz1) / 2, tx1 - tx0, tz1 - tz0, 0, false);
+      b.mat('cover', { color: 'D9CDB8', pat: PAT.fabric }); b.rod('cover', 'x', (tx0 + tx1) / 2, 0.0285 + 0.03, -0.09, 0.03, 0.19, 24);
+      // its frame bends back over the tray's edge to the handle
+      const wx = (tx0 + tx1) / 2 + 0.11;
+      b.mat('wire', { color: 'B9BCBE', gloss: 0.8 }); b.rod('wire', 'x', wx - 0.005, 0.0585, -0.09, 0.004, 0.022, 8); b.rod('wire', 'z', wx + 0.006, 0.0585, -0.12, 0.004, 0.06, 8);
+      // ...and the handle slopes down from there until its end rests on the floor
+      const tilt = -0.24, tc = Math.cos(tilt), ts = Math.sin(tilt);
+      b.push(); b.M = [1, 0, 0, 0, tc, -ts, 0, ts, tc, wx + 0.006, 0.0585, -0.15];
+      b.mat('grip', { color: '2F3B4C', gloss: 0.45 }); b.rod('wire', 'z', 0, 0, -0.01, 0.004, 0.02, 8); b.rod('grip', 'z', 0, 0, -0.1, 0.014, 0.16, 14);
+      b.pop();
+      b.contact(wx + 0.006, -0.3, 0.03, 0.06, 0, false, 0.6);
+      return { cam: { eye: [0.08, 0.44, 0.68], target: [0.08, 0.05, -0.03], fov: 34 }, studio: true };
     },
     'tile-lookup'(b) {
       studio(b, 'E7E5EF');
+      // five chips in a gentle arc
       const hues = ['D1CBC1', 'A7B3A0', '8C9FB3', 'C58F73', 'E3D5B8'];
       hues.forEach((h, i) => {
         b.mat('card' + i, { color: 'F8F7F4', gloss: 0.15 }); b.mat('cardc' + i, { color: h, gloss: 0.2 });
-        const x = -0.28 + i * 0.13, ry = (i - 2) * 0.05;
-        b.push().at(x, 0, 0.02 + Math.abs(i - 2) * 0.012, ry); b.rbox('card' + i, -0.05, 0, -0.08, 0.05, 0.003, 0.08, 0.004, 1); b.box('cardc' + i, -0.044, 0.003, -0.074, 0.044, 0.0036, 0.035); b.pop();
+        const x = -0.24 + i * 0.12, ry = (i - 2) * 0.06;
+        b.push().at(x, 0, 0.01 + Math.abs(i - 2) * 0.014, ry);
+        b.rbox('card' + i, -0.045, 0, -0.075, 0.045, 0.003, 0.075, 0.004, 1); b.box('cardc' + i, -0.039, 0.003, -0.069, 0.039, 0.0036, 0.03);
+        b.contact(0, 0, 0.094, 0.154, 0, false, 0.3);
+        b.pop();
       });
-      b.shadow(0, 0.03, 0.75, 0.24, 0.22);
-      // a magnifying glass over the middle chip: the glass shows that color, a little larger
-      const mx = 0.0, mz = -0.01, R = 0.075, t = 0.009;
+      // a magnifying glass lying on the middle chip: the lens shows that color, a little brighter
+      const mx = 0.0, mz = -0.025, R = 0.05, t = 0.008, cy = 0.0036 + t;
       b.mat('ring', { color: '2B2B2C', gloss: 0.6, twoSided: true });
-      const prof = []; for (let i = 0; i <= 20; i++) { const a = i / 20 * Math.PI * 2; prof.push([R + Math.cos(a) * t, 0.05 + Math.sin(a) * t]); }
+      const prof = []; for (let i = 0; i <= 20; i++) { const a = i / 20 * Math.PI * 2; prof.push([R + Math.cos(a) * t, cy + Math.sin(a) * t]); }
       b.lathe('ring', mx, 0, mz, prof, 36);
-      b.mat('lens', { color: '8C9FB3', gloss: 1, emit: 'none' }); b.cyl('lens', mx, 0.048, mz, R - 0.004, 0.004, 36);
-      b.push().at(mx, 0, mz, -0.6); b.rod('ring', 'x', R + 0.08, 0.05, 0, 0.012, 0.15, 14); b.pop();
-      b.shadow(mx + 0.06, mz + 0.03, 0.32, 0.2, 0.28);
-      return { cam: { eye: [0.0, 0.42, 0.6], target: [0.0, 0.0, 0.0], fov: 34 }, studio: true, shadowC: [0, 0, 0], shadowR: 0.55 };
+      b.mat('lens', { color: 'A9BACB', gloss: 1 }); b.cyl('lens', mx, cy - 0.002, mz, R - 0.002, 0.004, 36);
+      // the handle lies on top of the next chip (resting on it, not sunk into it)
+      b.push().at(mx, 0, mz, -0.55); b.rod('ring', 'x', R + t + 0.065, 0.0036 + 0.0105, 0, 0.0105, 0.13, 14); b.contact(R + t + 0.065, 0, 0.13, 0.03, 0, false, 0.7); b.pop();
+      b.contact(mx, mz, R * 2.2, R * 2.2, 0, true, 0.8);
+      return { cam: { eye: [0.0, 0.4, 0.47], target: [0.0, 0.0, 0.0], fov: 34 }, studio: true };
     },
   });
   // where a stain goes, by the stain job
@@ -1908,7 +1945,7 @@
       const out = {};
       for (const [name, d] of Object.entries(b.mats)) {
         const hex = d.role && look.roles[d.role] && /^[0-9A-F]{6}$/i.test(look.roles[d.role]) ? look.roles[d.role] : d.color;
-        const m = { lin: linOf(hex, lightObj, cal), gloss: d.gloss || 0, pat: d.pat || 0, scale: d.scale || 1, twoSided: !!d.twoSided, noShadow: !!d.noShadow, swap: !!d.swap, hex };
+        const m = { lin: linOf(hex, lightObj, cal), gloss: d.gloss || 0, pat: d.pat || 0, scale: d.scale || 1, twoSided: !!d.twoSided, noShadow: !!d.noShadow, swap: !!d.swap, flatN: !!d.flatN, hex };
         if (d.emit) { m.emit = emitFor(d.emit, L, !info.outside); if (d.emit === 'win' || d.emit === 'fire' || d.emit === 'screen') m.lin = [0, 0, 0]; }
         const stained = look.tex && ctx.parts.includes(d.part);
         if (stained) { m.tex = woodTexture({ sp: look.tex.sp, stain: look.tex.stain, board: (d.wood && d.wood.board) || 12, vertical: d.wood && d.wood.vertical, cm: (d.wood && d.wood.cm) || 0.3, seed: 3 }, gain); m.gloss = Math.max(m.gloss, 0.3); if (d.pat === PAT.lap || d.pat === PAT.batten || d.pat === PAT.shake) m.pat = d.pat; else m.pat = 0; m.lin = [1, 1, 1]; }
@@ -1954,8 +1991,8 @@
       const lamps = [];
       let amb = L.amb;
       if (info.studio) {
-        // a product shot: one soft key light from the upper left, an even fill, nothing else
-        sunDir = norm([-0.5, 0.95, 0.42]); sunCol = [0.95, 0.93, 0.9]; sunOn = true; amb = 0.78;
+        // a product shot: one soft key light from above and a little to the left, an even fill, nothing else
+        sunDir = norm([-0.35, 1, 0.3]); sunCol = [0.9, 0.88, 0.85]; sunOn = true; amb = 0.8;
       } else if (info.outside) {
         // the sun comes from the left side of the first view (not from behind the camera), so the shadows fall
         // across the picture where they can be seen. It stays put while the view is turned.
@@ -1998,7 +2035,7 @@
       }
       // outside in the sun, the shade takes on the sky's blue a little
       const sky = info.outside && sunOn ? [L.sky[0] * 0.92, L.sky[1] * 0.97, L.sky[2] * 1.04] : L.sky;
-      r.draw({ vp, inv: inv4(vp), eye: e, lvp, shadowR: shR, sunDir, sunCol, sunOn, showSun: info.outside, sky, ground: L.ground, horizon: L.horizon, skyTop: L.skyTop, amb, exp: L.exp * (o.exposure || 1), lamps, room: info.outside ? null : b.room, mats, wipePlane, clear: info.outside ? L.horizon : [0.88, 0.87, 0.85], skyBox: !!info.outside, time: (now || 0) / 1000, aoAmt: info.outside ? 1 : 0.9, aoFar: info.studio ? 0.12 : info.outside ? 7 : 1.4 });
+      r.draw({ vp, inv: inv4(vp), eye: e, lvp, shadowR: shR, sunDir, sunCol, sunOn, showSun: info.outside, sky, ground: L.ground, horizon: L.horizon, skyTop: L.skyTop, amb, exp: L.exp * (o.exposure || 1), lamps, room: info.outside ? null : b.room, mats, wipePlane, clear: info.outside ? L.horizon : [0.88, 0.87, 0.85], skyBox: !!info.outside, time: (now || 0) / 1000, cast: !info.studio, aoAmt: info.studio ? 0 : info.outside ? 1 : 0.9, aoFar: info.outside ? 7 : 1.4 });
       if (anim || (info.water && o.interactive)) schedule();
     }
     function schedule() { if (!raf && !dead) raf = requestAnimationFrame(t => { raf = 0; draw(t); }); }
@@ -2015,7 +2052,8 @@
     // backdrop) catch it but don't cast it, or every room would be in its own shade. Things lying flat on a wall
     // (baseboards, casings, wall tile, doors, a house's trim and shutters) don't either: they're too thin to shade
     // anything, and in the side views they'd smear onto the wall itself.
-    try {
+    // (product shots for the home screen don't use it: they get one soft shadow under each thing instead)
+    if (!info.studio) try {
       const SHELL = new Set(['wall', 'side', 'ceil', 'floor', 'lawn', 'water', 'bd', 'trim', 'wain', 'door', 'tile', 'mirror', 'xtrim', 'glassx', 'shut', 'xdoor', 'gdoor', 'walk', 'mulch', 'shore', 'farshore']);
       const dirs = [], ga = Math.PI * (3 - Math.sqrt(5));
       for (let i = 0; i < AO_N; i++) { const y = 1 - (i + 0.5) / AO_N * 2, rr = Math.sqrt(1 - y * y); dirs.push([Math.cos(i * ga) * rr, y, Math.sin(i * ga) * rr]); }

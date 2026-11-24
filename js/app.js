@@ -69,6 +69,9 @@
 
   // ---------------- brands ----------------
   const brandList = () => E.getIndex().brands;
+  // A to Z, for the lists people read and pick from (settings, setup). brandList() keeps the data's own order.
+  const azCmp = (a, b) => String(a).localeCompare(String(b), 'en', { sensitivity: 'base', numeric: true });
+  const brandsAZ = () => brandList().slice().sort((a, b) => azCmp(a.name, b.name));
   const brandName = id => (E.getIndex().brandById[id] || {}).name || S.brandName(id);
   function brandsEnabled() {
     const out = {};
@@ -98,30 +101,30 @@
     laundry: '<rect x="5" y="3" width="22" height="26" rx="2.5"/><circle cx="16" cy="18" r="6.5"/><path d="M5 9h22M9 6h2"/>',
     closet: '<path d="M13 7a3 3 0 116 0c0 2-3 2.5-3 4.5"/><path d="M16 11.5L4 21.5h24z"/>',
     sunroom: '<circle cx="23" cy="8" r="3.5"/><path d="M23 1.5V2.5M29.5 8h-1M27.6 3.4l-.8.8M18.4 3.4l.8.8"/><path d="M3 28V14h16v14M3 21h16M11 14v14"/>',
-    basement: '<path d="M3 13L16 4l13 9"/><path d="M6 11v5M26 11v5"/><path d="M2 16h28"/><rect x="6" y="18.5" width="20" height="9" rx="1"/><path d="M9 27.5V25h3v-2.5h3V20h3"/>',
+    basement: '<path d="M3 9h26M3 9v19h26V9"/><path d="M7 9v4h5v4h5v4h5v4"/>',
     attic: '<path d="M3 17L16 5l13 12"/><path d="M6 14.5V28h20V14.5"/><path d="M13 16h6v6h-6zM16 16v6M13 19h6"/>',
     media: '<rect x="3" y="6" width="26" height="16" rx="2"/><path d="M11 27h10M16 22v5"/>',
     garage: '<path d="M5 20l2.5-7a2 2 0 011.9-1.4h13.2a2 2 0 011.9 1.4L27 20"/><rect x="3" y="20" width="26" height="6" rx="2"/><circle cx="9" cy="23" r="1.3" fill="currentColor"/><circle cx="23" cy="23" r="1.3" fill="currentColor"/><path d="M6 26v2.5M26 26v2.5"/>',
     accent: '<rect x="3" y="5" width="26" height="22" rx="1"/><rect x="11" y="5" width="10" height="22" fill="currentColor" opacity=".3"/>',
     ceiling: '<path d="M2 4h28M16 4v7"/><path d="M9 18a7 7 0 0114 0z"/><path d="M13 22l-1 3M19 22l1 3M16 22v4"/>',
-    trim: '<path d="M3 27h26"/><path d="M10 27V5h12v22"/><path d="M13 27V8h6v19"/><path d="M3 23h7M22 23h7"/>',
+    trim: '<path d="M4 3v25h25"/><path d="M4 21h25M4 24h25"/><path d="M12 3v18M16 3v18"/>',
     doors: '<rect x="9" y="3" width="14" height="25" rx="1"/><rect x="12" y="6" width="8" height="8" rx=".5"/><rect x="12" y="17" width="8" height="8" rx=".5"/><path d="M5 28h22"/>',
     wainscot: '<path d="M3 4h26v24H3z"/><path d="M3 15h26"/><path d="M7 15v13M11 15v13M15 15v13M19 15v13M23 15v13M27 15v13"/>',
     fireplace: '<path d="M3 8h26M5 8v20M27 8v20M3 28h26"/><path d="M10 28V18a6 6 0 0112 0v10"/><path d="M16 26c-2 0-3-1.5-2-3.5.5 1 1.3 1 1.3-.5 0-1.5 1.7-2.5 1.7-2.5s2 2 2 4c0 1.5-1 2.5-3 2.5z"/>',
     cabinets: '<rect x="3" y="4" width="26" height="24" rx="1.5"/><path d="M16 4v24M3 13h26"/><path d="M13 18v4M19 18v4M10 8.5h3M19 8.5h3"/>',
     builtins: '<rect x="5" y="3" width="22" height="26" rx="1"/><path d="M5 11h22M5 19h22"/><path d="M8 11V6M10.5 11V6.5M13 11V5.5M18 19v-5M20.5 19v-6l2.5 1v5M9 27v-5M12 27v-5"/>',
     furniture: '<rect x="5" y="5" width="22" height="20" rx="1.5"/><path d="M5 11.5h22M5 18h22M14 8.2h4M14 14.8h4M14 21.4h4M7 25v3M25 25v3"/>',
-    floor_paint: '<path d="M3 27l5-10h16l5 10z"/><path d="M3 27l5-10h8v10z" fill="currentColor" opacity=".3" stroke="none"/><rect x="13" y="3.5" width="11" height="5" rx="2"/><path d="M24 6h2.5v5H18.5v5"/>',
+    floor_paint: '<path d="M2 27l7-6h21l-7 6z"/><rect x="11" y="3" width="15" height="6" rx="2"/><path d="M26 6h3v6H18v5"/>',
     ext_body: '<path d="M3 15L16 4l13 11"/><path d="M6 12.5V28h20V12.5"/><path d="M13 28v-7h6v7"/><path d="M8.5 16h4v4h-4zM19.5 16h4v4h-4z"/>',
     ext_trim: '<path d="M3 15L16 4l13 11"/><path d="M6 12.5V28h20V12.5"/><rect x="11" y="14" width="10" height="9"/><path d="M9 25h14"/>',
     front_door: '<path d="M3 28h26"/><rect x="9" y="5" width="14" height="23" rx="1"/><path d="M7 5h18"/><circle cx="19.5" cy="17" r="1.3" fill="currentColor"/><path d="M12 9h8v5h-8z"/>',
     shutters: '<rect x="11" y="6" width="10" height="20"/><path d="M16 6v20M11 16h10"/><rect x="4" y="6" width="5" height="20"/><rect x="23" y="6" width="5" height="20"/><path d="M5 10h3M5 13h3M5 16h3M5 19h3M5 22h3M24 10h3M24 13h3M24 16h3M24 19h3M24 22h3"/>',
     garage_door: '<path d="M2 12L16 4l14 8"/><path d="M5 10.5V28M27 10.5V28"/><rect x="8" y="14" width="16" height="14"/><path d="M8 17.5h16M8 21h16M8 24.5h16"/>',
-    porch_floor: '<path d="M3 11L16 4l13 7"/><path d="M6 10v11M26 10v11"/><path d="M3 21h26v3H3z"/><path d="M11 24v2h10v-2M9 26v2h14v-2"/>',
+    porch_floor: '<path d="M3 13h26M5 13v15M27 13v15"/><path d="M3 9L16 3l13 6"/><path d="M9 28v-3h14v3M11 25v-3h10v3"/>',
     shed: '<path d="M4 28V14l4-7h16l4 7v14z"/><path d="M4 14h24"/><rect x="11" y="18" width="10" height="10"/><path d="M11 18l10 10M21 18L11 28"/>',
     planks: '<path d="M3 6h26v20H3z"/><path d="M3 12.5h26M3 19h26M11 6v6.5M20 12.5V19M8 19v7M24 6v6.5M17 19v7"/>',
     table: '<path d="M2 11h28v3H2z"/><path d="M5 14v14M27 14v14M9 14v6h14v-6"/>',
-    chair: '<path d="M9 4.5h14v12.5H9z"/><path d="M9 9h14M9 13h14"/><path d="M6.5 17h19v4h-19z"/><path d="M8 21v7M24 21v7"/>',
+    chair: '<path d="M9 28l3-10h12l3 10M11 18V6a1 1 0 011-1h12a1 1 0 011 1v12M6 18h24"/>',
     paneling: '<path d="M3 4h26v24H3z"/><path d="M8.2 4v24M13.4 4v24M18.6 4v24M23.8 4v24"/>',
     deck: '<path d="M2 20h28M4 20v8M28 20v8M2 24h28"/><path d="M4 20V10M28 20V10M4 12h24M9 12v8M14 12v8M19 12v8M24 12v8"/>',
     fence: '<path d="M5 28V8l2.5-3L10 8v20M14 28V8l2.5-3L19 8v20M23 28V8l2.5-3L28 8v20M3 13h27M3 22h27"/>',
@@ -132,7 +135,7 @@
     tree: '<path d="M16 29v-8"/><path d="M16 21c-6 0-9-3-9-7a5 5 0 014-5 5 5 0 0110 0 5 5 0 014 5c0 4-3 7-9 7z"/>',
     roller: '<rect x="4" y="4" width="18" height="7" rx="2"/><path d="M22 7.5h4v7H15v4"/><rect x="13" y="18.5" width="4" height="10" rx="1.5"/>',
     drywall: '<rect x="5" y="3" width="22" height="26" rx="1"/><path d="M5 16h22"/><circle cx="9" cy="7" r="1" fill="currentColor"/><circle cx="23" cy="7" r="1" fill="currentColor"/><circle cx="9" cy="25" r="1" fill="currentColor"/><circle cx="23" cy="25" r="1" fill="currentColor"/>',
-    plaster: '<rect x="4" y="18" width="24" height="6" rx="2"/><path d="M16 18v-5"/><rect x="10.5" y="6" width="11" height="7" rx="3.5"/>',
+    plaster: '<path d="M4 19h18l4 6H8z"/><path d="M14 19v-6a3 3 0 013-3h6"/>',
     grain: '<rect x="3" y="7" width="26" height="18" rx="2"/><path d="M3 13c6-3 10 3 16 0s8-2 10-1M3 19c5-2 9 2 14 0s9-3 12-1"/><ellipse cx="20" cy="16" rx="3" ry="1.5"/>',
     stained: '<rect x="3" y="12" width="26" height="15" rx="2"/><path d="M3 18c6-3 10 3 16 0s8-2 10-1M3 23c5-2 9 2 14 0s9-3 12-1"/><path d="M16 3s-3.5 4-3.5 6a3.5 3.5 0 007 0c0-2-3.5-6-3.5-6z"/>',
     laminate: '<path d="M4 12l12-6 12 6-12 6z"/><path d="M4 17l12 6 12-6M4 22l12 6 12-6"/>',
@@ -145,7 +148,7 @@
     rough: '<path d="M3 17l3-5 3 7 3-8 3 9 3-6 3 7 3-9 3 6 2-3"/>',
     stains: '<path d="M16 4s-7 8-7 13a7 7 0 0014 0c0-5-7-13-7-13z"/><path d="M13 18a3 3 0 003 3"/>',
     glossy: '<path d="M16 3l2.5 8.5L27 14l-8.5 2.5L16 25l-2.5-8.5L5 14l8.5-2.5z"/>',
-    oil: '<path d="M7 10h18v16a2 2 0 01-2 2H9a2 2 0 01-2-2z"/><ellipse cx="16" cy="10" rx="9" ry="3"/><path d="M16 15s-3 3.5-3 5.6a3 3 0 006 0c0-2.1-3-5.6-3-5.6z"/>',
+    oil: '<path d="M5 14h14l4-4h4l-2 3-4 4v9H5z"/><path d="M9 14v-3h6v3"/>',
     knots: '<rect x="3" y="6" width="26" height="20" rx="2"/><ellipse cx="16" cy="16" rx="5" ry="3.5"/><ellipse cx="16" cy="16" rx="1.8" ry="1"/><path d="M3 11c5 0 7 1.5 8 3M3 21c5 0 7-1.5 8-3M29 11c-5 0-7 1.5-8 3M29 21c-5 0-7-1.5-8-3"/>',
     mildew: '<circle cx="10" cy="12" r="3"/><circle cx="20" cy="9" r="2"/><circle cx="21" cy="20" r="4"/><circle cx="10" cy="22" r="1.6"/><circle cx="26" cy="13" r="1.3"/>',
     flaws: '<rect x="3" y="5" width="26" height="22" rx="1.5"/><path d="M12 5l3 6-4 5 5 4-2 7"/>',
@@ -165,14 +168,14 @@
     unsure: '<circle cx="16" cy="16" r="12"/><path d="M12.5 12.5a3.5 3.5 0 117 0c0 2.5-3.5 3-3.5 5.5"/><circle cx="16" cy="22.5" r="1.2" fill="currentColor"/>',
     weathered: '<rect x="3" y="6" width="26" height="20" rx="2"/><path d="M3 12h9l3 2h14M3 20h6l4-2h16"/>',
     solid: '<rect x="4" y="4" width="24" height="24" rx="3" fill="currentColor" opacity=".35"/><rect x="4" y="4" width="24" height="24" rx="3"/>',
-    room: '<path d="M3 27h26"/><rect x="5" y="6" width="10" height="10" rx="1"/><path d="M10 6v10M5 11h10"/><path d="M23 27V12M20 12h6l-1.2-4.5h-3.6z"/><path d="M20.5 27h5"/><path d="M6 27v-4h11v4M6 23v-2h11v2"/>',
+    room: '<path d="M3 26L9 21V6l-6-3zM29 26l-6-5V6l6-3zM9 21h14M9 6h14"/>',
     can: '<path d="M7 9h18v18a2 2 0 01-2 2H9a2 2 0 01-2-2z"/><ellipse cx="16" cy="9" rx="9" ry="3"/><path d="M10 6c0-3 12-3 12 0"/>',
-    brush: '<rect x="13.5" y="3" width="5" height="11" rx="2"/><rect x="11" y="14" width="10" height="5" rx="1"/><path d="M11.5 19h9v5a4.5 4.5 0 01-9 0z"/>',
+    brush: '<path d="M13 3h6v10h-6z"/><path d="M11 13h10v4l-2 12h-6l-2-12z"/>',
     search: '<circle cx="14" cy="14" r="8.5"/><path d="M20.5 20.5L28 28"/>',
-    swatch: '<rect x="5" y="4" width="7.5" height="22" rx="1.5" transform="rotate(52 8.75 23)" fill="currentColor" opacity=".28" stroke="none"/><rect x="5" y="4" width="7.5" height="22" rx="1.5" transform="rotate(26 8.75 23)" fill="currentColor" opacity=".5" stroke="none"/><rect x="5" y="4" width="7.5" height="22" rx="1.5"/><path d="M5 10h7.5M5 16h7.5"/><circle cx="8.75" cy="23" r="1.2" fill="currentColor"/>',
+    swatch: '<rect x="5" y="3" width="10" height="26" rx="2"/><path d="M15 9l7-4 5 8.7-12 7"/><circle cx="10" cy="24" r="1.5" fill="currentColor"/>',
     list: '<rect x="6" y="4" width="20" height="25" rx="3"/><path d="M11 11h10M11 16h10M11 21h6"/>',
     print: '<path d="M9 11V4h14v7M9 23H5a2 2 0 01-2-2v-8a2 2 0 012-2h22a2 2 0 012 2v8a2 2 0 01-2 2h-4M9 18h14v10H9z"/>',
-    tape: '<circle cx="13" cy="14.5" r="9.5"/><circle cx="13" cy="14.5" r="3.5"/><path d="M13 24h15.5l-1.5-3.5"/>',
+    tape: '<circle cx="14" cy="16" r="10"/><circle cx="14" cy="16" r="4"/><path d="M24 16h5v6H14"/>',
     sparkle: '<path d="M14 4l2 7 7 2-7 2-2 7-2-7-7-2 7-2zM25 18l1 3.5 3.5 1-3.5 1-1 3.5-1-3.5-3.5-1 3.5-1z"/>',
     cube: '<path d="M16 3l12 6.5v13L16 29 4 22.5v-13z"/><path d="M4 9.5L16 16l12-6.5M16 16v13"/>',
   };
@@ -2065,7 +2068,7 @@
       </div></div>
       <div class="set-group"><h2>${home() ? 'Where You Shop' : 'Your Store'}</h2><div class="set-card">
         <div class="set-row"><div class="set-text"><b>Store</b><span>Turns on the brands that store carries</span></div>${selectHtml('setChain', [['', 'Choose a Store']].concat(Object.entries(CHAINS).filter(([, ch]) => !ch.other).map(([k, ch]) => [k, ch.label])), settings.chain, 'Store', v => { settings.chain = v; if (chainPreset(v, settings)) { settings.stainBrands = Object.fromEntries(Object.entries(settings.stainBrands).filter(([, on]) => on === false)); toast(`Brands set for ${CHAINS[v].label}`); } saveSettings(); afterSettingsChange(); renderKeep(); })}</div>
-        <div class="set-row"><div class="set-text"><b>${home() ? 'Favorite Brand' : 'Store Brand'}</b><span>Shown first, and used for which paint to buy</span></div>${selectHtml('setStoreBrand', [['', 'None, Mix Brands']].concat(brandList().map(b => [b.id, b.name])), settings.storeBrand, home() ? 'Favorite brand' : 'Store brand', v => { settings.storeBrand = v; if (v) settings.brands[v] = true; saveSettings(); afterSettingsChange(); renderKeep(); })}</div>
+        <div class="set-row"><div class="set-text"><b>${home() ? 'Favorite Brand' : 'Store Brand'}</b><span>Shown first, and used for which paint to buy</span></div>${selectHtml('setStoreBrand', [['', 'None, Mix Brands']].concat(brandsAZ().map(b => [b.id, b.name])), settings.storeBrand, home() ? 'Favorite brand' : 'Store brand', v => { settings.storeBrand = v; if (v) settings.brands[v] = true; saveSettings(); afterSettingsChange(); renderKeep(); })}</div>
         ${sw('storeOnly', settings.storeOnly, home() ? 'Only suggest my favorite brand' : 'Only suggest the store brand', 'Other brands still show up as matches')}
         <div class="set-row"><div class="set-text"><b id="lbl-job-paint">Paint</b><span>Paint colors and which paint to buy</span></div><button type="button" class="switch" role="switch" aria-checked="${jobOn('paint')}" aria-labelledby="lbl-job-paint" data-job-switch="paint"></button></div>
         <div class="set-row"><div class="set-text"><b id="lbl-job-stain">Stain</b><span>Wood stains, shown on real wood</span></div><button type="button" class="switch" role="switch" aria-checked="${jobOn('stain')}" aria-labelledby="lbl-job-stain" data-job-switch="stain"></button></div>
@@ -2097,11 +2100,11 @@
       <div class="set-group" id="setBrands"><h2>Brands</h2>
         <details class="set-card"><summary>Paint Brands <span class="muted">${brandList().filter(b => en[b.id]).length} of ${brandList().length} on</span></summary>
           <div class="set-row"><label class="search" style="flex:1;min-height:52px"><input type="search" id="brandFind" placeholder="Find a brand" aria-label="Find a brand" autocomplete="off" style="min-height:48px;font-size:1.05rem"></label><button type="button" class="btn small" data-act="brands-us">US National Only</button><button type="button" class="btn small" data-act="brands-all">All On</button></div>
-          ${groups.map(([g, label]) => { const bs = brandList().filter(b => b.group === g); if (!bs.length) return ''; return `<div class="brand-group" data-group="${g}"><div class="set-row"><div class="set-text"><b class="eyebrow">${label}</b></div><button type="button" class="link" data-brand-group="${g}" data-on="1">All On</button><button type="button" class="link" data-brand-group="${g}" data-on="0">All Off</button></div>${bs.map(b => `<div class="set-row brand-row" data-name="${esc(b.name.toLowerCase())}">${brandDots(b.id)}<div class="set-text"><b id="lbl-b-${esc(b.id)}">${esc(b.name)}</b><span>${fmt((E.getIndex().byBrand[b.id] || []).length)} colors</span></div><button type="button" class="switch" role="switch" aria-checked="${!!en[b.id]}" aria-labelledby="lbl-b-${esc(b.id)}" data-brand="${esc(b.id)}"></button></div>`).join('')}</div>`; }).join('')}
+          ${groups.map(([g, label]) => { const bs = brandsAZ().filter(b => b.group === g); if (!bs.length) return ''; return `<div class="brand-group" data-group="${g}"><div class="set-row"><div class="set-text"><b class="eyebrow">${label}</b></div><button type="button" class="link" data-brand-group="${g}" data-on="1">All On</button><button type="button" class="link" data-brand-group="${g}" data-on="0">All Off</button></div>${bs.map(b => `<div class="set-row brand-row" data-name="${esc(b.name.toLowerCase())}">${brandDots(b.id)}<div class="set-text"><b id="lbl-b-${esc(b.id)}">${esc(b.name)}</b><span>${fmt((E.getIndex().byBrand[b.id] || []).length)} colors</span></div><button type="button" class="switch" role="switch" aria-checked="${!!en[b.id]}" aria-labelledby="lbl-b-${esc(b.id)}" data-brand="${esc(b.id)}"></button></div>`).join('')}</div>`; }).join('')}
         </details>
-        ${S.brands().length ? `<details class="set-card"><summary>Stain Brands <span class="muted">${S.brands().filter(b => settings.stainBrands[b.id] !== false).length} of ${S.brands().length} on</span></summary>${S.brands().map(b => `<div class="set-row"><div class="set-text"><b id="lbl-s-${esc(b.id)}">${esc(b.name)}</b><span>${b.use === 'exterior' ? 'Outside' : 'Inside'}${b.note ? ' · ' + esc(b.note) : ''}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.stainBrands[b.id] !== false}" aria-labelledby="lbl-s-${esc(b.id)}" data-sbrand="${esc(b.id)}"></button></div>`).join('')}</details>` : ''}
-        <details class="set-card"><summary>Color Collections</summary><div class="set-note" style="border-top:0">Turn off fan decks or collections the store doesn’t carry.</div>${brandList().filter(b => en[b.id] && E.collectionsFor(b.id).length > 1).map(b => E.collectionsFor(b.id).map(x => `<div class="set-row"><div class="set-text"><b id="lbl-c-${esc(b.id)}-${x.id}">${esc(b.name)}: ${esc(x.label)}</b><span>${fmt(x.count)} colors${x.note ? ' · ' + esc(x.note) : ''}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.collections[b.id + ':' + x.id] !== false}" aria-labelledby="lbl-c-${esc(b.id)}-${x.id}" data-coll="${esc(b.id + ':' + x.id)}"></button></div>`).join('')).join('')}</details>
-        <details class="set-card"><summary>Paint Lines ${home() ? 'I’d Buy' : 'the Store Carries'}</summary><div class="set-note" style="border-top:0">Which Paint to Buy suggests a line for each job. Turn off lines ${home() ? 'you don’t want' : 'the store doesn’t stock'}.</div>${Object.keys(E.PAINT_LINES).filter(id => E.getIndex().brandById[id] && (en[id] || id === settings.storeBrand)).map(id => E.PAINT_LINES[id].map(l => `<div class="set-row"><div class="set-text"><b id="lbl-l-${esc(l.id)}">${esc(brandName(id))} ${esc(l.name)}</b><span>${esc(E.TIERS[l.tier])} · ${l.use === 'interior' ? 'Inside' : l.use === 'both' ? 'Floors' : 'Outside'} · ${esc(l.note)}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.lines[l.id] !== false}" aria-labelledby="lbl-l-${esc(l.id)}" data-line="${esc(l.id)}"></button></div>`).join('')).join('')}</details>
+        ${S.brands().length ? `<details class="set-card"><summary>Stain Brands <span class="muted">${S.brands().filter(b => settings.stainBrands[b.id] !== false).length} of ${S.brands().length} on</span></summary>${S.brands().slice().sort((a, b) => azCmp(a.name, b.name)).map(b => `<div class="set-row"><div class="set-text"><b id="lbl-s-${esc(b.id)}">${esc(b.name)}</b><span>${b.use === 'exterior' ? 'Outside' : 'Inside'}${b.note ? ' · ' + esc(b.note) : ''}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.stainBrands[b.id] !== false}" aria-labelledby="lbl-s-${esc(b.id)}" data-sbrand="${esc(b.id)}"></button></div>`).join('')}</details>` : ''}
+        <details class="set-card"><summary>Color Collections</summary><div class="set-note" style="border-top:0">Turn off fan decks or collections the store doesn’t carry.</div>${brandsAZ().filter(b => en[b.id] && E.collectionsFor(b.id).length > 1).map(b => E.collectionsFor(b.id).slice().sort((p, q) => azCmp(p.label, q.label)).map(x => `<div class="set-row"><div class="set-text"><b id="lbl-c-${esc(b.id)}-${x.id}">${esc(b.name)}: ${esc(x.label)}</b><span>${fmt(x.count)} colors${x.note ? ' · ' + esc(x.note) : ''}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.collections[b.id + ':' + x.id] !== false}" aria-labelledby="lbl-c-${esc(b.id)}-${x.id}" data-coll="${esc(b.id + ':' + x.id)}"></button></div>`).join('')).join('')}</details>
+        <details class="set-card"><summary>Paint Lines ${home() ? 'I’d Buy' : 'the Store Carries'}</summary><div class="set-note" style="border-top:0">Which Paint to Buy suggests a line for each job. Turn off lines ${home() ? 'you don’t want' : 'the store doesn’t stock'}.</div>${Object.keys(E.PAINT_LINES).filter(id => E.getIndex().brandById[id] && (en[id] || id === settings.storeBrand)).sort((a, b) => azCmp(brandName(a), brandName(b))).map(id => E.PAINT_LINES[id].map(l => `<div class="set-row"><div class="set-text"><b id="lbl-l-${esc(l.id)}">${esc(brandName(id))} ${esc(l.name)}</b><span>${esc(E.TIERS[l.tier])} · ${l.use === 'interior' ? 'Inside' : l.use === 'both' ? 'Floors' : 'Outside'} · ${esc(l.note)}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.lines[l.id] !== false}" aria-labelledby="lbl-l-${esc(l.id)}" data-line="${esc(l.id)}"></button></div>`).join('')).join('')}</details>
         <p class="muted small brand-none" hidden>No brand matches that search.</p>
       </div>
       <div class="set-group"><h2>Add Your Own Colors</h2><div class="set-card">
@@ -2270,7 +2273,7 @@
     }
     if (id === 'brands') {
       body = `<h1 id="obTitle">Which paint brands?</h1><p class="muted" style="font-size:1.15rem">Colors come only from brands that are on.</p>
-        <div class="chipset">${brandList().map(b => chipBtn(`data-ob-brand="${esc(b.id)}"`, !!ob.brands[b.id], b.name, null)).join('')}</div>`;
+        <div class="chipset">${brandsAZ().map(b => chipBtn(`data-ob-brand="${esc(b.id)}"`, !!ob.brands[b.id], b.name, null)).join('')}</div>`;
       nextOff = !brandList().some(b => ob.brands[b.id]);
     }
     if (id === 'done') {
