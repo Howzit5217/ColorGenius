@@ -851,6 +851,31 @@ html.gate-open { overflow: hidden; }
 @media (max-width: 420px) { .scene .tap-coach { font-size: .88rem; padding: 8px 12px; } }
 @media (prefers-reduced-motion: reduce) { .scene .tap-coach { animation: none; } }
 
+/* camera: on paper or on a wall, the green ready line, and tuning with a known chip */
+.cam-box[hidden] { display: none; }
+.cam-mode { display: inline-flex; padding: 4px; gap: 2px; border-radius: 999px; background: rgba(20, 20, 19, .6); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.cam-mode button { min-height: 40px; padding: 0 14px; border-radius: 999px; color: #fff; font-weight: 800; font-size: .92rem; white-space: nowrap; transition: background var(--t1), color var(--t1); }
+.cam-mode button[aria-pressed="true"] { background: #fff; color: #1c1b19; }
+@media (max-width: 420px) { .cam-top { gap: 6px; } .cam-top .cam-icon { width: 40px; height: 40px; } .cam-mode button { min-height: 36px; padding: 0 9px; font-size: .8rem; } }
+@media (max-width: 370px) { .cam-mode button { padding: 0 7px; font-size: .76rem; } .cam-top .cam-icon { width: 38px; height: 38px; } }
+.cam-hint.ready:not([hidden]) { display: flex; align-items: center; gap: 8px; background: rgba(35, 112, 74, .92); }
+.cam-hint .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #9ff0c0; box-shadow: 0 0 0 3px rgba(159, 240, 192, .35); }
+.cam-tune-row { display: grid; gap: 8px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, .15); }
+.cam-tune-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.cam-chip { min-height: 40px; padding: 0 14px; border-radius: 999px; background: #fff; color: #1c1b19; font-weight: 800; font-size: .9rem; }
+.cam-chip.ghost { background: transparent; color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6); }
+.cam-tune { position: absolute; left: 50%; top: calc(70px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(420px, calc(100% - 24px)); max-height: calc(100% - 230px); overflow: auto; display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: rgba(20, 20, 19, .92); color: #fff; z-index: 3; }
+.cam-tune[hidden] { display: none; }
+.cam-tune h2 { font-size: 1.2rem; }
+.cam-tune p { margin: 0; color: rgba(255, 255, 255, .8); }
+.cam-tune .search { background: #fff; color: #1c1b19; }
+.cam-tune-list { display: grid; gap: 6px; }
+.cam-tune-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; background: rgba(255, 255, 255, .08); color: #fff; text-align: left; }
+.cam-tune-item .sw { flex: none; width: 34px; height: 34px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3); }
+.cam-tune-item span { display: grid; }
+.cam-tune-item small { color: rgba(255, 255, 255, .7); }
+.cam-tune-foot { display: flex; justify-content: flex-end; }
+
 /* ---------------- see it all together ---------------- */
 .tg-cta { display: flex; align-items: center; gap: 14px; width: 100%; margin: 14px 0 4px; padding: 14px 16px; border-radius: var(--r-lg); border: 1.5px solid var(--line-2); background: var(--surface); color: var(--ink); text-align: left; box-shadow: var(--shadow); transition: border-color var(--t1), transform var(--t1) var(--ease); }
 .tg-cta:hover { border-color: var(--ink); }

@@ -24,7 +24,7 @@
     cal: { enabled: false, warmth: 0, brightness: 0, vividness: 0, ref: '' },
     theme: 'system', reduceMotion: false, lines: {}, collections: {}, audience: '', onboarded: false,
     jobs: { paint: true, stain: true }, stainBrands: {}, chain: '',
-    questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false,
+    questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false, camTune: [],
   };
   function merge(base, over) {
     const out = clone(base);
@@ -2151,15 +2151,11 @@
   }
   // ---- matching a color with the camera ----
   // For when the store's color scanner is down. A camera can't see true color on its own: it keeps changing its
-  // brightness and warmth. So a sheet of plain white paper goes in the same picture and the color is read against
-  // it: whatever the light and the camera do to one, they do to the other. The phone's light (on at first, where
-  // there is one) gives both the same steady light. Shadows only ever darken, so the paper is read from its
-  // brightest even part and the color from its middle tones, leaving out the shadows and shine that 3D objects and
-  // textures throw.
-  const PAPER = 0.86;   // how much light plain white copy paper reflects (about L* 94)
-  const toLin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
-  const toEnc = v => { v = Math.max(0, Math.min(1, v)); return Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055)); };
-  const lumOf = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  // brightness and warmth. So plain white paper goes in the same picture, under the same light, and the color is
+  // read against it. Two ways: On Paper (the chip or sample lying on the paper, which is read all the way around
+  // it, so the light at the color itself is known even with the phone's light making a bright spot) and On a Wall
+  // (a sheet held beside the color). How it's worked out, and the checks that refuse a picture that would read
+  // wrong (paper washed out, too close, shine, too dark), are in js/cammatch.js, tested on made-up pictures.
   const resetIcon = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v4h4"/></svg>';
   let cam = null;   // { stream, video, canvas, timer, busy, torch, light }
   let camFocus = null;
@@ -2190,25 +2186,29 @@
     el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Match a color with the camera');
     el.innerHTML = `
       <div class="cam-wrap" id="camWrap"><video id="camVideo" playsinline muted autoplay></video>
-        <div class="cam-box cam-p" data-cam-box="p"><span>Paper</span><i class="cam-size" aria-hidden="true"></i></div>
+        <div class="cam-box cam-p" data-cam-box="p"${camMode === 'wall' ? '' : ' hidden'}><span>Paper</span><i class="cam-size" aria-hidden="true"></i></div>
         <div class="cam-box cam-c" data-cam-box="c"><span>Color</span><i class="cam-size" aria-hidden="true"></i></div>
         <i class="cam-glare" id="camGlare" aria-hidden="true" hidden></i>
         <p class="cam-wait" id="camWait">Starting the camera…</p></div>
       <div class="cam-top">
         <button type="button" class="cam-icon" data-cam-close="1" aria-label="Close">${xIcon}</button>
         <span class="grow"></span>
+        <div class="cam-mode" role="group" aria-label="Where the color is"><button type="button" data-cam-mode="paper" aria-pressed="${camMode === 'paper'}">On Paper</button><button type="button" data-cam-mode="wall" aria-pressed="${camMode === 'wall'}">On a Wall</button></div>
+        <span class="grow"></span>
         <button type="button" class="cam-icon" data-cam-light="1" aria-label="Turn the light on" aria-pressed="false" hidden>${ic('bulb', 24)}</button>
         <button type="button" class="cam-icon" data-cam-reset="1" aria-label="Put the boxes back">${resetIcon}</button>
         <button type="button" class="cam-icon cam-q" data-cam-help="1" aria-label="Tips" aria-expanded="false">?</button>
       </div>
-      <p class="cam-hint" id="camNote" aria-live="polite">Paper in one box, the color in the other</p>
+      <p class="cam-hint" id="camNote" aria-live="polite">${camMode === 'wall' ? 'Paper in one box, the color in the other' : 'Lay the color on white paper. Fit the box inside the color.'}</p>
       <div class="cam-tips" id="camTips" hidden>
-        <span>Lay the chip on plain white paper, or hold the paper against the wall beside the color.</span>
+        <span><b>On Paper:</b> lay the chip or sample on plain white copy paper and fit the box inside it. The paper all around it is read too, so the light is the same.</span>
+        <span><b>On a Wall:</b> hold plain white paper flat on the wall right beside the color, and put the Paper box on it.</span>
         <span>Green edge: a good height. Yellow or red: move the phone back a little.</span>
         <span>Drag a box to move it. Drag its corner to resize it.</span>
-        <span>Shiny paint? Hold the phone at a slight angle, not flat over it, so the light doesn’t bounce straight back. A circle marks any shiny spot.</span>
-        <span>It gets close, not exact. Check against a real chip.</span>
+        <span>Shiny paint? Hold the phone at a slight angle, not flat over it. A circle marks any shiny spot.</span>
+        <span class="cam-tune-row" id="camTuneRow">${camTuneRow()}</span>
       </div>
+      <div class="cam-tune" id="camTune" hidden></div>
       <div class="cam-meter" id="camMeter" hidden aria-hidden="true"><span class="track"></span><i class="mark"></i><b class="lbl"></b></div>
       <div class="cam-bottom">
         <span class="cam-swatch"><span class="sw" id="camSw"></span><span class="mono" id="camHex">——</span></span>
@@ -2235,7 +2235,7 @@
     video.srcObject = stream;
     try { await video.play(); } catch (e) { /* plays once it can */ }
     cam = { stream, video, canvas: document.createElement('canvas'), timer: 0, busy: false, torch: false, light: false };
-    try { const tr = stream.getVideoTracks()[0], caps = tr && tr.getCapabilities ? tr.getCapabilities() : {}; cam.torch = !!caps.torch; cam.focus = !!caps.focusDistance; } catch (e) { cam.torch = false; }
+    try { const tr = stream.getVideoTracks()[0], caps = tr && tr.getCapabilities ? tr.getCapabilities() : {}; cam.torch = !!caps.torch; cam.focus = !!caps.focusDistance; const ec = caps.exposureCompensation; if (ec && ec.max > ec.min) cam.ev = { min: ec.min, max: ec.max, step: Math.max(ec.step || 0, 1 / 3), now: 0 }; } catch (e) { cam.torch = false; }
     if (cam.torch) { const lb = $('[data-cam-light]'); if (lb) lb.hidden = false; await camSetLight(true); }
     const w = $('#camWait'); if (w) w.hidden = true;
     cam.timer = setInterval(camLive, 250);
@@ -2249,17 +2249,21 @@
   // Where the boxes are: the center as a part of the picture's width and height, the size as a part of its shorter
   // side, so a box keeps its place and its shape when the screen turns. Moved or resized boxes are remembered on
   // this device for next time.
-  const camDefaults = () => ({ p: { x: 0.29, y: 0.5, w: 0.3, h: 0.3 }, c: { x: 0.71, y: 0.5, w: 0.3, h: 0.3 } });
-  let camBoxes = null;
+  // On paper: one box in the middle. On a wall: the Paper box and the Color box side by side.
+  const CAM_DEFAULTS = { paper: { c: { x: 0.5, y: 0.47, w: 0.24, h: 0.24 } }, wall: { p: { x: 0.29, y: 0.5, w: 0.3, h: 0.3 }, c: { x: 0.71, y: 0.5, w: 0.3, h: 0.3 } } };
+  let camMode = store.get('camMode', 'paper') === 'wall' ? 'wall' : 'paper';
+  let camAll = null, camBoxes = null;
   function camLayout() {
     const wrap = $('#camWrap'); if (!wrap) return;
     const W = wrap.clientWidth, H = wrap.clientHeight; if (!W || !H) return;
-    if (!camBoxes) { const saved = store.get('camBoxes3', null); camBoxes = saved && saved.p && saved.c ? saved : camDefaults(); }
+    if (!camAll) { const saved = store.get('camBoxes4', null); camAll = clone(CAM_DEFAULTS); if (saved && saved.paper && saved.paper.c) camAll.paper = saved.paper; if (saved && saved.wall && saved.wall.p && saved.wall.c) camAll.wall = saved.wall; }
+    camBoxes = camAll[camMode];
     const m = Math.min(W, H);
     // clear of the buttons at the top and bottom, so a corner handle is never under one
     const top = 78, bottom = H - 128;
     for (const k of ['p', 'c']) {
       const b = camBoxes[k], el = $(`#camWrap [data-cam-box="${k}"]`); if (!el) continue;
+      el.hidden = !b; if (!b) continue;
       const w = Math.max(48, Math.min(W - 70, b.w * m)), h = Math.max(48, Math.min(bottom - top, b.h * m));
       const left = Math.max(14, Math.min(W - w - 52, b.x * W - w / 2)), y = Math.max(top, Math.min(bottom - h, b.y * H - h / 2));
       Object.assign(el.style, { left: left + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
@@ -2286,212 +2290,184 @@
     } else { const hw = b.w * d.M / 2 / d.W, hh = b.h * d.M / 2 / d.H; b.x = Math.max(hw, Math.min(1 - hw, d.b0.x + dx)); b.y = Math.max(hh, Math.min(1 - hh, d.b0.y + dy)); }
     camLayout();
   });
-  const camDragEnd = e => { if (!camDrag || (e && e.pointerId !== camDrag.id)) return; camDrag.el.classList.remove('moving'); camDrag = null; store.set('camBoxes3', camBoxes); };
+  const camDragEnd = e => { if (!camDrag || (e && e.pointerId !== camDrag.id)) return; camDrag.el.classList.remove('moving'); camDrag = null; store.set('camBoxes4', camAll); };
   document.addEventListener('pointerup', camDragEnd); document.addEventListener('pointercancel', camDragEnd);
-  // The average color in the middle of a box. Shadows only darken and shine only brightens, so the paper is read
-  // from its brightest even part (above the middle, below any glare) and the color from its middle half. Also how
-  // even it is, how much is blown out to pure white, and how much of the paper sits in shadow.
-  function camRead(box, part) {
-    const v = cam.video, vr = v.getBoundingClientRect(), vw = v.videoWidth, vh = v.videoHeight;
-    const k = Math.max(vr.width / vw, vr.height / vh), ox = (vr.width - vw * k) / 2, oy = (vr.height - vh * k) / 2;   // object-fit: cover
-    const r = box.getBoundingClientRect();
-    const sx = (r.left - vr.left - ox) / k, sy = (r.top - vr.top - oy) / k, sw = r.width / k, sh = r.height / k;
-    const N = 28, cv = cam.canvas; cv.width = N; cv.height = N;
+  // ---- reading the picture: the math is in js/cammatch.js, tested on made-up camera pictures ----
+  const CM = window.CG.cammatch;
+  // the picture as it is now (small), and where a box on the screen falls in it
+  function camFrame() {
+    const v = cam.video, vw = v.videoWidth, vh = v.videoHeight; if (!vw || !vh) return null;
+    const sc = Math.min(1, 360 / Math.max(vw, vh)), fw = Math.round(vw * sc), fh = Math.round(vh * sc);
+    const cv = cam.canvas; if (cv.width !== fw || cv.height !== fh) { cv.width = fw; cv.height = fh; }
     const g = cv.getContext('2d', { willReadFrequently: true });
-    g.drawImage(v, sx + sw * 0.1, sy + sh * 0.1, sw * 0.8, sh * 0.8, 0, 0, N, N);
-    const d = g.getImageData(0, 0, N, N).data, px = [];
-    let hx = 0, hy = 0, hn = 0;   // where the shiny (washed-out) pixels are, to circle them on screen
-    for (let i = 0; i < d.length; i += 4) {
-      const c = [toLin(d[i]), toLin(d[i + 1]), toLin(d[i + 2])], hot = Math.max(d[i], d[i + 1], d[i + 2]) >= 252;
-      px.push({ c, y: lumOf(c), hot });
-      if (hot) { hx += (i / 4) % N; hy += Math.floor(i / 4 / N); hn++; }
-    }
-    // the shiny spot as fractions of the box: its middle, and how wide it is
-    const hotAt = hn ? { x: 0.1 + 0.8 * (hx / hn + 0.5) / N, y: 0.1 + 0.8 * (hy / hn + 0.5) / N, r: 0.8 * Math.sqrt(hn / Math.PI) / N } : null;
-    px.sort((p, q) => p.y - q.y);
-    const [lo, hi] = part === 'p' ? [0.5, 0.92] : [0.25, 0.75];
-    const keep = px.slice(Math.floor(px.length * lo), Math.ceil(px.length * hi));
-    const avg = [0, 1, 2].map(i => keep.reduce((s, p) => s + p.c[i], 0) / keep.length);
-    const mean = lumOf(avg) || 1e-4;
-    const spread = Math.sqrt(keep.reduce((s, p) => s + (p.y - mean) * (p.y - mean), 0) / keep.length) / mean;
-    return { avg, spread, hot: hn / px.length, hotAt, shade: px.filter(p => p.y < mean * 0.7).length / px.length };
+    g.drawImage(v, 0, 0, fw, fh);
+    const img = g.getImageData(0, 0, fw, fh);
+    const vr = v.getBoundingClientRect(), k = Math.max(vr.width / vw, vr.height / vh), ox = (vr.width - vw * k) / 2, oy = (vr.height - vh * k) / 2;   // object-fit: cover
+    const toF = r => ({ x0: (r.left - vr.left - ox) / k * sc, y0: (r.top - vr.top - oy) / k * sc, x1: (r.right - vr.left - ox) / k * sc, y1: (r.bottom - vr.top - oy) / k * sc });
+    const toScreen = (x, y) => ({ x: x / sc * k + ox + vr.left, y: y / sc * k + oy + vr.top });
+    return { frame: { data: img.data, width: fw, height: fh }, toF, toScreen, px: k / sc };
   }
-  // How the light runs across the plain paper. Up close the phone's light makes a bright spot, so the paper and the
-  // color get different amounts of it, which changes the color; farther away it evens out. A flat slope is fitted
-  // to a 3-by-3 grid of the paper's brightness (a cell darkened by a shadow is left out): its brightness in the
-  // middle of the box, and how much it rises or falls per screen pixel across and down.
-  const det3 = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
-  function camEven(box) {
-    const v = cam.video, vr = v.getBoundingClientRect(), vw = v.videoWidth, vh = v.videoHeight;
-    const k = Math.max(vr.width / vw, vr.height / vh), ox = (vr.width - vw * k) / 2, oy = (vr.height - vh * k) / 2;
-    const r = box.getBoundingClientRect();
-    const sx = (r.left - vr.left - ox) / k, sy = (r.top - vr.top - oy) / k, sw = r.width / k, sh = r.height / k;
-    const N = 30, cv = cam.canvas; cv.width = N; cv.height = N;
-    const g = cv.getContext('2d', { willReadFrequently: true });
-    g.drawImage(v, sx + sw * 0.1, sy + sh * 0.1, sw * 0.8, sh * 0.8, 0, 0, N, N);
-    const d = g.getImageData(0, 0, N, N).data, cells = [];
-    for (let cy = 0; cy < 3; cy++) for (let cx = 0; cx < 3; cx++) {
-      const ys = [];
-      for (let y = cy * 10; y < cy * 10 + 10; y++) for (let x = cx * 10; x < cx * 10 + 10; x++) { const i = (y * N + x) * 4; ys.push(lumOf([toLin(d[i]), toLin(d[i + 1]), toLin(d[i + 2])])); }
-      ys.sort((p, q) => p - q);
-      cells.push({ u: cx - 1, v: cy - 1, L: ys[Math.floor(ys.length * 0.7)] });
-    }
-    const top = Math.max(...cells.map(c => c.L)), use = cells.filter(c => c.L > top * 0.75);
-    if (!top || use.length < 5) return null;
-    const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], B = [0, 0, 0];
-    for (const c of use) { const f = [1, c.u, c.v]; for (let i = 0; i < 3; i++) { B[i] += f[i] * c.L; for (let j = 0; j < 3; j++) A[i][j] += f[i] * f[j]; } }
-    const D = det3(A); if (Math.abs(D) < 1e-9) return null;
-    const solve = j => det3(A.map((row, i) => row.map((x, q) => q === j ? B[i] : x))) / D;
-    return { a: solve(0), gx: solve(1) / (r.width * 0.8 / 3), gy: solve(2) / (r.height * 0.8 / 3), cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
-  }
-  // the paper-like part (brighter half, below any glare) of a patch of the picture, given in screen pixels
-  function camPatch(x, y, w, h) {
-    const v = cam.video, vr = v.getBoundingClientRect(), vw = v.videoWidth, vh = v.videoHeight;
-    const k = Math.max(vr.width / vw, vr.height / vh), ox = (vr.width - vw * k) / 2, oy = (vr.height - vh * k) / 2;
-    const sx = (x - vr.left - ox) / k, sy = (y - vr.top - oy) / k, sw = w / k, sh = h / k;
-    if (sx < 0 || sy < 0 || sx + sw > vw || sy + sh > vh || sw < 2 || sh < 2) return null;
-    const N = 12, cv = cam.canvas; cv.width = N; cv.height = N;
-    const g = cv.getContext('2d', { willReadFrequently: true });
-    g.drawImage(v, sx, sy, sw, sh, 0, 0, N, N);
-    const d = g.getImageData(0, 0, N, N).data, px = [];
-    for (let i = 0; i < d.length; i += 4) { const c = [toLin(d[i]), toLin(d[i + 1]), toLin(d[i + 2])]; px.push({ c, y: lumOf(c) }); }
-    px.sort((p, q) => p.y - q.y);
-    const keep = px.slice(Math.floor(px.length * 0.5), Math.ceil(px.length * 0.92));
-    return [0, 1, 2].map(i => keep.reduce((s, p) => s + p.c[i], 0) / keep.length);
-  }
-  // The white the color is really sitting in. With the chip on the paper, the paper just outside the Color box on
-  // each side shows exactly how much light the color gets: the average of opposite sides is the light in the
-  // middle, whatever the light is doing. A side counts only if it looks like the same paper as the Paper box.
-  // Where there's no paper around the color (a painted wall), the slope across the Paper box is carried over.
-  function camWhiteAt(cb, P, C) {
-    const r = cb.getBoundingClientRect(), m = Math.min(r.width, r.height), gap = 6 + m * 0.08, t = Math.max(8, m * 0.18);
-    const pl = lumOf(P) || 1e-4, cl = lumOf(C);
-    // (a side has to be clearly brighter than the color, unless the color is nearly white itself: otherwise a box
-    // smaller than a light gray chip would read the chip as the paper)
-    const like = c => { if (!c) return null; const l = lumOf(c); if (!(l > pl * 0.5 && l < pl * 1.6)) return null; if (cl < pl * 0.95 && l < cl * 1.04) return null; for (let i = 0; i < 3; i++) { const q = (c[i] / l) / (P[i] / pl); if (!(q > 0.88 && q < 1.12)) return null; } return c; };
-    const L = like(camPatch(r.left - gap - t, r.top + r.height * 0.2, t, r.height * 0.6)), R = like(camPatch(r.right + gap, r.top + r.height * 0.2, t, r.height * 0.6));
-    const T = like(camPatch(r.left + r.width * 0.2, r.top - gap - t, r.width * 0.6, t)), B = like(camPatch(r.left + r.width * 0.2, r.bottom + gap, r.width * 0.6, t));
-    const pairs = [[L, R], [T, B]].filter(([a, b]) => a && b).map(([a, b]) => a.map((x, i) => (x + b[i]) / 2));
-    if (!pairs.length) return null;
-    return [0, 1, 2].map(i => pairs.reduce((s, p) => s + p[i], 0) / pairs.length);
-  }
+  const camTune = () => (settings.camTune && settings.camTune.length ? CM.fitTune(settings.camTune) : null);
   function camSample() {
     if (!cam || !cam.video.videoWidth || !document.contains(cam.video)) return null;
-    const pb = $('#camWrap .cam-p'), cb = $('#camWrap .cam-c');
-    const s = { P: camRead(pb, 'p'), C: camRead(cb, 'c'), D: 0, W: null, ring: false };
-    const ring = camWhiteAt(cb, s.P.avg, s.C.avg);
-    if (ring) { s.W = ring; s.ring = true; s.D = lumOf(ring) / Math.max(1e-4, lumOf(s.P.avg)) - 1; }
-    else {
-      // how much more (or less) light the color gets than the paper, carried on from the slope across the paper
-      const ev = camEven(pb);
-      if (ev && ev.a > 0) { const r = cb.getBoundingClientRect(); s.D = Math.max(-0.3, Math.min(0.3, (ev.gx * (r.left + r.width / 2 - ev.cx) + ev.gy * (r.top + r.height / 2 - ev.cy)) / ev.a)); }
-      s.W = s.P.avg.map(x => x * (1 + s.D));
-    }
-    return s;
+    const F = camFrame(); if (!F) return null;
+    const cb = $('#camWrap .cam-c'), pb = $('#camWrap .cam-p');
+    const layout = camMode === 'wall' && pb ? { mode: 'wall', color: F.toF(cb.getBoundingClientRect()), paper: F.toF(pb.getBoundingClientRect()) } : { mode: 'paper', color: F.toF(cb.getBoundingClientRect()) };
+    const r = CM.analyze(F.frame, layout, { tune: camTune() });
+    r.F = F;
+    return r;
   }
-  // the color, as it would look next to paper that reflects PAPER of the light, with the paper's light taken
-  // where the color is
-  const camHex = s => [0, 1, 2].map(i => toEnc(s.C.avg[i] / Math.max(1e-4, (s.W || s.P.avg)[i]) * PAPER).toString(16).padStart(2, '0')).join('').toUpperCase();
-  // The height guide. Every phone: how evenly the light falls between the boxes. Phones that say how far away
-  // they're focused add that too. The marker runs from too close (bottom, red) through a good height (green) to
-  // far (top).
+  // what to fix, in a few plain words
+  const CAM_SAY = {
+    ring: () => 'Lay the color on white paper, with paper showing all around it. On a wall? Tap “On a Wall”.',
+    paper: () => 'Put plain white paper in the Paper box.',
+    dark: () => (cam && cam.torch && !cam.light ? 'Too dark. Turn on the light.' : 'Too dark. Add more light.'),
+    bright: () => (cam && cam.ev && cam.ev.now > cam.ev.min ? 'Too bright. Adjusting the camera…' : cam && cam.light ? 'Too bright for the camera. Turn the light off, or move the phone back.' : 'Too bright for the camera. Move out of direct light, or move the phone back.'),
+    glare: () => 'Shine on the color (circled). Hold the phone at a slight angle, not flat over it, until the circle is out of the box.',
+    mixed: () => (camMode === 'wall' ? 'Fill the Color box with one color.' : 'Make the box smaller, so it’s all the color.'),
+    uneven: () => (camMode === 'wall' ? 'The light is uneven. Move the boxes closer together.' : 'Too close. Move the phone back a little.'),
+    brighter: () => 'Use plain white copy paper. The color looks brighter than the paper.',
+    small: () => 'Make the box bigger.',
+  };
+  const camSay = p => (CAM_SAY[p] ? CAM_SAY[p]() : '');
+  // a message in the line at the top (rewritten only when it changes, so screen readers say it once)
+  function camNote(text, kind) {
+    const note = $('#camNote'); if (!note) return;
+    note.hidden = !text;
+    const key = (kind || '') + '|' + text;
+    if (text && note.dataset.msg !== key) { note.dataset.msg = key; note.innerHTML = (kind === 'glare' ? TILT_ICON : kind === 'ready' ? '<span class="dot" aria-hidden="true"></span>' : '') + esc(text); }
+    note.classList.toggle('tilt', kind === 'glare'); note.classList.toggle('ready', kind === 'ready');
+  }
+  // phones that can: turn the exposure down when the paper starts to wash out, and back up when it's dim
+  async function camExposure(r) {
+    if (!cam || !cam.ev || cam.evBusy) return;
+    const top = r.white && r.white.top, ev = cam.ev;
+    let want = ev.now;
+    if (r.problem === 'bright' || (top && top > 238)) want = Math.max(ev.min, ev.now - ev.step);
+    else if (top && top < 160 && ev.now < 0) want = Math.min(0, ev.now + ev.step);
+    if (want === ev.now) return;
+    cam.evBusy = true;
+    try { await cam.stream.getVideoTracks()[0].applyConstraints({ advanced: [{ exposureCompensation: want }] }); ev.now = want; } catch (e) { cam.ev = null; }
+    setTimeout(() => { if (cam) cam.evBusy = false; }, 450);
+  }
+  // The height guide. How evenly the light falls on the paper (and how far away the phone has focused, on phones
+  // that say). The marker runs from too close (bottom, red) through a good height (green) to far (top).
   const FD_POS = [[0.05, 0], [0.12, 0.25], [0.18, 0.45], [0.45, 0.8], [0.9, 1]];
   const fdPos = fd => { for (let i = 1; i < FD_POS.length; i++) { const [d0, p0] = FD_POS[i - 1], [d1, p1] = FD_POS[i]; if (fd <= d1) return p0 + (p1 - p0) * Math.max(0, (fd - d0) / (d1 - d0)); } return 1; };
-  function camHeight(s) {
-    const D = Math.abs(cam.dS != null ? cam.dS : s.D), lit = cam.light;
+  function camHeight(r) {
+    const w = r.white || {}, lit = cam.light;
+    const even = camMode === 'wall' ? Math.abs(w.D || 0) * 3 : w.even || 0;
+    cam.eS = cam.eS == null ? even : cam.eS * 0.6 + even * 0.4;
+    const e = cam.eS;
     let fd = null;
-    if (cam.focus) { try { const f = cam.stream.getVideoTracks()[0].getSettings().focusDistance; if (f > 0.03 && f < 3) fd = f; } catch (e) { fd = null; } }
-    const [warnAt, badAt] = s.ring ? [0.06, 0.15] : [0.03, 0.08];
-    let level = D > badAt ? 'bad' : D > warnAt ? 'warn' : 'good';
-    let text = level === 'good' ? 'Good height' : lit ? 'Move back a little' : 'Light is uneven';
+    if (cam.focus) { try { const f = cam.stream.getVideoTracks()[0].getSettings().focusDistance; if (f > 0.03 && f < 3) fd = f; } catch (err) { fd = null; } }
+    let level = e > 1.15 ? 'bad' : e > 0.8 ? 'warn' : 'good';
+    let text = level === 'good' ? 'Good height' : lit || camMode === 'paper' ? 'Move back a little' : 'Light is uneven';
     if (fd != null && lit) {
       if (fd < 0.12) { level = 'bad'; text = 'Move back a little'; }
       else if (fd < 0.18 && level === 'good') { level = 'warn'; text = 'Move back a little'; }
       else if (fd > 0.45 && level === 'good') { level = 'warn'; text = 'Move a little closer'; }
     }
-    const pos = fd != null ? fdPos(fd) : Math.max(0.05, Math.min(0.78, 0.62 - D * (s.ring ? 2.2 : 5)));
+    const pos = fd != null ? fdPos(fd) : Math.max(0.05, Math.min(0.78, 0.75 - e * 0.45));
     return { level, pos, text: fd != null ? `${text} · about ${Math.round(fd * 39.37)} in` : text };
   }
   // a phone seen from the side, rocking from flat to a slight angle (shown with the glare message)
   const TILT_ICON = '<svg class="tilt-ic" viewBox="0 0 40 32" width="44" height="35" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 28h34" opacity=".6"/><g class="tilt-phone"><rect x="8" y="8" width="24" height="5" rx="2"/><path d="M20 16v7" stroke-dasharray="1.5 3"/></g></svg>';
-  // what needs fixing, in a few words (nothing when it's ready to read)
-  function camProblem(s) {
-    const pl = lumOf(s.P.avg), tint = Math.max(...s.P.avg) / Math.max(1e-4, Math.min(...s.P.avg)), lit = cam && cam.light;
-    if (pl < 0.03) return cam && cam.torch && !lit ? 'Too dark. Turn on the light.' : 'Too dark. Add more light.';
-    // shine: the light bouncing straight back into the camera. It stays put on the surface, so angling the phone
-    // moves the box off it. The spot is circled on screen.
-    if (s.P.hot > 0.3) { s.glare = 'p'; return 'Glare on the paper (circled). Hold the phone at a slight angle, not flat over the paper, until the circle is out of the box.'; }
-    if (s.P.shade > 0.5) return 'Shadow on the paper. Move the Paper box.';   // it reads the brighter half, so up to half in shadow is fine
-    if (s.P.spread > 0.12) return 'Put plain paper in the Paper box.';
-    if (tint > 2.2) return 'Use plain white paper.';
-    if (s.C.hot > 0.3) { s.glare = 'c'; return 'Shine on the color (circled). Hold the phone at a slight angle, not flat over the color, until the circle is out of the box.'; }
-    if (s.C.spread > 0.2) return 'Fill the Color box with one color.';
-    if (Math.abs(s.D) > (s.ring ? 0.15 : 0.08)) return lit ? 'Too close. Move the phone back a little.' : 'The light is uneven. Move the boxes closer together.';
-    if (lumOf(s.C.avg) > pl * 1.1) return 'Check the paper is in the Paper box.';
-    return '';
-  }
   function camLive() {
     if (!cam || cam.busy) return;
-    const s = camSample();
-    if (!s) { if (cam && !document.contains(cam.video)) camStop(); return; }
-    const bad = camProblem(s), hex = camHex(s);
-    // the height guide, steadied over a few readings
-    cam.dS = cam.dS == null ? s.D : cam.dS * 0.6 + s.D * 0.4;
-    const h = camHeight(s), screen = $('#camera'), meter = $('#camMeter');
-    if (screen) screen.dataset.height = h.level;
-    if (meter) { meter.hidden = false; $('.mark', meter).style.bottom = (h.pos * 100) + '%'; $('.lbl', meter).textContent = h.text; meter.dataset.level = h.level; }
-    const sw = $('#camSw'), hx = $('#camHex'), note = $('#camNote'), btn = $('[data-cam-read]');
-    if (sw) sw.style.background = '#' + hex;
-    if (hx) hx.textContent = '#' + hex;
-    if (note) {
-      note.hidden = !bad;
-      // only rewritten when it changes, so screen readers say it once and the picture keeps moving
-      if (bad && note.dataset.msg !== bad) { note.dataset.msg = bad; note.innerHTML = (s.glare ? TILT_ICON : '') + esc(bad); }
-      if (!bad) note.dataset.msg = '';
-      note.classList.toggle('tilt', !!s.glare);
-    }
-    if (btn) btn.disabled = !!bad;
-    // the circle around the shiny spot
-    const ring = $('#camGlare'), at = s.glare && (s.glare === 'p' ? s.P : s.C).hotAt, wrap = $('#camWrap');
+    const r = camSample();
+    if (!r) { if (cam && !document.contains(cam.video)) camStop(); return; }
+    camExposure(r);
+    const screen = $('#camera'), meter = $('#camMeter');
+    if (r.white && r.white.ok) {
+      const h = camHeight(r);
+      if (screen) screen.dataset.height = h.level;
+      if (meter) { meter.hidden = false; $('.mark', meter).style.bottom = (h.pos * 100) + '%'; $('.lbl', meter).textContent = h.text; meter.dataset.level = h.level; }
+    } else { if (screen) delete screen.dataset.height; if (meter) meter.hidden = true; }
+    const sw = $('#camSw'), hx = $('#camHex'), btn = $('[data-cam-read]');
+    if (r.hex && !r.problem) { if (sw) sw.style.background = '#' + r.hex; if (hx) hx.textContent = '#' + r.hex; }
+    if (r.problem) camNote(camSay(r.problem), r.problem === 'glare' ? 'glare' : '');
+    else camNote(cam.tuning ? 'Ready. Tap the round button to read the chip you know.' : 'Ready. Tap the round button.', 'ready');
+    if (btn) btn.disabled = !!r.problem;
+    // the circle around a shiny spot
+    const ring = $('#camGlare'), wrap = $('#camWrap'), at = r.problem === 'glare' && r.col && r.col.hotAt;
     if (ring && wrap) {
       ring.hidden = !at;
       if (at) {
-        const w = wrap.getBoundingClientRect(), b = $(`#camWrap .cam-${s.glare}`).getBoundingClientRect();
-        const size = Math.max(48, Math.min(Math.max(b.width, b.height) * 1.1, at.r * 2 * Math.min(b.width, b.height) + 28));
-        ring.style.left = (b.left - w.left + at.x * b.width) + 'px'; ring.style.top = (b.top - w.top + at.y * b.height) + 'px';
-        ring.style.width = ring.style.height = size + 'px';
+        const w = wrap.getBoundingClientRect(), p = r.F.toScreen(at.x, at.y), size = Math.max(48, at.r * 2 * r.F.px + 28);
+        ring.style.left = (p.x - w.left) + 'px'; ring.style.top = (p.y - w.top) + 'px'; ring.style.width = ring.style.height = size + 'px';
       }
     }
+  }
+  // ---- tuning: a chip whose color is known, read once, tells how this phone's camera bends the colors ----
+  function camTuneRow() {
+    const n = (settings.camTune || []).length;
+    return `<b>Make it more exact:</b> tune the camera with a chip you know.<span class="cam-tune-btns"><button type="button" class="cam-chip" data-cam-tune="1">${n ? 'Tune With Another Chip' : 'Tune the Camera'}</button>${n ? `<button type="button" class="cam-chip ghost" data-cam-untune="1">Undo Tuning (${n} chip${n > 1 ? 's' : ''})</button>` : ''}</span>`;
+  }
+  function camTunePick(c) {
+    const box = $('#camTune'); if (!box) return;
+    cam.tuneRead = c;
+    box.hidden = false;
+    box.innerHTML = `<h2>Which chip is it?</h2><p>Type its name or number from the chip.</p>
+      <label class="search"><input type="search" id="camTuneQ" placeholder="Agreeable Gray, SW 7029..." aria-label="The chip's name or number" autocomplete="off"></label>
+      <div class="cam-tune-list" id="camTuneList"></div>
+      <div class="cam-tune-foot"><button type="button" class="cam-chip ghost" data-cam-tune-cancel="1">Cancel</button></div>`;
+    const q = $('#camTuneQ');
+    q.addEventListener('input', () => {
+      const list = q.value.trim() ? E.search(q.value, { brands: brandsEnabled(), limit: 6 }) : [];
+      $('#camTuneList').innerHTML = list.map(x => `<button type="button" class="cam-tune-item" data-cam-tune-pick="${esc(x.color.id)}"><span class="sw" ${swStyle(x.color.hex)}></span><span><b>${esc(x.color.name)}</b><small>${esc(brandName(x.color.brand))} ${esc(E.codeLabel(x.color))}</small></span></button>`).join('');
+    });
+    q.focus({ preventScroll: true });
+  }
+  function camTuneDone(id) {
+    const chip = E.findColor(id), c = cam && cam.tuneRead; if (!chip || !c) return;
+    const pair = { m: c.raw, t: CM.linOf(chip.hex).map(v => v / CM.PAPER) };
+    settings.camTune = (settings.camTune || []).concat([pair]).slice(-6); saveSettings();
+    cam.tuning = false; cam.tuneRead = null;
+    const box = $('#camTune'); if (box) { box.hidden = true; box.innerHTML = ''; }
+    const row = $('#camTuneRow'); if (row) row.innerHTML = camTuneRow();
+    toast(`Tuned with ${chip.name}. Readings now fit this phone better.`);
   }
   document.addEventListener('click', async e => {
     if (e.target.closest('[data-camera]')) { openCamera(); return; }
     const t = e.target.closest('#camera button'); if (!t) return;
     const d = t.dataset;
     if (d.camClose) { closeCamera(); return; }
+    if (d.camMode) {
+      camMode = d.camMode === 'wall' ? 'wall' : 'paper'; store.set('camMode', camMode);
+      $$('[data-cam-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.camMode === camMode)));
+      if (cam) cam.eS = null;
+      camLayout(); return;
+    }
+    if (d.camTune) { cam && (cam.tuning = true); const tips = $('#camTips'); if (tips) tips.hidden = true; $('#camera').classList.remove('tips-open'); $$('[data-cam-help]').forEach(b => b.setAttribute('aria-expanded', 'false')); toast('Lay a chip you know on the paper, fit the box in it, then tap the round button.'); return; }
+    if (d.camUntune) { settings.camTune = []; saveSettings(); const row = $('#camTuneRow'); if (row) row.innerHTML = camTuneRow(); toast('Camera tuning undone'); return; }
+    if (d.camTuneCancel) { if (cam) { cam.tuning = false; cam.tuneRead = null; } const box = $('#camTune'); if (box) { box.hidden = true; box.innerHTML = ''; } return; }
+    if (d.camTunePick) { camTuneDone(d.camTunePick); return; }
     if (d.camHelp) { const tips = $('#camTips'), open = tips.hidden; tips.hidden = !open; t.setAttribute('aria-expanded', String(open)); $('#camera').classList.toggle('tips-open', open); return; }
     if (d.camLight) { if (!(await camSetLight(!(cam && cam.light)))) toast('The light couldn’t change here'); return; }
     if (d.camReset) {
       const wrap = $('#camWrap'); if (!wrap) return;
-      camBoxes = camDefaults(); store.set('camBoxes3', null);
+      camAll[camMode] = clone(CAM_DEFAULTS[camMode]); store.set('camBoxes4', camAll);
       $$('#camWrap .cam-box').forEach(b => b.classList.add('resetting'));
       camLayout();
       setTimeout(() => $$('#camWrap .cam-box').forEach(b => b.classList.remove('resetting')), 320);
       return;
     }
     if (d.camRead && cam && !cam.busy) {
-      // several frames, averaged, so one flicker doesn't decide it
+      // a second of pictures, each read on its own; the color is the middle of them, and only if they agree
       cam.busy = true; t.disabled = true; t.classList.add('busy');
       const got = [];
-      for (let i = 0; i < 10; i++) { const s = camSample(); if (s && !camProblem(s)) got.push(s); await new Promise(r => setTimeout(r, 60)); }
+      for (let i = 0; i < 14; i++) { const r = camSample(); if (r) got.push(r); await new Promise(res => setTimeout(res, 70)); }
       if (!cam) return;
       cam.busy = false; t.classList.remove('busy');
-      if (got.length < 4) { t.disabled = false; const n = $('#camNote'); if (n) { n.hidden = false; n.classList.remove('tilt'); n.dataset.msg = ''; n.textContent = 'Hold still and try again.'; } return; }
-      const mean = part => ({ avg: [0, 1, 2].map(i => got.reduce((s, x) => s + x[part].avg[i], 0) / got.length) });
-      const hex = camHex({ P: mean('P'), C: mean('C'), W: [0, 1, 2].map(i => got.reduce((sum, x) => sum + x.W[i], 0) / got.length) });
+      const c = CM.combine(got), bad = got.find(g => g.problem);
+      if (!c || c.n < 6) { t.disabled = false; camNote(bad ? camSay(bad.problem) : 'Hold still and try again.', bad && bad.problem === 'glare' ? 'glare' : ''); return; }
+      if (c.spread > 2.5) { t.disabled = false; camNote('The color kept changing. Hold the phone still and try again.'); return; }
+      if (cam.tuning) { t.disabled = false; camTunePick(c); return; }
       closeCamera();
-      state.query = '#' + hex; state.lookupHex = hex;
+      state.query = '#' + c.hex; state.lookupHex = c.hex;
       if (state.view === 'lookup') renderLookup(); else go('lookup');
-      toast(`Read #${hex}. Check it against a real chip.`);
+      toast(`Read #${c.hex}. Check it against a real chip.`);
     }
   });
   let lookTimer = 0;
