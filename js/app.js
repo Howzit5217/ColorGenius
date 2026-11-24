@@ -346,10 +346,11 @@
     const [a, b] = [h.split('/')[0], h.split('/').slice(1).join('/')];
     if (['paint', 'stain', 'buy'].includes(a)) return b === 'results' ? { view: 'results', kind: a } : { view: 'flow', kind: a, step: Math.max(0, parseInt(b, 10) || 0) };
     if (a === 'color' && b) return { view: 'color', id: b };
+    if (a === 'p' && b) return { view: 'shared', data: b };
     if (['lookup', 'list', 'settings'].includes(a)) return { view: a };
     return { view: 'home' };
   }
-  const pathOf = r => r.view === 'home' ? '' : r.view === 'flow' ? `${r.kind}/${r.step}` : r.view === 'results' ? `${r.kind}/results` : r.view === 'color' ? `color/${r.id}` : r.view;
+  const pathOf = r => r.view === 'home' ? '' : r.view === 'flow' ? `${r.kind}/${r.step}` : r.view === 'results' ? `${r.kind}/results` : r.view === 'color' ? `color/${r.id}` : r.view === 'shared' ? `p/${r.data}` : r.view;
   const scrollMemo = {};
   let navDir = 0;
   function go(path, opts) {
@@ -395,6 +396,7 @@
     else if (r.view === 'color') renderColor(r.id);
     else if (r.view === 'lookup') renderLookup();
     else if (r.view === 'list') renderList();
+    else if (r.view === 'shared') renderShared(r.data);
     else if (r.view === 'settings') {
       // a locked kiosk keeps Settings behind the PIN
       if (isKiosk() && !state.unlocked) { go('', { replace: true }); openUnlock(); return; }
@@ -1914,7 +1916,7 @@
           <span class="what"><input type="text" class="area" data-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><b>${esc([x.brand, x.name, x.code].filter(Boolean).join(' '))}</b><span>${esc([x.finish, x.product, x.amount].filter(Boolean).join(' · '))}</span></span>
           <button type="button" class="icon-btn" data-del-item="${esc(x.id)}" aria-label="Remove ${esc(x.name)}">${xIcon}</button></li>`).join('')}</ol>
         <div class="actions stack"><button type="button" class="btn big primary" data-list="print">${ic('print', 22)}Print</button><button type="button" class="btn big primary" data-list="email">${mailIcon}Email It</button><button type="button" class="btn big" data-go="home">${plusIcon}Add More</button></div>
-        <details class="more"><summary>More Things to Do</summary><div class="actions">${paintRefs.length ? '<button type="button" class="btn" data-list="present">Show Colors Full Screen</button>' : ''}${paintRefs.length > 1 ? '<button type="button" class="btn" data-list="compare">Compare the Colors</button>' : ''}<button type="button" class="btn" data-list="copy">Copy as Text</button><button type="button" class="btn ghost" data-project-new="1">Start a New Project</button></div></details>`
+        <details class="more"><summary>More Things to Do</summary><div class="actions">${paintRefs.length ? '<button type="button" class="btn" data-list="present">Show Colors Full Screen</button>' : ''}${paintRefs.length > 1 ? '<button type="button" class="btn" data-list="compare">Compare the Colors</button>' : ''}<button type="button" class="btn" data-list="copy">Copy as Text</button><button type="button" class="btn" data-list="link">Copy a Link to It</button><button type="button" class="btn ghost" data-project-new="1">Start a New Project</button></div></details>`
         : `<div class="empty"><h2>Nothing in this project yet</h2><p class="muted">Find a color, then tap Add to Project. Everything you add lands here.</p><div class="actions stack"><button type="button" class="btn big primary" data-start="paint">Find a Paint Color</button>${jobOn('stain') ? '<button type="button" class="btn big" data-start="stain">Find a Stain</button>' : ''}<button type="button" class="btn big" data-go="lookup">Look Up a Color</button></div></div>`}
       ${items.length || (session.name || '').trim() ? `<div class="proj-delete"><button type="button" class="btn ghost danger" data-list="delete">${trashIcon}Delete This Project</button></div>` : ''}
       ${isKiosk() ? '' : `<section class="section" aria-labelledby="pastH"><h2 id="pastH">Earlier Projects</h2>${past.length ? `<div class="past">${past.map(s => `<div class="past-item"><span class="mini-sws">${s.items.slice(0, 5).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span><b>${esc(titleOf(s))}</b><span class="when">${s.items.length} item${s.items.length === 1 ? '' : 's'} · ${esc(whenOf(s.updated))}</span></span>
@@ -1933,6 +1935,7 @@
     if (act === 'present') openPresent();
     if (act === 'compare') openCompare();
     if (act === 'copy') copyText(sheetText(session), 'Copied the whole project');
+    if (act === 'link') shareLink(session).then(l => copyText(l, 'Copied a link. Anyone who opens it sees these colors.'));
     if (act === 'delete') askDelete(session);
     if (t.dataset.delItem) { session.items = session.items.filter(x => x.id !== t.dataset.delItem); saveSession(); updateListBtn(); renderList(); }
     if (t.dataset.openItem) {
@@ -2000,6 +2003,85 @@
   });
 
   // ---- emailing a project: the person's email app opens with the whole list written in ----
+  // ---- a project in a link ----
+  // The whole project rides inside the link itself, after the # (which browsers never send to the web host), so
+  // there's no server and no account. Whoever opens it sees every color in the app, can tap one to see it in a
+  // room, and can save the project to their own device.
+  const siteUrl = () => location.origin + location.pathname;
+  const SHARE_KEYS = ['kind', 'ref', 'area', 'brand', 'name', 'code', 'hex', 'finish', 'product', 'primer', 'amount', 'tools', 'loc'];
+  const toB64u = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const fromB64u = str => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((str.length + 3) % 4)), ch => ch.charCodeAt(0));
+  const squeeze = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+  async function packProject(s) {
+    const items = s.items.slice(0, 120).map(x => { const a = SHARE_KEYS.map(k => String(x[k] || '')); while (a.length && !a[a.length - 1]) a.pop(); return a; });
+    const raw = new TextEncoder().encode(JSON.stringify({ v: 1, n: (s.name || '').trim(), t: (s.notes || '').trim(), s: storeName(), d: Date.now(), i: items }));
+    // squeezed small when the browser can ("z"), plain otherwise ("j")
+    if (typeof CompressionStream === 'function') { try { return 'z' + toB64u(await squeeze(raw, new CompressionStream('deflate-raw'))); } catch (e) { /* plain below */ } }
+    return 'j' + toB64u(raw);
+  }
+  const shareLink = async s => `${siteUrl()}#/p/${await packProject(s)}`;
+  // anyone can make a link, so everything read from one is checked and kept short
+  async function unpackProject(code) {
+    const bytes = fromB64u(code.slice(1));
+    const raw = code[0] === 'z' ? await squeeze(bytes, new DecompressionStream('deflate-raw')) : code[0] === 'j' ? bytes : null;
+    const o = JSON.parse(new TextDecoder().decode(raw));
+    if (!o || o.v !== 1 || !Array.isArray(o.i)) throw new Error('not a project');
+    const str = (v, n) => String(v == null ? '' : v).slice(0, n);
+    const items = o.i.slice(0, 120).filter(Array.isArray).map(a => {
+      const x = {};
+      SHARE_KEYS.forEach((k, j) => { x[k] = str(a[j], k === 'product' || k === 'tools' ? 120 : 80); });
+      x.hex = /^[0-9A-F]{6}$/i.test(x.hex) ? x.hex.toUpperCase() : '';
+      if (!['paint', 'stain', 'custom', 'plan'].includes(x.kind)) x.kind = '';
+      // a color the app knows shows the app's own name, number and color
+      const c = x.kind !== 'stain' && E.findColor(x.ref);
+      if (c) Object.assign(x, { brand: brandName(c.brand), name: c.name, code: E.codeLabel(c), hex: c.hex, lrv: String(c.lrv) });
+      return x;
+    });
+    return { name: str(o.n, 60), notes: str(o.t, 160), store: str(o.s, 60), date: +o.d || 0, items };
+  }
+  let shared = null;   // the project from the link being looked at
+  const sharedColors = P => P.items.map(x => x.kind !== 'stain' && E.findColor(x.ref)).filter(Boolean);
+  const canOpenItem = x => !!x.ref && !x.ref.startsWith('#') && !!(E.findColor(x.ref) || S.find(x.ref));
+  async function renderShared(code) {
+    view().innerHTML = '<div class="page narrow"><p class="muted">Opening the project…</p></div>';
+    let P = null;
+    try { P = await unpackProject(code); } catch (e) { P = null; }
+    if (!current || current.view !== 'shared' || current.data !== code) return;   // moved on while it opened
+    shared = P;
+    if (!P) {
+      view().innerHTML = `<div class="page narrow"><div class="empty"><h1>This link doesn’t open</h1><p class="muted">Part of it may have been cut off when it was copied. Try tapping it again in the email, or look the colors up here.</p><div class="actions stack"><button type="button" class="btn big primary" data-go="lookup">Look Up a Color</button><button type="button" class="btn big" data-go="home">Go to ColorGenius</button></div></div></div>`;
+      return;
+    }
+    const from = [P.store, P.date ? new Date(P.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''].filter(Boolean).join(', ');
+    const row = (x, i) => {
+      const sw = `class="sw" ${x.hex ? swStyle(x.hex) : 'style="background:var(--surface-2)"'}`, open = canOpenItem(x), to = `color/${esc(encodeURIComponent(x.ref))}`;
+      return `<li class="item"><span class="n">${i + 1}</span>${open ? `<button type="button" ${sw} data-go="${to}" aria-label="See ${esc(x.name)}"></button>` : `<span ${sw}></span>`}
+        <span class="what">${x.area ? `<span class="area-ro">${esc(x.area)}</span>` : ''}<b>${esc([x.brand, x.name, x.code].filter(Boolean).join(' '))}</b><span>${esc([x.finish, x.product, x.primer ? 'Primer: ' + x.primer : '', x.amount, x.tools].filter(Boolean).join(' · '))}</span></span>
+        ${open ? `<button type="button" class="icon-btn" data-go="${to}" aria-label="See ${esc(x.name)}">${chev('right')}</button>` : '<span></span>'}</li>`;
+    };
+    view().innerHTML = `<div class="page narrow">
+      <div class="page-head"><p class="eyebrow">Shared Project</p><h1>${esc(P.name || 'Paint and Stain List')}</h1><p>${from ? `From ${esc(from)}. ` : ''}Tap a color to see it in a room. Save the project to keep it on this device.</p>${P.notes ? `<p class="muted">Notes: ${esc(P.notes)}</p>` : ''}</div>
+      ${P.items.length ? `<ol class="items">${P.items.map(row).join('')}</ol>` : '<p class="muted">There’s nothing in this project.</p>'}
+      <div class="actions stack"><button type="button" class="btn big primary" data-shared="save">${plusIcon}Save to My Projects</button>${sharedColors(P).length ? `<button type="button" class="btn big" data-shared="present">${expandIcon(20)}Show Colors Full Screen</button>` : ''}<button type="button" class="btn big" data-shared="print">${ic('print', 22)}Print</button></div>
+      <section class="section"><h2>See More Colors</h2><p class="muted">Every color from the big paint brands is in here. Look one up, or answer a few questions to find the right one for a room.</p><div class="actions"><button type="button" class="btn big" data-go="lookup">Look Up a Color</button><button type="button" class="btn big" data-go="home">Find a Color for a Room</button></div></section>
+    </div>`;
+  }
+  view().addEventListener('click', e => {
+    if (state.view !== 'shared' || !shared) return;
+    const t = e.target.closest('[data-shared]'); if (!t) return;
+    const P = shared, act = t.dataset.shared;
+    if (act === 'present') openPresent(sharedColors(P));
+    if (act === 'print') printPreview({ name: P.name || 'Paint and Stain List', notes: P.notes, items: P.items });
+    if (act === 'save') {
+      // the project that was open is kept under Earlier Projects, like starting a new one
+      const s = Object.assign(blankSession(), { name: P.name, notes: P.notes, items: P.items.map(x => Object.assign({ id: newId() }, x)) });
+      if (session.items.length || (session.name || '').trim()) fileSession(session);
+      session = s; saveSession(); updateListBtn();
+      toast(`Saved ${titleOf(s)} to your projects`);
+      go('list');
+    }
+  });
+
   // ---- email ----
   // With the EmailJS IDs filled in (js/config.js) the list is sent straight from the site's do-not-reply address,
   // so no email app is needed (a store kiosk has none). Without them, the device's own email app opens instead.
@@ -2007,35 +2089,74 @@
   const MAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[a-z]{2,}$/i;
   const MAIL_PER_HOUR = 12;   // a shared screen shouldn't become a way to send lots of email
   const mailSubject = s => 'Paint and stain list: ' + titleOf(s);
+  // Most addresses are Gmail, so just the name is enough: "@gmail.com" is added (shown in grey after what's
+  // typed). The buttons switch the ending; typing an @ means the whole address was typed.
+  const MAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'icloud.com', 'hotmail.com'];
+  let mailDomain = MAIL_DOMAINS[0];
+  function fullAddr() {
+    const v = (($('#mailTo') || {}).value || '').trim().replace(/\s+/g, '');
+    if (!v) return '';
+    return v.endsWith('@') ? v + mailDomain : v.includes('@') ? v : v + '@' + mailDomain;
+  }
+  function syncAt() {
+    const inp = $('#mailTo'), wrap = inp && inp.closest('.mail-addr'); if (!wrap) return;
+    const v = inp.value, at = $('.mail-at', wrap), meas = $('.mail-meas', wrap), cs = getComputedStyle(inp);
+    const typedAt = v.includes('@') && !v.endsWith('@');
+    wrap.classList.toggle('has-at', typedAt);
+    at.textContent = (v.endsWith('@') ? '' : '@') + mailDomain;
+    at.classList.toggle('ph', !v);
+    for (const k of ['fontFamily', 'fontSize', 'fontWeight', 'letterSpacing']) { meas.style[k] = cs[k]; at.style[k] = cs[k]; }
+    meas.textContent = v || inp.placeholder;
+    const left = parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth) + meas.offsetWidth - inp.scrollLeft;
+    at.style.left = Math.max(0, Math.min(left, inp.offsetWidth - at.offsetWidth - 12)) + 'px';
+    const dom = typedAt ? v.split('@')[1].toLowerCase() : mailDomain;
+    $$('[data-mail-dom]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mailDom === dom)));
+    const sr = $('#mailFull'); if (sr) sr.textContent = v ? 'Sends to ' + fullAddr() : '';
+  }
   function openEmail(s) {
     const cfg = mailCfg();
     const canShare = !cfg && !!(navigator.share && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
     const intro = cfg
       ? `<p style="font-size:1.1rem">Sends <b>${esc(titleOf(s))}</b> from ColorGenius’s do-not-reply address: every color, code, finish and product, one per line.</p>`
       : `<p style="font-size:1.1rem">Your email app opens with <b>${esc(titleOf(s))}</b> written in: every color, code, finish and product, one per line. Check it, then press Send.</p>`;
-    const field = `<label class="field">Their email address<input type="email" class="input" id="mailTo" placeholder="name@example.com" autocomplete="email" inputmode="email" enterkeyhint="send" maxlength="120">${cfg ? '' : '<span class="muted small" style="font-weight:500">Optional. You can also type it in the email.</span>'}</label>`;
+    const field = `<label class="field">Their email address<span class="mail-addr"><input type="email" class="input" id="mailTo" placeholder="name" autocomplete="email" inputmode="email" enterkeyhint="send" maxlength="120" aria-describedby="mailFull"><span class="mail-at ph" aria-hidden="true">@gmail.com</span><span class="mail-meas" aria-hidden="true"></span></span><span class="sr-only" id="mailFull" aria-live="polite"></span></label>
+      <div class="mail-doms" role="group" aria-label="Email ends in">${MAIL_DOMAINS.map((d, i) => `<button type="button" class="chip plain" data-mail-dom="${d}" aria-pressed="${i === 0}">@${d}</button>`).join('')}</div>
+      <p class="muted small" style="margin:0">Just type the name and the ending is added. For any other address, type all of it.${cfg ? '' : ' You can also leave it empty and type it in the email.'}</p>`;
     // a kiosk has no email app of its own, so it only gets the Send button
     const appBtn = cfg ? (isKiosk() ? '' : `<button type="button" class="btn big" data-mail-open="1">Use My Email App</button>`) : `<button type="button" class="btn big primary" data-mail-open="1">${mailIcon}Open Email</button>`;
     openModal(`Email ${titleOf(s)}`, `${intro}${field}<p class="mail-msg" id="mailMsg" role="status" aria-live="polite"></p>
       <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span>${canShare ? `<button type="button" class="btn big" data-mail-share="1">Share…</button>` : ''}${appBtn}${cfg ? `<button type="button" class="btn big primary" data-mail-send="1">${mailIcon}Send</button>` : ''}</div>`);
     const inp = $('#mailTo'); inp.focus();
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ($('[data-mail-send]') || $('[data-mail-open]')).click(); } });
-    inp.addEventListener('input', () => mailMsg(''));
+    inp.addEventListener('input', () => { mailMsg(''); syncAt(); });
+    inp.addEventListener('scroll', syncAt);
+    mailDomain = MAIL_DOMAINS[0];
+    requestAnimationFrame(syncAt);
     emailOf = s;
+    emailLink = shareLink(s).catch(() => '');
   }
-  let emailOf = null;
-  function mailBody(s) { return sheetText(s) + '\n\nColors look different on screens and paper. Check a real chip or sample before buying.'; }
+  let emailOf = null, emailLink = Promise.resolve('');
+  function mailBody(s, link) {
+    return sheetText(s) + (link ? `\n\nSee these colors in ColorGenius: ${link}\nBrowse every color: ${siteUrl()}` : '') + '\n\nColors look different on screens and paper. Check a real chip or sample before buying.';
+  }
+  // the email itself: a friendly line, a big button to the project in the app, then the list
+  function mailHtml(s, link) {
+    const where = storeName() ? `your visit to ${esc(storeName())}` : 'ColorGenius';
+    const btn = link ? `<p style="margin:18px 0 6px"><a href="${esc(link)}" style="display:inline-block;background:#2f6b5e;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:bold">See These Colors in ColorGenius</a></p><p style="margin:4px 0 18px;font-size:13px;color:#555">Tap a color to see it in a room, or save the project on your phone. You can also <a href="${esc(siteUrl())}" style="color:#2f6b5e">browse every color</a>.</p>` : '';
+    return `<p style="margin:0 0 4px">Here are the colors from ${where}.</p>${btn}<div style="white-space:pre-wrap;font-family:inherit">${esc(mailBody(s, ''))}</div>`;
+  }
+
   function mailMsg(text, bad) { const m = $('#mailMsg'); if (m) { m.textContent = text; m.classList.toggle('bad', !!bad); } }
   // sends through EmailJS. The template fills in to_email, subject, message_html (and message, as plain text).
-  async function sendMail(cfg, to, s) {
-    const body = mailBody(s);
+  async function sendMail(cfg, to, s, link) {
+    const body = mailBody(s, link);
     const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 20000);
     try {
       const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
         body: JSON.stringify({ service_id: cfg.serviceId, template_id: cfg.templateId, user_id: cfg.publicKey, template_params: {
           to_email: to, subject: mailSubject(s), project_name: titleOf(s), from_name: cfg.fromName || 'ColorGenius (do not reply)',
-          message: body, message_html: `<div style="white-space:pre-wrap;font-family:inherit">${esc(body)}</div>`,
+          message: body, message_html: mailHtml(s, link),
         } }),
       });
       if (!res.ok) throw new Error(`EmailJS ${res.status}: ${(await res.text()).slice(0, 200)}`);
@@ -2043,16 +2164,22 @@
   }
   document.addEventListener('click', async e => {
     const t = e.target.closest('button'); if (!t || !emailOf) return;
+    if (t.dataset.mailDom) {
+      const inp = $('#mailTo'); mailDomain = t.dataset.mailDom;
+      if (inp.value.includes('@')) inp.value = inp.value.split('@')[0] + '@' + mailDomain;
+      mailMsg(''); syncAt(); inp.focus();
+      return;
+    }
     if (t.dataset.mailSend) {
       const cfg = mailCfg(); if (!cfg) return;
-      const to = ($('#mailTo').value || '').trim();
-      if (!MAIL_RE.test(to)) { mailMsg('Type the full email address, like name@example.com', true); $('#mailTo').focus(); return; }
+      const to = fullAddr();
+      if (!MAIL_RE.test(to)) { mailMsg(to ? `${to} doesn’t look like an email address. Check it and try again.` : 'Type their email address. For Gmail, just the name is enough.', true); $('#mailTo').focus(); return; }
       const now = Date.now(), log = store.get('mailLog', []).filter(x => now - x < 3600e3);
       if (log.length >= MAIL_PER_HOUR) { mailMsg('That’s a lot of email from this screen in an hour. Try again a little later, or print it.', true); return; }
       const s = emailOf;
       t.disabled = true; t.textContent = 'Sending…'; mailMsg('');
       try {
-        await sendMail(cfg, to, s);
+        await sendMail(cfg, to, s, await emailLink);
         store.set('mailLog', log.concat(now));
         closeModal(); emailOf = null;
         toast(`Sent to ${to}`);
@@ -2064,8 +2191,8 @@
     }
     if (t.dataset.mailOpen) {
       // keep only characters an address can have, so nothing typed can add extra mailto fields
-      const to = ($('#mailTo').value || '').trim().replace(/[^\w.@+-]/g, '');
-      const body = mailBody(emailOf);
+      const to = fullAddr().replace(/[^\w.@+-]/g, '');
+      const body = mailBody(emailOf, await emailLink);
       const url = `mailto:${to}?subject=${encodeURIComponent(mailSubject(emailOf))}&body=${encodeURIComponent(body.replace(/\n/g, '\r\n'))}`;
       closeModal(); emailOf = null;
       // some email apps cut off very long links, so a long list is also copied to paste in
@@ -2075,7 +2202,7 @@
     }
     if (t.dataset.mailShare) {
       const s = emailOf;
-      try { await navigator.share({ title: mailSubject(s), text: mailBody(s) }); closeModal(); emailOf = null; } catch (err) { /* closed the share sheet */ }
+      try { await navigator.share({ title: mailSubject(s), text: mailBody(s, await emailLink) }); closeModal(); emailOf = null; } catch (err) { /* closed the share sheet */ }
     }
   });
 
@@ -2801,7 +2928,7 @@
     updateListBtn();
     if (!history.state) history.replaceState({ d: 0 }, '', location.hash || '#/');
     render(0);
-    if (!settings.onboarded) openOnboarding();
+    if (!settings.onboarded && parseHash().view !== 'shared') openOnboarding();
     if (failed.length) toast(`Couldn’t load: ${failed.join(', ')}`);
   }
   window.ColorGenius = { state, settings: () => settings, go, kioskReset, kioskWarn };

@@ -441,6 +441,14 @@ details.more > div { padding-top: 12px; }
 .mail-msg { margin: 0; min-height: 1.3em; font-weight: 650; color: var(--ink-2); }
 .mail-msg.bad { color: var(--caution); }
 .mail-msg:empty { min-height: 0; }
+/* the address box: what's typed, then "@gmail.com" in grey right after it */
+.mail-addr { position: relative; display: block; }
+.mail-at { position: absolute; top: 50%; transform: translateY(-50%); color: var(--ink-3); pointer-events: none; white-space: pre; }
+.mail-at.ph { opacity: .75; }
+.mail-addr.has-at .mail-at { display: none; }
+.mail-meas { position: absolute; visibility: hidden; white-space: pre; left: 0; top: 0; }
+.mail-doms { display: flex; flex-wrap: wrap; gap: 8px; }
+.mail-doms .chip { min-height: 42px; padding: 0 14px; font-size: .95rem; }
 .lrv-box { display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--r); background: var(--surface-2); }
 .lrv-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; font-weight: 700; }
 .lrv-bar { position: relative; height: 14px; border-radius: 99px; background: linear-gradient(90deg, #111 0%, #777 50%, #fff 100%); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15); }
@@ -581,6 +589,8 @@ button.val:hover { border-color: var(--line-2); }
 .item .what span { color: var(--ink-2); font-size: .92rem; }
 .item .area { min-height: 40px; border: 1.5px dashed var(--line-2); border-radius: 10px; padding: 0 10px; background: transparent; font-size: .95rem; font-weight: 650; width: 100%; max-width: 280px; }
 .item .area:focus { border-style: solid; border-color: var(--ink); outline: none; }
+/* a shared project shows where each one goes as plain text */
+.item .what .area-ro { color: var(--ink-3); font-weight: 750; font-size: .88rem; }
 .icon-btn { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); flex: none; border: 1.5px solid transparent; }
 .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
 @media (max-width: 520px) { .item { grid-template-columns: 48px minmax(0, 1fr) auto; } .item .n { display: none; } .item .sw { width: 48px; height: 48px; } }
