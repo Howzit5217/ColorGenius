@@ -1881,38 +1881,17 @@
     b.rbox(name + 'w', -0.03, 0, -len, 0.03, 0.0035, 0.012, 0.004, 1);
     [[1.35, 0.06], [1, 0.36], [0.62, 0.66]].forEach(([k, t], i) => { b.mat(name + i, { color: shade(k), gloss: 0.2 }); b.box(name + i, -0.026, 0.0036, -len * (t + 0.28), 0.026, 0.0042, -len * t); });
   }
-  // a paint chip card with rounded corners, lying flat: from the pivot end (z = 0) out to -L
-  function roundCard(b, mat, w, L, t, r) {
-    const pts = [], seg = 6, hw = w / 2;
-    const corners = [[hw - r, -r, 0], [-hw + r, -r, Math.PI / 2], [-hw + r, -L + r, Math.PI], [hw - r, -L + r, Math.PI * 1.5]];
-    for (const [cx, cz, a0] of corners) for (let i = 0; i <= seg; i++) { const a = a0 + (i / seg) * Math.PI / 2; pts.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]); }
-    const mid = [0, -L / 2];
-    b.solid++;
-    try {
-      for (let i = 0; i < pts.length; i++) {
-        const p = pts[i], q = pts[(i + 1) % pts.length];
-        b.quad(mat, [mid[0], t, mid[1]], [p[0], t, p[1]], [q[0], t, q[1]], [q[0], t, q[1]], [0, 1, 0]);
-        b.quad(mat, [mid[0], 0, mid[1]], [q[0], 0, q[1]], [p[0], 0, p[1]], [p[0], 0, p[1]], [0, -1, 0]);
-        const n = norm([q[1] - p[1], 0, -(q[0] - p[0])]);
-        b.quad(mat, [p[0], 0, p[1]], [q[0], 0, q[1]], [q[0], t, q[1]], [p[0], t, p[1]], dot(n, [p[0] - mid[0], 0, p[1] - mid[1]]) < 0 ? scl(n, -1) : n);
-      }
-    } finally { b.solid--; }
-  }
-  // the app icon: the logo's fan of three paint chips (beige, navy, sage on top) as a 3D studio shot, like the home
-  // pictures. 'tile-icon-safe' stands back a little, for Android's round and squircle masks.
+  // The app icon: the fanned paint deck from the Paint Colors picture (the same seven colors on their brass rivet),
+  // on its own and filling the square. 'tile-icon-safe' stands back a little, for Android's round and squircle
+  // masks. The same picture is the logo in the top bar and on the loading screen.
   function iconScene(b, far) {
-    studio(b, 'E2DED6');
+    studio(b, 'E4DED3');
     b.mat('brass', { color: 'BC9A45', gloss: 0.85 });
-    const px = 0, pz = 0.085, w = 0.07, L = 0.17;
-    [['CDBB9F', 0.46], ['2F3B4C', -0.46], ['6F8F85', 0]].forEach(([hex, ry], i) => {
-      b.mat('icard' + i, { color: hex, gloss: 0.28 });
-      b.push().at(px, i * 0.0052, pz, ry);
-      roundCard(b, 'icard' + i, w, L, 0.0045, 0.012);
-      b.contact(0, -L / 2, w + 0.01, L + 0.012, 0, false, 0.55);
-      b.pop();
-    });
-    b.cyl('brass', px, 0, pz - 0.012, 0.0085, 0.0052 * 3 + 0.003, 16);
-    return { cam: far ? { eye: [0, 0.405, 0.142], target: [0, 0, 0.004], fov: 34 } : { eye: [0, 0.305, 0.108], target: [0, 0, 0.004], fov: 34 }, studio: true };
+    const hues = ['E8DFCF', 'C9B79C', 'A9B8A0', '6F8F85', '4F6B7D', '2F3B4C', 'C47F5E'];
+    const px = 0, pz = 0.105;
+    hues.forEach((h, i) => { b.push().at(px, i * 0.0055, pz, (i - 3) * 0.2); chipStrip(b, 'chip' + i, h, 0.24); b.contact(0, -0.114, 0.064, 0.256, 0, false, 0.3); b.pop(); });
+    b.cyl('brass', px, 0, pz, 0.01, 0.0055 * 7 + 0.002, 14);
+    return { cam: far ? { eye: [0, 0.6, 0.28], target: [0, 0, 0.008], fov: 34 } : { eye: [0, 0.46, 0.215], target: [0, 0, 0.008], fov: 34 }, studio: true };
   }
   Object.assign(SCENES, {
     'tile-icon'(b) { return iconScene(b, false); },

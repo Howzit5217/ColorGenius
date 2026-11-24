@@ -3140,7 +3140,7 @@
   // screen in; tapping a choice just marks it, so nothing on the page moves.
   function drawOnboarding(dir) {
     const el = $('#onboard');
-    if (!$('.ob-shell', el)) el.innerHTML = `<div class="ob-shell"><div class="ob-top"><span class="logo" aria-hidden="true"><span class="fan"><i></i><i></i><i></i></span>ColorGenius</span><span class="ob-dots" aria-hidden="true"></span><span class="ob-skip"></span></div><div class="ob-body" id="obBody"></div></div>
+    if (!$('.ob-shell', el)) el.innerHTML = `<div class="ob-shell"><div class="ob-top"><span class="logo" aria-hidden="true"><img class="logo-mark" src="icons/icon-192.png" alt="" width="36" height="36">ColorGenius</span><span class="ob-dots" aria-hidden="true"></span><span class="ob-skip"></span></div><div class="ob-body" id="obBody"></div></div>
       <nav class="ob-nav" aria-label="Setup buttons"><div class="bottom-in"><button type="button" class="btn big ghost" data-ob="back">${chev('left')}Back</button><span class="grow"></span><button type="button" class="btn big primary" data-ob="next"><span class="enter-hint" aria-hidden="true">Enter <span class="ret">↵</span></span><span class="next-label">Next</span>${chev('right')}</button></div></nav>`;
     const id = obSteps()[ob.step], v = obView(id);
     obDots();

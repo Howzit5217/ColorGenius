@@ -19,6 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700;800&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="css/app.css">
+<link rel="preload" as="image" href="icons/icon-192.png">
 <link rel="preload" as="image" href="img/tile-paint.jpg">
 <link rel="preload" as="image" href="img/tile-stain.jpg">
 <link rel="preload" as="image" href="img/tile-buy.jpg">
@@ -29,7 +30,7 @@
 <header class="topbar">
   <div class="topbar-in">
     <button class="logo" id="homeBtn" type="button" aria-label="ColorGenius home">
-      <span class="fan" aria-hidden="true"><i></i><i></i><i></i></span>
+      <img class="logo-mark" src="icons/icon-192.png" alt="" width="36" height="36" decoding="async">
       <span class="logo-text">ColorGenius</span>
     </button>
     <span class="grow"></span>
@@ -54,7 +55,7 @@
 
 <main class="main" id="main" tabindex="-1">
   <section class="loading" id="loading" aria-live="polite">
-    <div class="loading-fan" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <img class="loading-mark" src="icons/icon-192.png" alt="" width="104" height="104">
     <p id="loadingText">Getting the paint colors ready…</p>
   </section>
   <div id="view" hidden></div>
