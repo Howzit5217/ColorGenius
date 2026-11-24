@@ -2466,6 +2466,7 @@
       <p class="pin-error" role="alert"></p>
       <div class="pin-keys" role="group" aria-label="Number pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button type="button" class="pin-key" data-pin-key="${n}">${n}</button>`).join('')}
         <button type="button" class="pin-key soft" data-pin-key="clear">Clear</button><button type="button" class="pin-key" data-pin-key="0">0</button><button type="button" class="pin-key soft" data-pin-key="del" aria-label="Delete the last number">${chev('left', 24)}</button></div>
+      ${pad.forgot ? '<button type="button" class="link pin-forgot" data-pin-forgot="1">Forgot the PIN?</button>' : ''}
       <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big primary" data-pin-ok="1">${esc(pad.ok)}</button></div>`);
     $('#modal .modal-card').classList.add('pin-card');
     updatePinPad();
@@ -2511,20 +2512,25 @@
   // the Staff button in a kiosk: the PIN, then leave kiosk mode or open Settings
   const lockOpenIcon = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 017.6-1.7"/><circle cx="12" cy="15.3" r="1.4" fill="currentColor" stroke="none"/></svg>';
   const gearIcon = () => $('#settingsBtn svg').outerHTML.replace(/width="22" height="22"/, 'width="24" height="24"');
+  function showUnlocked() {
+    pad = null;
+    openModal('Unlocked', `<p style="font-size:1.1rem">What would you like to do?</p>
+      <div class="unlock-acts">
+        <button type="button" class="btn big primary" data-unlock="leave">${lockOpenIcon}<span><b>Leave Kiosk Mode</b><small>Back to normal store mode</small></span></button>
+        <button type="button" class="btn big" data-unlock="settings">${gearIcon()}<span><b>Open Settings</b><small>Change something, then it locks again</small></span></button>
+      </div>
+      <div class="modal-foot"><span class="grow"></span><button type="button" class="btn big ghost" data-modal-close="1">Stay Locked</button></div>`);
+  }
   function openUnlock() {
     if (!isKiosk()) return;
+    // a kiosk turned on before PINs existed has none, and no PIN could ever match: make one, then it opens
+    if (!hasPin()) { makePin(showUnlocked, 'Make a Kiosk PIN', 'This kiosk doesn’t have a PIN yet. Pick 4 to 8 numbers to lock it with, then it unlocks. Write it down somewhere safe.'); return; }
     openPinPad({
-      title: 'Staff Only', sub: 'Enter the kiosk PIN to unlock this screen.', ok: 'Unlock',
+      title: 'Staff Only', sub: 'Enter the kiosk PIN to unlock this screen.', ok: 'Unlock', forgot: true,
       onDone: async pin => {
         if (await checkPin(pin)) {
           padFails = 0;
-          pad = null;
-          openModal('Unlocked', `<p style="font-size:1.1rem">What would you like to do?</p>
-            <div class="unlock-acts">
-              <button type="button" class="btn big primary" data-unlock="leave">${lockOpenIcon}<span><b>Leave Kiosk Mode</b><small>Back to normal store mode</small></span></button>
-              <button type="button" class="btn big" data-unlock="settings">${gearIcon()}<span><b>Open Settings</b><small>Change something, then it locks again</small></span></button>
-            </div>
-            <div class="modal-foot"><span class="grow"></span><button type="button" class="btn big ghost" data-modal-close="1">Stay Locked</button></div>`);
+          showUnlocked();
           return true;
         }
         if (++padFails >= 5) { padFails = 0; padLockUntil = Date.now() + 30000; const tick = setInterval(() => { updatePinPad(); if (Date.now() >= padLockUntil) clearInterval(tick); }, 1000); }
@@ -2533,6 +2539,44 @@
     });
   }
   $('#lockBtn').addEventListener('click', () => { if (state.ready) openUnlock(); });
+
+  // a forgotten PIN can't be looked up (only a scrambled copy is kept), so the way back in is to reset the
+  // settings and the PIN and run setup again. Holding the button for a few seconds keeps it from happening
+  // by a stray tap. Projects and imported colors stay.
+  const FORGOT_HOLD = 4000;
+  function openForgot() {
+    pad = null;
+    openModal('Forgot the PIN?', `<p style="font-size:1.1rem">The PIN can’t be looked up. This device only keeps a scrambled copy of it.</p>
+      <p style="font-size:1.1rem">To get back in, reset this device’s settings and PIN and run setup again. Projects and imported colors stay.</p>
+      <button type="button" class="btn big hold-btn" data-forgot-hold="1"><span class="hold-fill" aria-hidden="true"></span><span class="hold-label">Press and Hold to Reset</span></button>
+      <p class="muted small" style="text-align:center;margin-top:-8px">Keep holding for ${FORGOT_HOLD / 1000} seconds.</p>
+      <div class="modal-foot"><span class="grow"></span><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button></div>`);
+    $('#modal .modal-card').classList.add('pin-card');
+    holdToConfirm($('[data-forgot-hold]'), FORGOT_HOLD, resetForForgotPin);
+  }
+  function holdToConfirm(btn, ms, done) {
+    let timer = 0;
+    btn.style.setProperty('--hold', ms + 'ms');
+    const start = e => {
+      if (timer || (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ')) return;
+      if (e.type === 'keydown') e.preventDefault();
+      btn.classList.add('holding'); $('.hold-label', btn).textContent = 'Keep Holding…';
+      timer = setTimeout(() => { timer = 0; done(); }, ms);
+    };
+    const stop = () => { if (!timer) return; clearTimeout(timer); timer = 0; btn.classList.remove('holding'); $('.hold-label', btn).textContent = 'Press and Hold to Reset'; };
+    btn.addEventListener('pointerdown', start); btn.addEventListener('keydown', start);
+    ['pointerup', 'pointerleave', 'pointercancel', 'keyup', 'blur'].forEach(ev => btn.addEventListener(ev, stop));
+    btn.addEventListener('contextmenu', e => e.preventDefault());
+  }
+  function resetForForgotPin() {
+    settings = clone(DEFAULT_SETTINGS); saveSettings();
+    padFails = 0; padLockUntil = 0; state.unlocked = false;
+    closeModal(); applyTheme(); applyAudience(); afterSettingsChange('all');
+    go('', { replace: true });
+    toast('Settings and PIN reset');
+    openOnboarding();
+  }
+  $('#modal').addEventListener('click', e => { if (e.target.closest('[data-pin-forgot]')) openForgot(); });
   $('#modal').addEventListener('click', e => {
     const t = e.target.closest('[data-unlock]'); if (!t) return;
     closeModal();
@@ -2541,14 +2585,14 @@
   });
 
   // making a PIN: type it, then type it again to be sure
-  function makePin(then, title) {
+  function makePin(then, title, sub) {
     openPinPad({
-      title: title || 'Make a Kiosk PIN', sub: 'Pick 4 to 8 numbers. Staff will need it to unlock the kiosk, so write it down somewhere safe.', ok: 'Next',
+      title: title || 'Make a Kiosk PIN', sub: sub || 'Pick 4 to 8 numbers. Staff will need it to unlock the kiosk, so write it down somewhere safe.', ok: 'Next',
       onDone: async first => {
         openPinPad({
           title: 'Type It Again', sub: 'Enter the same PIN once more to make sure.', ok: 'Save PIN',
           onDone: async again => {
-            if (again !== first) { makePin(then, title); pad.error = 'Those didn’t match. Make the PIN again.'; updatePinPad(); return true; }
+            if (again !== first) { makePin(then, title, sub); pad.error = 'Those didn’t match. Make the PIN again.'; updatePinPad(); return true; }
             await setPin(again); closeModal(); toast('Kiosk PIN saved'); if (then) then(); return true;
           },
         });

@@ -722,6 +722,12 @@ html.ob-open, html.ob-open body { overflow: hidden; }
 .pin-count { text-align: center; font-size: .95rem; margin-top: -6px; }
 .pin-error { min-height: 1.5em; text-align: center; color: var(--caution); font-weight: 700; margin-top: -8px; }
 .pin-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pin-forgot { justify-self: center; font-size: 1rem; color: var(--ink-2); margin: -4px 0 -6px; }
+/* press and hold: the button fills up while it's held, and letting go early stops it */
+.hold-btn { position: relative; overflow: hidden; width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; border-color: color-mix(in srgb, var(--caution) 55%, var(--line-2)); }
+.hold-fill { position: absolute; inset: 0; background: color-mix(in srgb, var(--caution) 32%, transparent); transform: scaleX(0); transform-origin: left center; pointer-events: none; }
+.hold-btn.holding .hold-fill { transform: scaleX(1); transition: transform var(--hold, 4s) linear; }
+.hold-label { position: relative; }
 .pin-key { min-height: 66px; border-radius: 18px; border: 1.5px solid var(--line-2); background: var(--surface); font-size: 1.6rem; font-weight: 750; display: grid; place-items: center; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 2px 0 var(--line-2); transition: background var(--t1); }
 .pin-key:active { background: var(--surface-2); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .12); }
 .pin-key.soft { font-size: 1rem; color: var(--ink-2); }

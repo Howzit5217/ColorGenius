@@ -200,12 +200,21 @@
     uniform mat4 uVP; uniform mat4 uLVP;
     out vec3 vPos; out vec3 vNor; out vec2 vUv; out vec4 vLs;
     void main() { vPos = aPos; vNor = aNor; vUv = aUv; vLs = uLVP * vec4(aPos, 1.0); gl_Position = uVP * vec4(aPos, 1.0); }`;
+  // Shadows, two kinds:
+  //  - the sun's: a shadow map, sharp where a thing touches the ground and softer the farther away it is (like
+  //    real sunlight), found by first looking for what blocks the sun and how far off it is.
+  //  - soft "ambient" shadow from the sky and the room's bounced light: the scene is seen from AO_N directions
+  //    all around it once, and each spot counts how many of those directions are open. That is what darkens the
+  //    floor under a sofa, the ground under a deck or tree, the wall under the eaves and behind a toilet.
+  const AO_N = 32;
   const FS = `#version 300 es
     precision highp float; precision highp sampler2DShadow;
     in vec3 vPos; in vec3 vNor; in vec2 vUv; in vec4 vLs;
     uniform vec3 uColor, uPrev, uEmit; uniform float uWipe; uniform vec4 uWipePlane;
     uniform float uGloss; uniform int uPat; uniform float uTexMode; uniform sampler2D uTex; uniform vec2 uTexScale; uniform float uTexSwap; uniform float uScale;
-    uniform vec3 uSunDir, uSunCol; uniform float uSunOn; uniform sampler2DShadow uShadow; uniform float uTexel;
+    uniform vec3 uSunDir, uSunCol; uniform float uSunOn; uniform sampler2DShadow uShadow; uniform highp sampler2D uShadowRaw; uniform float uTexel;
+    uniform mat4 uLVP; uniform float uSunSoft, uSunSearch, uSunNO, uDepthM;
+    uniform highp sampler2DArray uAoRaw; uniform vec3 uAoDir[${AO_N}]; uniform vec3 uAoC; uniform float uAoR, uAoOn, uAoNO, uAoBias, uAoAmt, uAoFar;
     uniform vec3 uSky, uGround, uHorizon; uniform float uAmb; uniform vec3 uEye;
     uniform vec4 uLamp[6]; uniform vec3 uLampCol[6]; uniform int uLampN;
     uniform vec3 uRoomMin, uRoomMax; uniform float uRoomAO; uniform float uExposure; uniform float uTime;
@@ -242,13 +251,67 @@
       else if (uPat == 22) { c *= 0.85 + 0.2 * fbm(uv * 7.0); vec2 t = uv / vec2(0.5, 0.25); t.x += 0.5 * mod(floor(t.y), 2.0); c *= 0.75 + 0.25 * line(t.x, 0.03) * line(t.y, 0.05); }
       return c;
     }
-    float shadowAt(vec4 ls, float ndl) {
+    const vec2 PD[16] = vec2[16](
+      vec2(-0.9420, -0.3991), vec2(0.9456, -0.7689), vec2(-0.0942, -0.9294), vec2(0.3450, 0.2939),
+      vec2(-0.9159, 0.4577), vec2(-0.8154, -0.8791), vec2(-0.3828, 0.2768), vec2(0.9748, 0.7565),
+      vec2(0.4432, -0.9751), vec2(0.5374, -0.4737), vec2(-0.2650, -0.4189), vec2(0.7920, 0.1909),
+      vec2(-0.2419, 0.9971), vec2(-0.8141, 0.9144), vec2(0.1998, 0.7864), vec2(0.1438, -0.1410));
+    // a fine, even scatter so 16 samples blend into a smooth edge instead of 16 copies of the shadow
+    float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
+    float shadowAt(vec3 p, vec3 n, float ndl) {
+      // looked up a little off the surface (along its normal), so shadows stay attached to what casts them
+      vec4 ls = uLVP * vec4(p + n * uSunNO * (1.0 - 0.6 * ndl), 1.0);
       vec3 q = ls.xyz / ls.w * 0.5 + 0.5;
       if (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0 || q.z > 1.0) return 1.0;
-      float bias = 0.0008 + 0.0025 * (1.0 - ndl);
+      float z = q.z - 0.00025;
+      float a = ign(gl_FragCoord.xy) * 6.2831853; mat2 rot = mat2(cos(a), sin(a), -sin(a), cos(a));
+      // 1. is anything nearby blocking the sun, and how far above this spot is it?
+      float bd = 0.0, bn = 0.0;
+      float d0 = texture(uShadowRaw, q.xy).r; if (d0 < z) { bd += d0; bn += 1.0; }
+      for (int i = 0; i < 16; i++) { float d = texture(uShadowRaw, q.xy + rot * PD[i] * uSunSearch).r; if (d < z) { bd += d; bn += 1.0; } }
+      if (bn < 0.5) return 1.0;
+      // 2. the edge softens with that distance
+      float pen = clamp((z - bd / bn) * uDepthM * uSunSoft, uTexel * 1.2, uSunSearch);
       float s = 0.0;
-      for (int x = -2; x <= 2; x++) for (int y = -2; y <= 2; y++) s += texture(uShadow, vec3(q.xy + vec2(x, y) * uTexel * 1.25, q.z - bias));
-      return s / 25.0;
+      for (int i = 0; i < 16; i++) s += texture(uShadow, vec3(q.xy + rot * PD[i] * pen, z));
+      return s / 16.0;
+    }
+    // how open this spot is to the light all around it (1 open, 0 closed in), weighted toward where it faces.
+    // A blocker counts fully when it's close and fades out by uAoFar meters away: things across the room don't
+    // shade the ceiling, but the sofa shades the floor under it and the wall behind it.
+    float aoAt(vec3 p, vec3 n) {
+      vec3 q = p + n * uAoNO - uAoC;
+      float dm = 4.0 * uAoR - 0.1, toUv = 0.5 / uAoR;
+      float j = ign(gl_FragCoord.xy + 17.0) * 6.2831853;
+      float s = 0.0, w = 0.0;
+      for (int i = 0; i < ${AO_N}; i++) {
+        vec3 d = uAoDir[i]; float k = dot(n, d);
+        if (k <= 0.0) continue;
+        float fi = float(i);
+        vec3 up = abs(d.y) > 0.95 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
+        vec3 x = normalize(cross(up, d)), y = cross(d, x);
+        vec2 uv = vec2(dot(q, x), dot(q, y)) * toUv + 0.5;
+        float zz = (2.0 * uAoR - dot(q, d) - 0.1) / dm;
+        float occ = 0.0;
+        if (uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0) {
+          // each direction stands for the slice of sky around it, so its shadow is spread over that slice:
+          // wider the farther away the blocker is (how far, from a first look straight along it)
+          float r0 = texture(uAoRaw, vec3(uv, fi)).r;
+          float f0 = r0 < zz - uAoBias ? (zz - r0) * dm : uAoFar * 0.5;
+          float a = j + fi * 2.39996;
+          vec2 om = vec2(cos(a), sin(a)) * sqrt(fract(j * 0.37 + fi * 0.618)) * min(f0, uAoFar) * 0.38;
+          // two looks, mirrored about the spot, so the scatter evens out instead of speckling.
+          // The surface itself is tilted: at a shifted spot it sits nearer or farther along this direction, so
+          // compare against where it really is there (otherwise sloped things shade themselves)
+          float dz = -(dot(n, x) * om.x + dot(n, y) * om.y) / max(k, 0.25) / dm;
+          float za = zz - dz, zb = zz + dz;
+          float ra = texture(uAoRaw, vec3(uv + om * toUv, fi)).r, rb = texture(uAoRaw, vec3(uv - om * toUv, fi)).r;
+          if (ra < za - uAoBias) occ += 0.5 * (1.0 - smoothstep(uAoFar * 0.15, uAoFar, (za - ra) * dm));
+          if (rb < zb - uAoBias) occ += 0.5 * (1.0 - smoothstep(uAoFar * 0.15, uAoFar, (zb - rb) * dm));
+        }
+        s += k * (1.0 - occ); w += k;
+      }
+      return w > 0.0 ? s / w : 1.0;
     }
     void main() {
       vec3 n = normalize(vNor); if (!gl_FrontFacing) n = -n;
@@ -260,7 +323,7 @@
       base = pattern(base, uv, vPos, n);
       vec3 V = normalize(uEye - vPos);
       float ndl = dot(n, uSunDir);
-      float sh = (uSunOn > 0.5 && ndl > 0.0) ? shadowAt(vLs, ndl) : 0.0;
+      float sh = (uSunOn > 0.5 && ndl > 0.0) ? shadowAt(vPos, n, ndl) : 0.0;
       vec3 light = uSunCol * max(ndl, 0.0) * sh;
       float ao = 1.0;
       if (uRoomAO > 0.0) {
@@ -269,6 +332,7 @@
         float e1 = smoothstep(0.0, 0.55, dx + (abs(n.x) > 0.5 ? 9.0 : 0.0)), e2 = smoothstep(0.0, 0.45, dy + (abs(n.y) > 0.5 ? 9.0 : 0.0)), e3 = smoothstep(0.0, 0.55, dz + (abs(n.z) > 0.5 ? 9.0 : 0.0));
         ao = mix(1.0, 0.72 + 0.28 * e1 * e2 * e3, uRoomAO);
       }
+      if (uAoOn > 0.5) ao *= mix(1.0, aoAt(vPos, n), uAoAmt);
       vec3 hemi = mix(uGround, uSky, n.y * 0.5 + 0.5) * uAmb * ao;
       vec3 spec = vec3(0.0);
       float shin = mix(6.0, 180.0, uGloss);
@@ -283,7 +347,7 @@
       }
       if (uSunOn > 0.5) spec += uSunCol * pow(max(dot(n, normalize(uSunDir + V)), 0.0), shin) * uGloss * 0.7 * sh;
       float fres = pow(1.0 - max(dot(n, V), 0.0), 5.0);
-      vec3 env = mix(uGround, uSky, reflect(-V, n).y * 0.5 + 0.5) * uAmb;
+      vec3 env = mix(uGround, uSky, reflect(-V, n).y * 0.5 + 0.5) * uAmb * ao;
       vec3 col = base * (light + hemi) + spec + env * fres * uGloss * 0.35 + uEmit;
       col *= uExposure;
       col = mix(col, 0.82 + 0.18 * (1.0 - exp(-(col - 0.82) / 0.18)), step(0.82, col));
@@ -296,9 +360,11 @@
   const VS_DEC = `#version 300 es
     in vec3 aPos; in vec2 aUv; in float aS; uniform mat4 uVP; out vec2 vUv; out float vS;
     void main() { vUv = aUv; vS = aS; gl_Position = uVP * vec4(aPos, 1.0); }`;
+  // the old painted-on shadow under furniture: only a faint touch where it meets the floor now that the real
+  // ambient shadow does the work (uK scales it)
   const FS_DEC = `#version 300 es
-    precision mediump float; in vec2 vUv; in float vS; out vec4 o;
-    void main() { vec2 q = abs(vUv); float d = length(max(q - 0.55, 0.0)) / 0.45; float a = vS * (1.0 - smoothstep(0.0, 1.0, d)) * (1.0 - smoothstep(0.7, 1.0, max(q.x, q.y)) * 0.0); o = vec4(0.0, 0.0, 0.0, a); }`;
+    precision mediump float; in vec2 vUv; in float vS; uniform float uK; out vec4 o;
+    void main() { vec2 q = abs(vUv); float d = length(max(q - 0.55, 0.0)) / 0.45; float a = vS * uK * (1.0 - smoothstep(0.0, 1.0, d)); o = vec4(0.0, 0.0, 0.0, a); }`;
   const VS_SKY = `#version 300 es
     in vec2 aPos; uniform mat4 uInv; out vec3 vDir;
     void main() { vec4 p = uInv * vec4(aPos, 1.0, 1.0); vDir = p.xyz / p.w; gl_Position = vec4(aPos, 0.9999, 1.0); }`;
@@ -388,6 +454,19 @@
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFb);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, st, 0);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      // the sun's map is read two ways: compared (smooth shadow edges) and as plain depth (how far the blocker is)
+      const smp = (cmp) => { const s = gl.createSampler(); gl.samplerParameteri(s, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.samplerParameteri(s, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.samplerParameteri(s, gl.TEXTURE_MIN_FILTER, cmp ? gl.LINEAR : gl.NEAREST); gl.samplerParameteri(s, gl.TEXTURE_MAG_FILTER, cmp ? gl.LINEAR : gl.NEAREST);
+        gl.samplerParameteri(s, gl.TEXTURE_COMPARE_MODE, cmp ? gl.COMPARE_REF_TO_TEXTURE : gl.NONE); gl.samplerParameteri(s, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL); return s; };
+      this.sCmp = smp(true); this.sRaw = smp(false);
+      // the views from all around, for the soft ambient shadow: one layer each, made once per scene
+      this.aoSize = 384;
+      const at = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D_ARRAY, at);
+      gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 1, gl.DEPTH_COMPONENT16, this.aoSize, this.aoSize, AO_N);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      this.aoTex = at; this.aoFb = gl.createFramebuffer(); this.ao = null;
       this.white = this.makeTex(null);
       const sq = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, sq); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); this.tri = sq;
       this.textures = new Map();
@@ -436,6 +515,29 @@
         this.decal = { vao, count: di.length };
       }
     }
+    // the scene seen from every direction in `dirs` (straight-on views of a ball of radius R around c), keeping only
+    // how far away the nearest thing is. Things that `skip` says no to (the room's own walls, the lawn) don't block.
+    bakeAO(dirs, c, R, skip) {
+      const gl = this.gl;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.aoFb);
+      gl.viewport(0, 0, this.aoSize, this.aoSize);
+      gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.disable(gl.CULL_FACE);
+      gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(1.5, 3);
+      gl.useProgram(this.sh.p);
+      const proj = ortho(-R, R, -R, R, 0.1, R * 4);
+      dirs.forEach((d, i) => {
+        gl.framebufferTextureLayer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, this.aoTex, 0, i);
+        gl.clear(gl.DEPTH_BUFFER_BIT);
+        const lv = lookAt(add(c, scl(d, R * 2)), c, Math.abs(d[1]) > 0.95 ? [0, 0, 1] : [0, 1, 0]);
+        gl.uniformMatrix4fv(this.sh.u.uLVP, false, mmul(proj, lv));
+        for (const dr of this.draws) { if (skip(dr.name)) continue; gl.bindVertexArray(dr.vao); gl.drawElements(gl.TRIANGLES, dr.count, dr.type, 0); }
+      });
+      gl.disable(gl.POLYGON_OFFSET_FILL);
+      gl.bindVertexArray(null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      const texel = 2 * R / this.aoSize;
+      this.ao = { dirs: new Float32Array(dirs.flat()), c, R, no: texel * 1.6, bias: 0.012 / (R * 4) };
+    }
     // frame: { vp, eye, lvp, sunDir, sunCol, sunOn, sky..., mats: { name -> resolved material }, lamps, room, wipe }
     draw(fr) {
       const gl = this.gl, W = this.canvas.width, H = this.canvas.height;
@@ -476,7 +578,16 @@
       const L = fr.lamps.slice(0, 6), lp = new Float32Array(24), lc = new Float32Array(18);
       L.forEach((l, i) => { lp.set([l.p[0], l.p[1], l.p[2], l.r], i * 4); lc.set(l.c, i * 3); });
       gl.uniform4fv(u.uLamp, lp); gl.uniform3fv(u.uLampCol, lc); gl.uniform1i(u.uLampN, L.length);
-      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.shadowTex); gl.uniform1i(u.uShadow, 1);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.shadowTex); gl.bindSampler(1, this.sCmp); gl.uniform1i(u.uShadow, 1);
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.shadowTex); gl.bindSampler(2, this.sRaw); gl.uniform1i(u.uShadowRaw, 2);
+      gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.aoTex); gl.bindSampler(3, this.sRaw); gl.uniform1i(u.uAoRaw, 3);
+      // how soft the sun's shadow gets: about 2 degrees of blur per meter between the shadow and what casts it
+      const sr = fr.shadowR || 1;
+      gl.uniform1f(u.uSunSoft, 0.035 / (2 * sr)); gl.uniform1f(u.uSunSearch, Math.min(0.4, 0.06 * sr) / (2 * sr)); gl.uniform1f(u.uDepthM, sr * 4 - 0.1);
+      gl.uniform1f(u.uSunNO, 2 * sr / this.shadowSize * 1.5);
+      const A = this.ao;
+      gl.uniform1f(u.uAoOn, A && fr.aoAmt > 0 ? 1 : 0);
+      if (A) { gl.uniform3fv(u.uAoDir, A.dirs); gl.uniform3fv(u.uAoC, A.c); gl.uniform1f(u.uAoR, A.R); gl.uniform1f(u.uAoNO, A.no); gl.uniform1f(u.uAoBias, A.bias); gl.uniform1f(u.uAoAmt, fr.aoAmt || 0); gl.uniform1f(u.uAoFar, fr.aoFar || 1); }
       gl.uniform1i(u.uTex, 0);
       gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
       for (const d of this.draws) {
@@ -495,10 +606,11 @@
       if (this.decal) {
         gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); gl.disable(gl.CULL_FACE);
         gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(-1, -2);
-        gl.useProgram(this.dec.p); gl.uniformMatrix4fv(this.dec.u.uVP, false, fr.vp);
+        gl.useProgram(this.dec.p); gl.uniformMatrix4fv(this.dec.u.uVP, false, fr.vp); gl.uniform1f(this.dec.u.uK, this.ao && fr.aoAmt > 0 ? 0.35 : 1);
         gl.bindVertexArray(this.decal.vao); gl.drawElements(gl.TRIANGLES, this.decal.count, gl.UNSIGNED_SHORT, 0);
         gl.disable(gl.POLYGON_OFFSET_FILL); gl.depthMask(true); gl.disable(gl.BLEND);
       }
+      gl.bindSampler(1, null); gl.bindSampler(2, null); gl.bindSampler(3, null);
       gl.bindVertexArray(null);
     }
     dispose() {
@@ -771,7 +883,8 @@
     o = o || {};
     const d = 0.6, h = 0.88, mat = o.mat || 'cab';
     b.box(mat, x0, 0.1, z, x1, h, z + d);
-    b.box('black', x0 + 0.02, 0, z + 0.05, x1 - 0.02, 0.1, z + d - 0.06);
+    // the toe kick: cabinet colored and set well back, dark only from its own shadow
+    b.box(mat, x0 + 0.02, 0, z + 0.05, x1 - 0.02, 0.1, z + d - 0.075);
     const n = Math.max(1, Math.round((x1 - x0) / 0.6)), w = (x1 - x0) / n;
     for (let i = 0; i < n; i++) {
       const a = x0 + i * w + 0.01, c = a + w - 0.02;
@@ -846,7 +959,8 @@
     mat = mat || 'vanity';
     b.mat('vanity', { role: 'vanity', color: 'F2F1EC', gloss: 0.3, part: 'cab' });
     const x0 = x - w / 2, x1 = x + w / 2;
-    b.box(mat, x0, 0.12, z, x1, 0.84, z + 0.55); b.box('black', x0 + 0.02, 0, z + 0.04, x1 - 0.02, 0.12, z + 0.5);
+    // the toe kick is the cabinet's own color, set well back: it looks dark only because it sits in shadow
+    b.box(mat, x0, 0.12, z, x1, 0.84, z + 0.55); b.box(mat, x0 + 0.03, 0, z + 0.04, x1 - 0.03, 0.12, z + 0.47);
     const n = Math.max(2, Math.round(w / 0.45)), dw = w / n;
     for (let i = 0; i < n; i++) cabDoor(b, mat, x0 + i * dw + 0.01, x0 + (i + 1) * dw - 0.01, 0.14, 0.82, z + 0.55, true);
     // a stone top with a white vessel sink, a tall faucet, and a framed mirror between two sconces
@@ -1264,7 +1378,7 @@
     b.box('woodlt', -1.55, 0.915, z + 0.1, -1.2, 0.93, z + 0.35); b.mat('fruit', { color: 'C9553A', gloss: 0.6 }); b.sphere('fruit', -1.38, 0.97, z + 0.22, 0.04, 0.04, 0.04, 10); b.mat('fruit2', { color: 'E0A43A', gloss: 0.6 }); b.sphere('fruit2', -1.3, 0.965, z + 0.25, 0.035, 0.035, 0.035, 10);
     if (withIsland) {
       const ix = 0.1, iz = -0.35;
-      b.box('cab', ix - 1.1, 0.1, iz - 0.42, ix + 1.1, 0.9, iz + 0.42); b.box('black', ix - 1.08, 0, iz - 0.38, ix + 1.08, 0.1, iz + 0.38);
+      b.box('cab', ix - 1.1, 0.1, iz - 0.42, ix + 1.1, 0.9, iz + 0.42); b.box('cab', ix - 1.03, 0, iz - 0.345, ix + 1.03, 0.1, iz + 0.345);
       for (let i = 0; i < 4; i++) cabDoor(b, 'cab', ix - 1.1 + i * 0.55 + 0.01, ix - 1.1 + (i + 1) * 0.55 - 0.01, 0.12, 0.86, iz - 0.42 - 0.02, true);
       b.box('counter', ix - 1.2, 0.9, iz - 0.5, ix + 1.2, 0.94, iz + 0.62);
       for (const dx of [-0.65, 0, 0.65]) stool(b, ix + dx, iz + 0.85);
@@ -1800,7 +1914,15 @@
         // a product shot: one soft key light from the upper left, an even fill, nothing else
         sunDir = norm([-0.5, 0.95, 0.42]); sunCol = [0.95, 0.93, 0.9]; sunOn = true; amb = 0.78;
       } else if (info.outside) {
-        if (L.sun > 0) { const az = lightId === 'golden' ? -1.15 : -0.7; sunDir = norm([Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)]); sunCol = scl(L.sunTint || [1, 1, 1], L.sun * 1.05); sunOn = true; }
+        // the sun comes from the left side of the first view (not from behind the camera), so the shadows fall
+        // across the picture where they can be seen. It stays put while the view is turned.
+        if (L.sun > 0) {
+          const off = (lightId === 'golden' ? 78 : 60) * D2R, ca = Math.cos(off), sa = Math.sin(off);
+          const hz = [toCam[0] * ca - toCam[2] * sa, 0, toCam[0] * sa + toCam[2] * ca];
+          sunDir = norm([hz[0] * Math.cos(el), Math.sin(el), hz[2] * Math.cos(el)]);
+          // real sunlight is several times stronger than the light from the sky, so shade reads as shade
+          sunCol = scl(L.sunTint || [1, 1, 1], L.sun * 1.4); sunOn = true; amb *= 0.7;
+        }
         if (L.night) for (const l of b.lamps.filter(l => l.kind === 'porch').slice(0, 6)) lamps.push({ p: l.p, c: scl(L.lampTint || [1, 0.9, 0.8], 2.2), r: 3.5 });
       } else {
         const wins = b.windows;
@@ -1818,12 +1940,10 @@
       }
       // the sun's shadow covers the scene
       let lvp = new Float32Array(16);
+      const shC = shadowBall.c, shR = shadowBall.R;
       if (sunOn) {
-        const lo = b.lo, hi = b.hi;
-        const c = info.shadowC || (info.outside ? [orbit.target[0], 0, orbit.target[2]] : [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2]);
-        const R = info.shadowR || (info.outside ? 22 : Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2 + 0.5);
-        const lv = lookAt(add(c, scl(sunDir, R * 2)), c, Math.abs(sunDir[1]) > 0.95 ? [0, 0, 1] : [0, 1, 0]);
-        lvp = mmul(ortho(-R, R, -R, R, 0.1, R * 4), lv);
+        const lv = lookAt(add(shC, scl(sunDir, shR * 2)), shC, Math.abs(sunDir[1]) > 0.95 ? [0, 0, 1] : [0, 1, 0]);
+        lvp = mmul(ortho(-shR, shR, -shR, shR, 0.1, shR * 4), lv);
       }
       // the paint roller sweeping a new color across
       let wipePlane = [1, 0, 0, 0];
@@ -1833,11 +1953,32 @@
         wipePlane = [1, 0, 0, anim.x0 + (anim.x1 - anim.x0) * k];
         if (t >= 1) { anim = null; for (const m of Object.values(mats)) { delete m.prev; delete m.wipe; } }
       }
-      r.draw({ vp, inv: inv4(vp), eye: e, lvp, sunDir, sunCol, sunOn, showSun: info.outside, sky: L.sky, ground: L.ground, horizon: L.horizon, skyTop: L.skyTop, amb, exp: L.exp * (o.exposure || 1), lamps, room: info.outside ? null : b.room, mats, wipePlane, clear: info.outside ? L.horizon : [0.88, 0.87, 0.85], skyBox: !!info.outside, time: (now || 0) / 1000 });
+      // outside in the sun, the shade takes on the sky's blue a little
+      const sky = info.outside && sunOn ? [L.sky[0] * 0.92, L.sky[1] * 0.97, L.sky[2] * 1.04] : L.sky;
+      r.draw({ vp, inv: inv4(vp), eye: e, lvp, shadowR: shR, sunDir, sunCol, sunOn, showSun: info.outside, sky, ground: L.ground, horizon: L.horizon, skyTop: L.skyTop, amb, exp: L.exp * (o.exposure || 1), lamps, room: info.outside ? null : b.room, mats, wipePlane, clear: info.outside ? L.horizon : [0.88, 0.87, 0.85], skyBox: !!info.outside, time: (now || 0) / 1000, aoAmt: info.outside ? 0.95 : 0.9, aoFar: info.studio ? 0.12 : info.outside ? 5 : 0.9 });
       if (anim || (info.water && o.interactive)) schedule();
     }
     function schedule() { if (!raf && !dead) raf = requestAnimationFrame(t => { raf = 0; draw(t); }); }
+    // where the shadows are worked out: a ball around the house (outside) or the whole room / product shot
+    const toCam = norm([cam0.eye[0] - cam0.target[0], 0, cam0.eye[2] - cam0.target[2]]);
+    const shadowBall = (() => {
+      const lo = b.lo, hi = b.hi;
+      const c = info.shadowC || (info.outside ? [orbit0.target[0], 0, orbit0.target[2]] : [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2]);
+      const R = info.shadowR || (info.outside ? 22 : Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2 + 0.5);
+      return { c, R };
+    })();
     resolve();
+    // the soft ambient shadow, made once: the room's own walls, floor and ceiling (and the lawn, water and studio
+    // backdrop) catch it but don't cast it, or every room would be in its own shade. Things lying flat on a wall
+    // (baseboards, casings, wall tile, doors, a house's trim and shutters) don't either: they're too thin to shade
+    // anything, and in the side views they'd smear onto the wall itself.
+    try {
+      const SHELL = new Set(['wall', 'side', 'ceil', 'floor', 'lawn', 'water', 'bd', 'trim', 'wain', 'door', 'tile', 'mirror', 'xtrim', 'glassx', 'shut', 'xdoor', 'gdoor']);
+      const dirs = [], ga = Math.PI * (3 - Math.sqrt(5));
+      for (let i = 0; i < AO_N; i++) { const y = 1 - (i + 0.5) / AO_N * 2, rr = Math.sqrt(1 - y * y); dirs.push([Math.cos(i * ga) * rr, y, Math.sin(i * ga) * rr]); }
+      const aoR = info.outside ? Math.min(shadowBall.R, 16) : shadowBall.R;
+      r.bakeAO(dirs, shadowBall.c, aoR, name => SHELL.has(name) || !mats[name] || mats[name].noShadow || mats[name].hidden);
+    } catch (e) { r.ao = null; }
     draw(performance.now());
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { draw(performance.now()); }) : null;
     if (ro) ro.observe(container);
