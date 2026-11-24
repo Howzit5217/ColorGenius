@@ -3017,6 +3017,7 @@
       </div></div>
       <div class="set-group"><h2>The App</h2><div class="set-card">
         <div class="set-row"><img src="icons/icon-192.png" width="48" height="48" alt="" style="border-radius:12px;flex:none"><div class="set-text"><b>ColorGenius on your home screen</b><span>${esc(INSTALL_STATUS[st])}</span></div>${st === 'installed' ? '<span class="badge good">Installed</span>' : '<button type="button" class="btn primary" data-act="install">Get the App</button>'}</div>
+        <div class="set-row"><div class="set-text"><b>Updates</b><span id="appVersion">${esc(versionLabel())}</span></div>${updateReady ? '<button type="button" class="btn primary" data-update-now="1"><span class="upd-label">Update Now</span></button>' : '<button type="button" class="btn" data-act="check-update">Check for Updates</button>'}</div>
         <div class="set-row"><button type="button" class="btn" data-act="run-setup">Run Setup Again</button><button type="button" class="btn ghost" data-act="reset-all">Reset All Settings</button></div>
       </div></div>
       <p class="muted small">${fmt(E.getIndex().colors.length)} colors from ${brandList().length} brands are loaded.</p>
@@ -3079,6 +3080,7 @@
     if (act === 'brands-all') { for (const b of brandList()) settings.brands[b.id] = true; saveSettings(); afterSettingsChange('brands'); renderKeep(); }
     if (act === 'brands-us') { for (const b of brandList()) settings.brands[b.id] = b.group === 'us'; saveSettings(); afterSettingsChange('brands'); renderKeep(); }
     if (act === 'install') startInstall();
+    if (act === 'check-update') checkForUpdate();
     if (act === 'kiosk-sign') printKioskSign();
     if (act === 'kiosk-copy') copyText(kioskLink(), 'Kiosk link copied');
     if (act === 'run-setup') openOnboarding();
@@ -3272,20 +3274,93 @@
       : st === 'installed' ? [] : ['Open the browser menu (the three dots).', 'Tap <b>Install app</b> or <b>Add to Home screen</b>.', 'Open ColorGenius from its new icon.'];
     openModal('Get the ColorGenius App', `<p style="font-size:1.1rem">${st === 'installed' ? 'ColorGenius is already on this device.' : 'It opens full screen and works without the internet.'}</p>${steps.length ? `<ol class="why" style="list-style:none">${steps.map(s => `<li>${s}</li>`).join('')}</ol>` : ''}<div class="modal-foot"><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Got It</button></div>`);
   }
-  // updates: every launch loads the newest files (sw.js). If the app sat open, it reloads when nothing is in progress.
-  let swReg = null, updateWaiting = false, reloading = false, hiddenAt = 0;
-  const idleForUpdate = () => state.view === 'home' && $('#modal').hidden && $('#onboard').hidden && $('#present').hidden;
+  // ================================================================
+  // UPDATES: a new version never loads by itself. sw.js downloads it in the background and holds it. The app then
+  // shows an Update button in the top bar, and when the app opens (or comes back after a while) a popup whose only
+  // button is Update. Pressing either switches to the new version and reloads; projects and settings stay.
+  // ================================================================
+  let swReg = null, updateReady = false, updating = false, reloading = false, hiddenAt = 0, appVersion = '';
+  const openedAt = Date.now();
+  const swOk = 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
   const applyUpdate = () => { if (reloading) return; reloading = true; location.reload(); };
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  const atStart = () => state.view === 'home' && $('#modal').hidden && $('#onboard').hidden && $('#present').hidden && !document.getElementById('camera');
+  const versionLabel = () => (appVersion ? 'Version ' + appVersion.replace(/^cg-/, '') : 'This version') + (updateReady ? ' · a new version is ready' : '');
+  const refreshIcon = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
+  function updateNow() {
+    if (updating) return;
+    updating = true;
+    $$('[data-update-now]').forEach(b => { b.disabled = true; const l = $('.upd-label', b); if (l) l.textContent = 'Updating…'; });
+    const w = swReg && swReg.waiting;
+    if (w) w.postMessage({ type: 'update' }); else applyUpdate();
+    setTimeout(applyUpdate, 5000);   // in case the switch never reports back
+  }
+  // the popup: nothing behind it can be used, it has no close button, and Escape doesn't close it
+  function openUpdateGate(otherWindow) {
+    if ($('#updateGate')) return;
+    closePop();
+    const g = document.createElement('div');
+    g.id = 'updateGate'; g.className = 'update-gate';
+    g.setAttribute('role', 'alertdialog'); g.setAttribute('aria-modal', 'true'); g.setAttribute('aria-labelledby', 'updT'); g.setAttribute('aria-describedby', 'updD');
+    g.innerHTML = `<div class="upd-card"><img src="icons/icon-192.png" width="76" height="76" alt="">
+      <h2 id="updT">${otherWindow ? 'ColorGenius Was Updated' : 'Update ColorGenius'}</h2>
+      <p id="updD">${otherWindow ? 'It was updated in another window. Press Update to load the new version here too.' : 'A new version is ready. Press Update to start using it.'} Your projects and settings stay.</p>
+      <button type="button" class="btn big primary" data-update-now="1">${refreshIcon}<span class="upd-label">Update</span></button></div>`;
+    for (const el of document.body.children) if (el !== g && el.id !== 'toast') el.setAttribute('inert', '');
+    document.body.appendChild(g);
+    document.documentElement.classList.add('gate-open');
+    $('[data-update-now]', g).focus({ preventScroll: true });
+  }
+  document.addEventListener('click', e => { if (e.target.closest('[data-update-now]')) updateNow(); });
+  // while the popup is up, the keyboard stays on its Update button
+  document.addEventListener('keydown', e => {
+    const g = $('#updateGate'); if (!g) return;
+    if (e.key === 'Tab' || e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); $('[data-update-now]', g).focus(); }
+  }, true);
+  function onUpdateReady() {
+    if (updateReady) return;
+    updateReady = true;
+    $('#updateBtn').hidden = false;
+    const v = $('#appVersion'); if (v) v.textContent = versionLabel();
+    // the app has just opened (and nothing's been started yet): the popup. Later on, just the button.
+    const age = Date.now() - openedAt;
+    if (age < 15000 || (age < 60000 && atStart())) openUpdateGate();
+    else toast('A new version is ready. Press Update at the top when you’re ready.');
+  }
+  async function checkForUpdate() {
+    if (updateReady) { openUpdateGate(); return; }
+    if (!swReg) { toast('Updates need the app opened from its web address'); return; }
+    toast('Checking for a new version…');
+    try { await swReg.update(); } catch (e) { toast('Couldn’t check. Are you online?'); return; }
+    setTimeout(() => { if (!updateReady) toast(swReg.installing ? 'Downloading the new version…' : 'You have the newest version'); }, 1800);
+  }
+  if (swOk) {
     const hadController = !!navigator.serviceWorker.controller;
-    const openedAt = Date.now();
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadController || Date.now() - openedAt < 30000) return; updateWaiting = true; if (idleForUpdate()) applyUpdate(); });
-    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').then(reg => { swReg = reg; }).catch(() => {}); });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) return;            // the very first install taking over: nothing to reload
+      if (updating) applyUpdate(); else openUpdateGate(true);   // Update was pressed in another window
+    });
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data && e.data.type === 'version') { appVersion = e.data.version; const v = $('#appVersion'); if (v) v.textContent = versionLabel(); }
+    });
+    const watch = reg => {
+      swReg = reg;
+      if (reg.waiting && navigator.serviceWorker.controller) onUpdateReady();
+      reg.addEventListener('updatefound', () => {
+        const w = reg.installing; if (!w) return;
+        w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) onUpdateReady(); });
+      });
+    };
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').then(watch).catch(() => {});
+      if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ type: 'version' });
+    });
+    // look for a new version every half hour while the app is open, and whenever it comes back to the front
+    setInterval(() => { if (swReg) swReg.update().catch(() => {}); }, 30 * 60 * 1000);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
       if (swReg) swReg.update().catch(() => {});
-      const away = hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000;
-      if ((updateWaiting || away) && idleForUpdate()) applyUpdate();
+      // back after 20 minutes or more counts as opening the app again
+      if (updateReady && hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000) openUpdateGate();
     });
   }
 
@@ -3314,6 +3389,8 @@
     go('', { replace: true });
     window.scrollTo(0, 0);
     kioskArm();
+    // a fresh start is when a waiting update goes in
+    if (updateReady) openUpdateGate();
   }
   ['pointerdown', 'keydown', 'wheel'].forEach(ev => document.addEventListener(ev, () => { if (isKiosk()) kioskArm(); }, { passive: true, capture: true }));
   $('#homeBtn').addEventListener('contextmenu', e => { if (isKiosk()) e.preventDefault(); });

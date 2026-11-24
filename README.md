@@ -237,7 +237,14 @@ The site must be online at an `https://` address. GitHub Pages works and is free
 
 The installed app opens full screen without browser bars and works offline. On iPhone it keeps its own settings and lists, separate from Safari.
 
-**Updates are automatic.** Every time the app opens online, it loads the newest version of the app and the color data. If the app was left open in the background, it refreshes itself when it comes back, as long as nothing is in progress. Push changes to `main` and GitHub Pages publishes them within a minute or two.
+**Updates are yours to start.** The app keeps running the version it has (it works offline the same way). When a new version is published, it downloads in the background and waits:
+
+- When the app opens (or comes back after 20 minutes or more away) with a new version ready, a popup says so. Its only button is **Update**: it can't be closed any other way, and nothing behind it can be used until you press it.
+- If a new version arrives while someone is in the middle of something, only an **Update** button appears in the top bar, so nobody is interrupted. The popup shows the next time the app opens. A kiosk shows it when it starts over for the next shopper.
+- Settings → The App → **Updates** shows which version is running, with **Check for Updates** (or **Update Now** when one is ready).
+- Pressing Update switches to the new version and reloads once. Projects, settings and imported colors stay.
+
+The weekly popular colors (`data/popular.js`) aren't a new version of the app, so they still refresh on their own. To publish a new version, push changes to `main` with `VERSION` in `sw.js` bumped. GitHub Pages publishes within a minute or two, and the app looks for it every time it opens, every half hour while open, and whenever it comes back to the front.
 
 ## Browsers
 

@@ -82,3 +82,17 @@ test('page: every script is loaded, the inflate fallback before the app, and old
   const note = html.match(/<script>\s*\/\* A browser too old[\s\S]*?<\/script>/)[0].replace(/new Function\('[^']*'\)/, '');
   assert.ok(!/=>|\blet\b|\bconst\b|`/.test(note), 'the old-browser note uses old-style JavaScript');
 });
+
+test('updates wait for the Update button', () => {
+  const sw = read('sw.js'), app = read('js/app.js'), html = read('index.html');
+  const install = sw.slice(sw.indexOf("addEventListener('install'"), sw.indexOf("addEventListener('message'"));
+  assert.ok(!/skipWaiting\(\)/.test(install), 'a new version must not take over by itself');
+  assert.match(sw, /m\.type === 'update'\) self\.skipWaiting\(\)/);
+  // the weekly popular colors still refresh on their own; everything else comes from the installed version
+  assert.match(sw, /const LIVE = \['data\/popular\.js'\]/);
+  assert.match(html, /id="updateBtn" data-update-now="1"[^>]*hidden/);
+  // the popup has one button and nothing that closes it
+  const gate = app.slice(app.indexOf('function openUpdateGate'), app.indexOf('function onUpdateReady'));
+  assert.equal((gate.match(/<button/g) || []).length, 1);
+  assert.ok(!/data-modal-close|data-close/.test(gate));
+});
