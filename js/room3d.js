@@ -85,6 +85,24 @@
       try { this.boxFaces(mat, x0, y0, z0, x1, y1, z1, skip); } finally { this.solid--; }
       return this;
     }
+    // a straight board or rail from a to c with a w-by-h cross-section, at any slope: smooth, where a run of
+    // little boxes would show steps (rake boards, braces, a stair's hand rail)
+    beam(mat, a, c, w, h) {
+      const dir = norm(sub(c, a));
+      let side = cross(dir, [0, 1, 0]); if (len(side) < 1e-4) side = [1, 0, 0];
+      side = norm(side);
+      const up = norm(cross(side, dir));
+      const P = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+      const at = (p, q) => add(add(p, scl(side, q[0] * w / 2)), scl(up, q[1] * h / 2));
+      const A = P.map(q => at(a, q)), C = P.map(q => at(c, q));
+      this.solid++;
+      try {
+        for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; this.quad(mat, A[i], A[j], C[j], C[i], norm(add(scl(side, P[i][0] + P[j][0]), scl(up, P[i][1] + P[j][1])))); }
+        this.quad(mat, A[0], A[1], A[2], A[3], scl(dir, -1));
+        this.quad(mat, C[0], C[1], C[2], C[3], dir);
+      } finally { this.solid--; }
+      return this;
+    }
     boxFaces(mat, x0, y0, z0, x1, y1, z1, skip) {
       if (!skip.includes('t')) this.quad(mat, [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], [0, 1, 0]);
       if (!skip.includes('b')) this.quad(mat, [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, -1, 0]);
@@ -1124,8 +1142,7 @@
     b.box('trim', x1 - 0.06, 0, zStart - 0.06, x1 + 0.04, 1.15, zStart + 0.04);
     b.box('trim', x1 - 0.005, 0, zStart - n * run, x1 + 0.012, 0.12, zStart);
     // the hand rail climbs along the stair
-    const steps = 24;
-    for (let i = 0; i < steps; i++) { const t0 = i / steps, t1 = (i + 1) / steps; const za = zStart - t0 * n * run, zb = zStart - t1 * n * run, ya = 1.0 + t0 * top, yb = 1.0 + t1 * top; b.box('wood', x1 - 0.06, Math.min(ya, yb) - 0.02, zb, x1 + 0.01, Math.max(ya, yb) + 0.03, za); }
+    b.beam('wood', [x1 - 0.025, 1.005, zStart], [x1 - 0.025, 1.005 + top, zStart - n * run], 0.07, 0.05);
   }
 
   // ================================================================
@@ -1135,11 +1152,21 @@
   // ================================================================
   function winPlan(ctx, slots) {
     const a = ctx.a || {};
-    if (a.facing === 'none' && !(a.facings || []).length && ctx.useAnswers) return [];
+    ctx.walls = slots.slice();   // the walls this scene can have windows on (Set Up the Room offers these)
+    const done = plan => { ctx.winWalls = plan.map(w => w.wall); return plan; };
     let dirs = (a.facings || []).slice();
+    // windows put where they really are (Set Up the Room); the light still comes from the answers' directions
+    const L = ctx.layout && Array.isArray(ctx.layout.wins) ? ctx.layout.wins : null;
+    if (L) {
+      let walls = slots.filter(w => L.includes(w));
+      if (L.length && !walls.length) walls = [slots[0]];
+      if (!dirs.length) dirs = [ctx.useAnswers ? '?' : 'south'];
+      return done(walls.map((wall, i) => ({ wall, dir: dirs[i] || dirs[0] })));
+    }
+    if (a.facing === 'none' && !(a.facings || []).length && ctx.useAnswers) return done([]);
     if (!dirs.length) dirs = [ctx.useAnswers ? '?' : 'south'];
     if (ctx.sunny) while (dirs.length < slots.length) dirs.push('?');
-    return dirs.slice(0, slots.length).map((d, i) => ({ wall: slots[i], dir: d }));
+    return done(dirs.slice(0, slots.length).map((d, i) => ({ wall: slots[i], dir: d })));
   }
   const D2R = Math.PI / 180;
   const IN_CAM = { eye: [0.6, 1.42, 2.25], target: [-0.3, 1.05, -2.4], fov: 54 };
@@ -1200,7 +1227,7 @@
       rug(b, 0, -0.6, 2.2, 1.8);
       crib(b, 0.3, -1.95, 0);
       armchair(b, -1.7, -1.1, Math.PI / 2 - 0.4);
-      dresser(b, 2.15, -0.6, -Math.PI / 2, 'cab', 1.1);
+      dresser(b, 2.15, -1.75, -Math.PI / 2, 'cab', 1.1);
       if (!backHasWin(wins)) art(b, [0.3, 1.6, r.z0], [1, 0, 0], [0, 0, 1], 0.7, 0.7);
       floorLamp(b, -2.2, -2.0);
       b.mat('toy', { color: 'E3A02B', gloss: 0.4 }); b.sphere('toy', 0.6, 0.12, -0.3, 0.12, 0.12, 0.12, 12);
@@ -1212,7 +1239,7 @@
       const wins = winsFor(ctx, SPOT, ['back', 'left', 'right']);
       const r = interior(b, ctx, { windows: wins.map(w => w.wall === 'back' ? Object.assign(w, { at: 3.6, w: 1.1, y0: 1.0, y1: 2.15 }) : w), floor: 'carpet' });
       bed(b, -1.55, -1.2, Math.PI / 2, 1.0, true);
-      shelves(b, 0.0, r.z0 + 0.18, 0, 1.4, 1.5, 'cab', 4);
+      shelves(b, -0.75, r.z0 + 0.18, 0, 1.4, 1.5, 'cab', 4);
       b.mat('rugC', { color: 'C9D6E0', pat: PAT.carpet }); b.cyl('rugC', 0.4, 0, -0.4, 1.0, 0.012, 40);
       b.mat('bean', { role: 'art', color: '5E6B73', pat: PAT.fabric }); b.sphere('bean', 1.7, 0.28, -1.3, 0.42, 0.3, 0.42, 16); b.shadow(1.7, -1.3, 0.9, 0.9, 0.45);
       b.mat('toy', { color: 'D8443A', gloss: 0.4 }); b.box('toy', 0.6, 0, 0.3, 0.9, 0.3, 0.6); b.mat('toy2', { color: '1F6F8B', gloss: 0.4 }); b.box('toy2', 0.65, 0.3, 0.35, 0.85, 0.5, 0.55);
@@ -1409,25 +1436,68 @@
       return { cam: IN_CAM };
     },
   };
+  // The kitchen: the fridge at one end of the back wall, then a run of base cabinets with the range and the sink,
+  // uppers above, and a tile backsplash that stops under the window. Set Up the Room can put the fridge on the
+  // left or the right, the stove on either side of the sink, and the windows on any wall. A window on the back
+  // wall sits over the sink, the way most kitchens are built.
+  function fridge(b, x0, x1, z) {
+    const m = (x0 + x1) / 2;
+    b.rbox('steel', x0, 0, z, x1, 1.9, z + 0.72, 0.02, 1);
+    // French doors over a freezer drawer, with long bar handles
+    b.box('black', x0 + 0.01, 0.66, z + 0.72, x1 - 0.01, 0.668, z + 0.725);
+    b.box('black', m - 0.0025, 0.668, z + 0.72, m + 0.0025, 1.88, z + 0.725);
+    b.box('metal', m - 0.07, 0.95, z + 0.725, m - 0.05, 1.55, z + 0.76); b.box('metal', m + 0.05, 0.95, z + 0.725, m + 0.07, 1.55, z + 0.76);
+    b.box('metal', m - 0.25, 0.55, z + 0.725, m + 0.25, 0.57, z + 0.76);
+  }
   function kitchenScene(b, ctx, withIsland) {
-    const wins = winPlan(ctx, ['back', 'left']).map(w => w.wall === 'back' ? { wall: 'back', at: 3.55, w: 1.1, y0: 1.15, y1: 2.1, dir: w.dir } : { wall: 'left', at: 2.4, w: 1.1, y0: 1.1, y1: 2.15, dir: w.dir });
-    const r = room(b, { windows: wins, floor: ctx.floor || 'wood', w: 5.6, d: 5.0, crown: ctx.a && ctx.a.crown });
+    const L = ctx.layout || {};
+    const W = 5.6, x0 = -W / 2, x1 = W / 2;
+    // laid out with the fridge on the left, then mirrored when it's on the right
+    const fr = L.fridge === 'right' ? 'right' : 'left', m = fr === 'right' ? -1 : 1;
+    const X = x => m * x, span = (a, c) => [Math.min(X(a), X(c)), Math.max(X(a), X(c))];
+    // the stove on the fridge's side of the sink (the usual), or past it
+    const stoveFirst = (L.stove === 'left' || L.stove === 'right' ? L.stove : fr) === fr;
+    const sinkX = stoveFirst ? 0.85 : -0.35, rangeX = stoveFirst ? -0.47 : 1.55, winW = 1.1;
+    const wins = winPlan(ctx, ['back', 'left', 'right']).map(w => w.wall === 'back'
+      ? { wall: 'back', at: X(sinkX) - x0, w: winW, y0: 1.2, y1: 2.12, dir: w.dir }
+      : { wall: w.wall, at: 2.4, w: 1.1, y0: 1.1, y1: 2.15, dir: w.dir });
+    const r = room(b, { windows: wins, floor: ctx.floor || 'wood', w: W, d: 5.0, crown: ctx.a && ctx.a.crown });
     const z = r.z0;
     b.mat('cab', { role: 'cab', color: 'F2F1EC', gloss: 0.3, part: 'cab', wood: ctx.part === 'cab' ? { sp: 'maple', board: 16 } : null });
     b.mat('hood', { role: 'hood', color: 'B9BDBF', gloss: 0.7 });
-    // fridge, base cabinets with range and sink, uppers and backsplash
-    b.rbox('steel', r.x0 + 0.02, 0, z, r.x0 + 0.92, 1.9, z + 0.72, 0.02, 1); b.box('black', r.x0 + 0.47, 0.95, z + 0.72, r.x0 + 0.475, 1.88, z + 0.725); b.box('metal', r.x0 + 0.4, 1.0, z + 0.725, r.x0 + 0.42, 1.5, z + 0.76); b.box('metal', r.x0 + 0.52, 1.0, z + 0.725, r.x0 + 0.54, 1.5, z + 0.76);
-    upperCabinets(b, r.x0 + 0.02, r.x0 + 0.92, z, 1.95, 2.3);
-    cabinets(b, r.x0 + 0.94, -0.85, z, {});
-    range(b, -0.47, z);
-    hood(b, -0.47, z, r.H);
-    cabinets(b, -0.09, r.x1 - 0.02, z, { sinkAt: 0.85 });
-    sinkFaucet(b, 0.85, 0.915, z);
-    b.box('tile', r.x0 + 0.94, 0.915, z, r.x1 - 0.02, 1.48, z + 0.004);
-    upperCabinets(b, r.x0 + 0.94, -0.92, z, 1.48, 2.3);
-    if (wins.some(w => w.wall === 'back')) { upperCabinets(b, 1.5, r.x1 - 0.02, z, 1.48, 2.3); }
-    else upperCabinets(b, -0.02, r.x1 - 0.02, z, 1.48, 2.3);
-    b.box('woodlt', -1.55, 0.915, z + 0.1, -1.2, 0.93, z + 0.35); b.mat('fruit', { color: 'C9553A', gloss: 0.6 }); b.sphere('fruit', -1.38, 0.97, z + 0.22, 0.04, 0.04, 0.04, 10); b.mat('fruit2', { color: 'E0A43A', gloss: 0.6 }); b.sphere('fruit2', -1.3, 0.965, z + 0.25, 0.035, 0.035, 0.035, 10);
+    // the fridge, with a cabinet over it
+    const [f0, f1] = span(x0 + 0.02, x0 + 0.92);
+    fridge(b, f0, f1, z);
+    upperCabinets(b, f0, f1, z, 1.95, 2.3);
+    // base cabinets either side of the range, the sink in whichever run it falls in
+    const A = x0 + 0.94, B = x1 - 0.02;
+    for (const [a, c] of [[A, rangeX - 0.38], [rangeX + 0.38, B]]) {
+      if (c - a < 0.2) continue;
+      const [p, q] = span(a, c);
+      cabinets(b, p, q, z, sinkX > a && sinkX < c ? { sinkAt: X(sinkX) } : {});
+    }
+    range(b, X(rangeX), z);
+    hood(b, X(rangeX), z, r.H);
+    sinkFaucet(b, X(sinkX), 0.915, z);
+    // the backsplash runs from the counter to the uppers, and only up to the window's trim under the window
+    const backWin = wins.find(w => w.wall === 'back');
+    const cut = backWin ? [sinkX - winW / 2 - 0.12, sinkX + winW / 2 + 0.12] : null;
+    const tile = (a, c, y1) => { if (c - a > 0.02 && y1 > 0.94) { const [p, q] = span(a, c); b.box('tile', p, 0.915, z, q, y1, z + 0.004); } };
+    if (cut) { tile(A, cut[0], 1.48); tile(cut[0], cut[1], backWin.y0 - 0.065); tile(cut[1], B, 1.48); }
+    else tile(A, B, 1.48);
+    // uppers along the run, except over the range hood and the window
+    const blocks = [[rangeX - 0.42, rangeX + 0.42]].concat(cut ? [[cut[0] - 0.03, cut[1] + 0.03]] : []).sort((p, q) => p[0] - q[0]);
+    let u = A;
+    for (const [p, q] of blocks.concat([[B, B]])) {
+      const end = Math.min(p, B);
+      if (end - u >= 0.35) { const [s0, s1] = span(u, end); upperCabinets(b, s0, s1, z, 1.48, 2.3); }
+      u = Math.max(u, q);
+    }
+    // a bowl of fruit on the open counter
+    const [bw0, bw1] = span(stoveFirst ? -1.55 : 0.4, stoveFirst ? -1.2 : 0.75), bm = (bw0 + bw1) / 2;
+    b.box('woodlt', bw0, 0.915, z + 0.1, bw1, 0.93, z + 0.35);
+    b.mat('fruit', { color: 'C9553A', gloss: 0.6 }); b.sphere('fruit', bm - 0.03, 0.97, z + 0.22, 0.04, 0.04, 0.04, 10);
+    b.mat('fruit2', { color: 'E0A43A', gloss: 0.6 }); b.sphere('fruit2', bm + 0.05, 0.965, z + 0.25, 0.035, 0.035, 0.035, 10);
     if (withIsland) {
       const ix = 0.1, iz = -0.35;
       b.box('cab', ix - 1.1, 0.1, iz - 0.42, ix + 1.1, 0.9, iz + 0.42); b.box('cab', ix - 1.03, 0, iz - 0.345, ix + 1.03, 0.1, iz + 0.345);
@@ -1436,7 +1506,7 @@
       for (const dx of [-0.65, 0, 0.65]) stool(b, ix + dx, iz + 0.85);
       for (const dx of [-0.55, 0.55]) pendant(b, r.H, ix + dx, iz, 0.85, 0.16);
       b.shadow(ix, iz, 2.4, 1.1, 0.4);
-    } else { pendant(b, r.H, 0.2, -0.6, 0.8, 0.2); }
+    } else ceilingLight(b, r.H, 0.1, -0.5);
     return { cam: withIsland ? { eye: [1.2, 1.55, 2.35], target: [-0.2, 0.95, -2.5], fov: 56 } : { eye: [0.7, 1.5, 2.2], target: [-0.2, 1.15, -2.5], fov: 56 } };
   }
 
@@ -1518,8 +1588,7 @@
     b.quad('roof', [xm + d, yl, z0 - ov], [xm + d, yl, z1 + ov], [xm, y + rise, z1 + ov], [xm, y + rise, z0 - ov], norm([rise, d, 0]));
     for (const sz of [z0, z1]) b.quad('body', [x0, y, sz], [x1, y, sz], [xm, y + rise, sz], [xm, y + rise, sz], [0, 0, sz === z0 ? -1 : 1]);
     // rake boards along the front gable
-    const steps = 10;
-    for (let i = 0; i < steps; i++) for (const sgn of [-1, 1]) { const t0 = i / steps, t1 = (i + 1) / steps; const xa = xm + sgn * d * (1 - t0), xb = xm + sgn * d * (1 - t1); const ya = yl + (y + rise - yl) * t0, yb = yl + (y + rise - yl) * t1; b.box('xtrim', Math.min(xa, xb), Math.min(ya, yb) - 0.18, z1 + ov - 0.05, Math.max(xa, xb), Math.max(ya, yb) + 0.02, z1 + ov + 0.02); }
+    for (const sgn of [-1, 1]) b.beam('xtrim', [xm + sgn * (d + 0.02), yl - 0.08 - 0.02 * s, z1 + ov - 0.015], [xm, y + rise - 0.08, z1 + ov - 0.015], 0.07, 0.2);
   }
   function house(b, ctx, style) {
     yardMats(b);
@@ -1637,7 +1706,7 @@
       for (const sz of [z0, z1]) { const n = [0, 0, sz === z0 ? -1 : 1]; b.quad('body', [x0, H, sz], [-2.0, H + 1.3, sz], [2.0, H + 1.3, sz], [x1, H, sz], n); b.quad('body', [-2.0, H + 1.3, sz], [0, H + 2.0, sz], [0, H + 2.0, sz], [2.0, H + 1.3, sz], n); }
       b.box('xtrim', -1.2, 0, z1, 1.2, 2.2, z1 + 0.04);
       for (const s of [-1, 1]) { const cx = s * 0.6; b.box('xtrim', cx - 0.6, 0, z1 + 0.04, cx + 0.6, 0.1, z1 + 0.07); b.box('xtrim', cx - 0.6, 2.1, z1 + 0.04, cx + 0.6, 2.2, z1 + 0.07); b.box('xtrim', cx - 0.6, 0, z1 + 0.04, cx - 0.5, 2.2, z1 + 0.07); b.box('xtrim', cx + 0.5, 0, z1 + 0.04, cx + 0.6, 2.2, z1 + 0.07);
-        const steps = 12; for (let i = 0; i < steps; i++) { const t = (i + 0.5) / steps; b.box('xtrim', cx - 0.5 + t * 1.0 - 0.05, 0.1 + t * 2.0 - 0.05, z1 + 0.05, cx - 0.5 + t * 1.0 + 0.05, 0.1 + t * 2.0 + 0.05, z1 + 0.075); b.box('xtrim', cx + 0.5 - t * 1.0 - 0.05, 0.1 + t * 2.0 - 0.05, z1 + 0.05, cx + 0.5 - t * 1.0 + 0.05, 0.1 + t * 2.0 + 0.05, z1 + 0.075); } }
+        for (const dir of [1, -1]) b.beam('xtrim', [cx - 0.47 * dir, 0.14, z1 + 0.0625], [cx + 0.47 * dir, 2.06, z1 + 0.0625], 0.025, 0.1); }
       xWindow(b, 0, H + 0.4, z1, 0.7, 0.7);
       for (const [x, z, s] of [[-9, -6, 1.2], [8, -5, 1.1], [-12, 5, 1.0], [11, 4, 1.2]]) tree(b, x, z, s);
       shrub(b, -2.4, z1 + 0.6, 0.9);
@@ -1696,7 +1765,7 @@
     if (variant === 'playset') {
       const legs = [[-1.8, -1], [-1.8, 1], [1.8, -1], [1.8, 1]];
       b.box(rail, -2.4, 2.4, -0.06, 2.4, 2.56, 0.06);
-      for (const sx of [-2.2, 2.2]) for (const sz of [-1, 1]) { const top = [sx, 2.45, 0], foot = [sx + (sx > 0 ? 0.25 : -0.25), 0, sz * 0.9]; const steps = 10; for (let i = 0; i < steps; i++) { const t0 = i / steps, t1 = (i + 1) / steps; const a = add(foot, scl(sub(top, foot), t0)), c = add(foot, scl(sub(top, foot), t1)); b.box(rail, Math.min(a[0], c[0]) - 0.05, Math.min(a[1], c[1]), Math.min(a[2], c[2]) - 0.05, Math.max(a[0], c[0]) + 0.05, Math.max(a[1], c[1]), Math.max(a[2], c[2]) + 0.05); } }
+      for (const sx of [-2.2, 2.2]) for (const sz of [-1, 1]) { const top = [sx, 2.45, 0], foot = [sx + (sx > 0 ? 0.25 : -0.25), 0, sz * 0.9]; b.beam(rail, foot, top, 0.1, 0.1); }
       for (const sx of [-1.0, 0.6]) { for (const dz of [-0.18, 0.18]) b.box('black', sx - 0.008, 0.48, dz - 0.008, sx + 0.008, 2.4, dz + 0.008); b.box('black', sx - 0.25, 0.45, -0.2, sx + 0.25, 0.5, 0.2); }
       b.box(dk, 2.8, 1.4, -0.9, 4.6, 1.48, 0.9); for (const [px, pz] of [[2.85, -0.85], [4.55, -0.85], [2.85, 0.85], [4.55, 0.85]]) b.box(rail, px - 0.06, 0, pz - 0.06, px + 0.06, 2.9, pz + 0.06);
       b.quad('roof', [2.7, 2.9, -1.0], [4.7, 2.9, -1.0], [4.7, 3.5, 0], [2.7, 3.5, 0], norm([0, 1, -0.6])); b.quad('roof', [2.7, 2.9, 1.0], [4.7, 2.9, 1.0], [4.7, 3.5, 0], [2.7, 3.5, 0], norm([0, 1, 0.6]));
@@ -1925,6 +1994,7 @@
     const target = o.stain ? a.target : '';
     const ctx = { a, useAnswers: !o.stain && !!a.space, stain: !!o.stain, tex: o.tex || null, parts: o.stain ? (STAIN_PARTS[target] || ['floor']) : [], wainscot: a.space === 'wainscot' || target === 'paneling', siding: a.space === 'shed' ? 'board' : '', paintFurn: a.space === 'furniture', paintCab: a.space === 'builtins' };
     ctx.part = ctx.parts[0] || '';
+    ctx.layout = o.layout || null;
     if (o.floor) ctx.floor = o.floor;
     if (a.space === 'floor_paint') ctx.floor = 'concrete';
     if (['bathroom', 'powder', 'laundry'].includes(a.space)) ctx.floor = 'tile';
@@ -2089,6 +2159,8 @@
       setTimeout(() => { if (hint) hint.classList.add('gone'); }, 4000);
     }
     return {
+      // for Set Up the Room: the walls this scene can have windows on, the ones it has, and whether it's a kitchen
+      walls: (ctx.walls || []).slice(), winWalls: (ctx.winWalls || []).slice(), kitchen: o.scene === 'kitchen' || o.scene === 'island',
       setLook(next) {
         const old = {}; for (const [n, m] of Object.entries(mats)) old[n] = m.lin;
         const oldHex = {}; for (const [n, m] of Object.entries(mats)) oldHex[n] = m.hex;

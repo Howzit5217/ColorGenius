@@ -99,9 +99,12 @@
 
   // ---- window slots: each side with windows gets its own window in the preview ----
   // left wall first, then the back wall (where the art would hang), then the right wall (where the door would be)
-  function windowSlots(answers, furniture) {
-    if (E.noWindows(answers)) return [];
+  // walls: where the windows really are (Set Up the Room), when that's been set
+  function windowSlots(answers, furniture, walls) {
     let dirs = E.facingsOf(answers).slice();
+    const all = ['sofa', 'bed', 'desk', 'dining'].includes(furniture) ? ['left', 'back', 'right'] : ['left', 'right'];
+    if (Array.isArray(walls)) { const on = all.filter(w => walls.includes(w)); if (!dirs.length) dirs = ['?']; return on.map((slot, i) => ({ slot, dir: dirs[i] || dirs[0] })); }
+    if (E.noWindows(answers)) return [];
     if (!dirs.length) dirs = ['?'];
     if ((E.SPACES[answers.space] || {}).sunny) while (dirs.length < 3) dirs.push('?'); // a sunroom is mostly windows
     const slots = ['sofa', 'bed', 'desk', 'dining'].includes(furniture) ? ['left', 'back', 'right'] : ['left', 'right'];

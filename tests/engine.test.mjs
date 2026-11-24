@@ -618,3 +618,18 @@ test('the finder reads a color only when its name and number are together', asyn
   const links = F.findLinks(`<a href="/color-of-the-year/${F.YEAR + 1}">a</a><a href="/color-of-the-year/${F.YEAR - 2}">b</a><a href="/es/color-of-the-year">c</a><a href="/most-popular">d</a><a href="https://other.com/color-of-the-year">e</a>`, 'https://brand.com/');
   assert.deepEqual(links, [`https://brand.com/color-of-the-year/${F.YEAR + 1}`, 'https://brand.com/most-popular']);
 });
+
+test('who a bedroom is for leans the picks, without taking any colors away', () => {
+  const fams = who => E.recommend({ space: 'nursery', forWho: who }, { brands: US, resultCount: 6 }).results.map(r => r.color);
+  const pinkish = list => list.filter(c => c.fam === 'purple' || c.fam === 'pink' || c.fam === 'red').length;
+  const blueish = list => list.filter(c => c.fam === 'blue').length;
+  assert.ok(pinkish(fams('girl')) > pinkish(fams('boy')));
+  assert.ok(blueish(fams('boy')) > blueish(fams('girl')));
+  // the reason says so
+  assert.ok(E.recommend({ space: 'nursery', forWho: 'girl' }, { brands: US }).results.some(r => r.reasons.some(x => /girl/.test(x))));
+  // an answer that doesn't belong to the room (her room for a kitchen) changes nothing
+  const plain = E.recommend({ space: 'kitchen' }, { brands: US }).results.map(r => r.color.id);
+  assert.deepEqual(E.recommend({ space: 'kitchen', forWho: 'her' }, { brands: US }).results.map(r => r.color.id), plain);
+  // the choices exist for bedrooms, kids' rooms and nurseries only
+  assert.deepEqual(Object.keys(E.WHO_FOR).sort(), ['bedroom', 'kids', 'nursery']);
+});

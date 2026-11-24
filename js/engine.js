@@ -281,7 +281,35 @@
   ];
 
   const DEFAULT_ANSWERS = { space: 'living', size: 'medium', siding: 'wood', facing: 'unsure', facings: [], amount: 'medium', bulbs: 'unsure', styles: [], families: [], depth: 'any', fixed: [], customFixed: [], whiteType: '', trimPaint: false, crown: false,
-    mode: 'basic', feel: '', undertone: '', avoid: [], nowKind: '', nowHex: '', surface: '', issues: [] };
+    mode: 'basic', feel: '', undertone: '', avoid: [], nowKind: '', nowHex: '', surface: '', issues: [], forWho: '' };
+  // Who a bedroom, kids' room or nursery is for. Optional: it leans the picks a little toward the colors people
+  // usually choose for that room (every color is still offered, and the color question still decides).
+  const KID_WHO = {
+    girl: { label: 'A Girl', sub: 'Soft pinks, lilacs and fresh greens', sw: ['EBC9CF', 'CBBFDC', 'C7D9C2'] },
+    boy: { label: 'A Boy', sub: 'Blues, greens and soft grays', sw: ['A9C2D6', 'B5CDB8', 'C9CCCB'] },
+    shared: { label: 'Shared or Either', sub: 'Cheerful colors anyone will like', sw: ['E9DDB0', 'C2D8C4', 'B9CFDA'] },
+  };
+  const WHO_FOR = {
+    bedroom: {
+      her: { label: 'Her Room', sub: 'Blush, sage and warm neutrals', sw: ['E9CFCB', 'C9D3C0', 'E6DCCD'] },
+      him: { label: 'His Room', sub: 'Blues, slate grays and greens', sw: ['7D93AB', '8A9196', '8FA393'] },
+      couple: { label: 'A Couple', sub: 'Calm colors you can both live with', sw: ['D8D2C6', 'A9B8C2', 'B9C2B0'] },
+      guest: { label: 'A Guest Room', sub: 'Welcoming, easy neutrals', sw: ['EFEBE3', 'E2D8C8', 'D3D0C7'] },
+    },
+    kids: KID_WHO,
+    nursery: KID_WHO,
+  };
+  // how much each answer leans toward each color family
+  const WHO_LEAN = {
+    girl: { 'pink-purple': 0.09, green: 0.04, white: 0.02, 'warm-neutral': 0.02 },
+    boy: { blue: 0.09, green: 0.05, 'cool-neutral': 0.03 },
+    shared: { green: 0.06, white: 0.03, 'warm-neutral': 0.03, blue: 0.02 },
+    her: { 'pink-purple': 0.06, 'warm-neutral': 0.04, green: 0.03 },
+    him: { blue: 0.06, 'cool-neutral': 0.05, green: 0.04, dark: 0.03 },
+    couple: { 'warm-neutral': 0.05, 'cool-neutral': 0.03, green: 0.03, blue: 0.03 },
+    guest: { 'warm-neutral': 0.06, white: 0.04 },
+  };
+  const whoLean = (c, a) => { const L = WHO_LEAN[a.forWho]; if (!L || !(WHO_FOR[a.space] || {})[a.forWho]) return 0; let best = 0; for (const [f, w] of Object.entries(L)) best = Math.max(best, w * familyMatch(c, f)); return best; };
   // ---------------- advanced questions ----------------
   const MOODS = { calm: 'Calm & Restful', cozy: 'Cozy & Warm', airy: 'Bright & Airy', fresh: 'Fresh & Energizing', dramatic: 'Bold & Dramatic' };
   const UNDERTONES = { warm: 'Warm', cool: 'Cool', neutral: 'True Neutral' };
@@ -1181,6 +1209,7 @@
     if (a.feel === 'cozy') score += c.temp === 'warm' ? 0.05 : c.temp === 'cool' ? -0.05 : 0;
     if (a.feel === 'calm' && c.C > 18) score -= 0.06;
     for (const f of a.avoid || []) if (FAMILY_CHOICES[f] && familyMatch(c, f) >= 0.6) score -= 0.6;
+    score += whoLean(c, a);
     return { score, fam, depth: d, chroma: ch, light: lf.score, lightReasons: lf.reasons.concat(fx ? fx.reasons.slice(0, 2) : []) };
   }
 
@@ -1188,6 +1217,8 @@
     const R = [];
     const b = INDEX.brandById[c.brand] || {};
     const styles = (a.styles || []).filter(s => STYLES[s]);
+    const who = (WHO_FOR[a.space] || {})[a.forWho];
+    if (who && whoLean(c, a) >= 0.04) R.push(`A favorite for ${a.forWho === 'guest' ? 'a guest room' : a.forWho === 'couple' ? 'a couple’s bedroom' : a.forWho === 'shared' ? 'a shared room' : a.forWho === 'her' ? 'her room' : a.forWho === 'him' ? 'his room' : a.forWho === 'girl' ? 'a girl’s room' : 'a boy’s room'}`);
     const best = styles.map(s => [s, styleMatch(c, s)]).sort((x, y) => y[1] - x[1])[0];
     if (best && best[1] >= 0.6) R.push(`Fits a ${STYLES[best[0]].label.toLowerCase()} look`);
     const fams = (a.families || []).filter(f => FAMILY_CHOICES[f]);
@@ -1428,7 +1459,7 @@
     return { brands, errors };
   }
 
-  const api = { popularity, isPopular, popularList, popularWhy, colorsOfYear, popularInfo, setPopular, parseColorValue, closestByBrand, F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
+  const api = { WHO_FOR, popularity, isPopular, popularList, popularWhy, colorsOfYear, popularInfo, setPopular, parseColorValue, closestByBrand, F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
     init, addBrand, getIndex, findColor, codeLabel, target, familyMatch, styleMatch, scoreColor, warningsFor, roomTips, recommend,
     matchesFor, pairings, search, lightForAnswers, parseCustomCsv, allowedColor, facingsOf, facingPhrase, noWindows, DIRS,
     MOODS, UNDERTONES, NOW_COLORS, NOW_HEX, SURFACES, surfacesFor, ISSUES, PRIMERS, primerFor, nowHexOf,

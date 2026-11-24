@@ -47,7 +47,7 @@
     ready: false, view: 'home', screen: detectScreen(),
     flows: { paint: null, stain: null, buy: null }, // { a: answers, step }
     results: { paint: null, stain: null, buy: null },
-    pick: { paint: '', stain: '' }, light: 'daylight', sceneFor: {}, query: '', lookupHex: '', ftype: {}, duel: null,
+    pick: { paint: '', stain: '' }, light: 'daylight', sceneFor: {}, query: '', lookupHex: '', ftype: {}, duel: null, layout: null,
     lastFlow: 'paint', depth: 0,
   };
 
@@ -179,6 +179,7 @@
     basket: '<path d="M4.5 13h23"/><path d="M6.5 13l2.3 11.3A2.2 2.2 0 0011 26h10a2.2 2.2 0 002.2-1.7L25.5 13"/><path d="M11.5 13l4.5-7 4.5 7"/><path d="M12.5 17.5v4.5M16 17.5v4.5M19.5 17.5v4.5"/>',
     sparkle: '<path d="M14 4l2 7 7 2-7 2-2 7-2-7-7-2 7-2zM25 18l1 3.5 3.5 1-3.5 1-1 3.5-1-3.5-3.5-1 3.5-1z"/>',
     cube: '<path d="M16 3l12 6.5v13L16 29 4 22.5v-13z"/><path d="M4 9.5L16 16l12-6.5M16 16v13"/>',
+    camera: '<path d="M4 11a2 2 0 012-2h4.5l2-3h7l2 3H26a2 2 0 012 2v13a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><circle cx="16" cy="17" r="5"/>',
   };
   const ic = (name, size) => `<svg viewBox="0 0 32 32" width="${size || 32}" height="${size || 32}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || P.unsure}</svg>`;
   const ICON_OF = { living: 'living', bedroom: 'bedroom', kitchen: 'kitchen', bathroom: 'bathroom', powder: 'powder', dining: 'dining', office: 'office', kids: 'kids', nursery: 'nursery', entry: 'entry', stairs: 'stairs', laundry: 'laundry', closet: 'closet', sunroom: 'sunroom', basement: 'basement', attic: 'attic', media: 'media', garage: 'garage', accent: 'accent', ceiling: 'ceiling', trim: 'trim', doors: 'doors', wainscot: 'wainscot', fireplace: 'fireplace', cabinets: 'cabinets', builtins: 'builtins', furniture: 'furniture', floor_paint: 'floor_paint', ext_body: 'ext_body', ext_trim: 'ext_trim', front_door: 'front_door', shutters: 'shutters', garage_door: 'garage_door', porch_floor: 'porch_floor', shed: 'shed' };
@@ -351,11 +352,9 @@
     return { view: 'home' };
   }
   const pathOf = r => r.view === 'home' ? '' : r.view === 'flow' ? `${r.kind}/${r.step}` : r.view === 'results' ? `${r.kind}/results` : r.view === 'color' ? `color/${r.id}` : r.view === 'shared' ? `p/${r.data}` : r.view;
-  const scrollMemo = {};
   let navDir = 0;
   function go(path, opts) {
     opts = opts || {};
-    scrollMemo[location.hash] = window.scrollY;
     const hash = '#/' + path.replace(/^#?\/?/, '');
     const d = (history.state && history.state.d) || 0;
     if (hash === location.hash && !opts.force) { render(); return; }
@@ -373,7 +372,10 @@
     else if (r.view === 'color') up = state.results[state.lastFlow] ? `${state.lastFlow}/results` : '';
     go(up, { replace: true, dir: -1 });
   }
-  window.addEventListener('popstate', () => { const dir = navDir || -1; navDir = dir; render(scrollMemo[location.hash]); });
+  // back (or forward) always lands at the top of the page, like opening it fresh; the browser isn't left to
+  // put back the old scroll spot on its own
+  try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) { /* older browsers */ }
+  window.addEventListener('popstate', () => { const dir = navDir || -1; navDir = dir; render(0); });
 
   let current = null;
   function render(scrollTo) {
@@ -471,7 +473,7 @@
   const hasWork = () => Object.values(state.flows).some(f => f && f.a && f.a._picked && Object.keys(f.a._picked).length) || Object.values(state.results).some(Boolean) || !!state.query.trim();
   function clearWork() {
     state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null };
-    state.query = ''; state.lookupHex = ''; state.duel = null; state.duelPick = ''; state.pick = { paint: '', stain: '' }; state.ftype = {};
+    state.query = ''; state.lookupHex = ''; state.duel = null; state.duelPick = ''; state.pick = { paint: '', stain: '' }; state.ftype = {}; state.layout = null;
   }
   function homeAsk() {
     if (!state.ready) return;
@@ -568,11 +570,15 @@
     go(`${kind}/${first}`);
   }
 
-  // which questions, in order, for the answers so far
+  // Which questions, in order, for the answers so far. Each set starts with what's being done and the easy
+  // questions, and gets more detailed as it goes. An answer can add or take away a later question (No Windows
+  // takes away the daylight one; siding is only asked for the outside of a house), and pruneAnswers() then
+  // clears the answer to any question that's gone, so it can't quietly change the picks.
   function flowSteps(kind) {
     const a = flowOf(kind).a;
     if (kind === 'stain') {
-      const list = ['inout', 'target', 'wood', 'condition', 'slook', 'grain'];
+      // how much grain shows comes before the looks, so the look samples are solid stain when it's hidden
+      const list = ['inout', 'target', 'wood', 'condition', 'grain', 'slook'];
       if (detailed()) list.push('around', 'finish');
       return list;
     }
@@ -581,26 +587,102 @@
     if (kind === 'buy') {
       const list = ['where', 'space'];
       if (a.space === 'ext_body') list.push('siding');
+      list.push('amount', 'nowcolor', 'going');
+      if (!ext) list.push('kids');
       list.push('surface');
       if (a.space !== 'ext_body' && a.space !== 'fireplace') list.push('texture');
-      list.push('issues', 'nowcolor', 'going');
-      if (!ext) list.push('kids');
-      list.push('priority', 'amount');
+      list.push('issues', 'priority');
       return list;
     }
     const list = ['where', 'space'];
     if (sp.kind === 'interior' && !sp.surface && a.space !== 'accent') list.push('size');
+    if (E.WHO_FOR[a.space]) list.push('who');
     if (a.space === 'ext_body') list.push('siding');
     list.push('windows');
     if (ext || a.facing !== 'none') list.push('daylight');
     if (detailed() && settings.askBulbs && !ext) list.push('bulbs');
-    if (detailed()) list.push('now');
-    list.push('style');
-    if (detailed()) list.push('feel');
-    list.push('colors');
+    list.push('style', 'colors');
     if (detailed() && !E.WHITE_TYPES[sp.surface]) list.push('depth');
+    if (detailed()) list.push('feel', 'now');
     if (detailed() && settings.askFixed) list.push('staying');
     return list;
+  }
+  // Like a guessing game: on the style and color questions, each choice is tried with everything answered so
+  // far, and the room's own story decides what's marked. Choices that would come back with cautions for this
+  // room (cool grays in north light, dark colors in a small dim room, a moody style on vinyl siding) say
+  // "Harder Here", and the rest say "Good Fit". When every choice suits the room, nothing is marked. The look
+  // of the question stays the same; the tags sit on the pictures, so nothing moves.
+  const fitCache = new Map();
+  let fitRun = 0;
+  function choiceFit(a, key, val) {
+    const test = clone(a); delete test._picked;
+    test[key] = val === 'any' ? [] : [val];
+    const set = engineSettings();
+    const k = JSON.stringify([test, set.brands, set.storeOnly && set.storeBrand]);
+    if (fitCache.has(k)) return fitCache.get(k);
+    const r = E.recommend(test, Object.assign({}, set, { resultCount: 6 }));
+    const res = r.results, cautions = x => (x.warnings || []).filter(w => w.level === 'caution');
+    const bad = res.filter(x => cautions(x).length);
+    const note = (r.notices || []).find(x => x.level === 'caution');
+    const v = { n: res.length, ok: res.length ? 1 - bad.length / res.length : 0, why: note ? note.title : bad.length ? cautions(bad[0])[0].title : '', notice: !!note };
+    if (fitCache.size > 400) fitCache.clear();
+    fitCache.set(k, v);
+    return v;
+  }
+  function markFits(a, key) {
+    const attr = key === 'families' ? 'family' : 'style';
+    const btns = $$(`#qBody [data-${attr}]`).filter(b => b.dataset[attr] !== 'any');
+    if (!btns.length) return;
+    const run = ++fitRun;
+    setTimeout(() => {
+      if (run !== fitRun || !document.contains(btns[0])) return;
+      const fits = btns.map(b => choiceFit(a, key, b.dataset[attr]));
+      const hard = fits.map(x => !x.n || x.ok <= 0.5 || x.notice);
+      if (!hard.some(Boolean)) return;
+      btns.forEach((b, i) => {
+        if (!hard[i] && fits[i].ok < 0.99) return;
+        const tag = document.createElement('span');
+        tag.className = 'fit ' + (hard[i] ? 'hard' : 'good');
+        tag.textContent = hard[i] ? 'Harder Here' : 'Good Fit';
+        if (hard[i] && fits[i].why) tag.title = fits[i].why;
+        ($('.art', b) || b).appendChild(tag);
+        b.setAttribute('aria-description', hard[i] ? 'Harder in this room' + (fits[i].why ? ': ' + fits[i].why : '') : 'A good fit for this room');
+      });
+    }, 40);
+  }
+  const dayDefault = space => { const sp = E.SPACES[space] || {}; return sp.sunny ? 'high' : sp.dimByNature ? 'low' : 'medium'; };
+  // Answers to questions that aren't asked any more go back to how they started, and choices a question no
+  // longer offers are dropped (Knots once it isn't wood, Pets once it isn't a floor or a table).
+  function pruneAnswers(kind) {
+    const a = flowOf(kind).a, list = flowSteps(kind), on = id => list.includes(id);
+    const D = kind === 'stain' ? S.DEFAULT : E.DEFAULT_ANSWERS;
+    const reset = (...keys) => keys.forEach(k => { a[k] = clone(D[k]); });
+    const forget = id => { if (a._picked) delete a._picked[id]; };
+    if (kind === 'stain') {
+      if (!on('around')) reset('matchWood', 'wallTone');
+      if (!on('finish')) reset('sheen', 'evenness', 'pets');
+      if (!(S.JOBS[a.target] || {}).traffic) a.pets = false;
+      return;
+    }
+    const sp = E.SPACES[a.space] || E.SPACES.living;
+    const wood = ['bare_wood', 'stained_wood', 'paneling'].includes(a.surface) || sp.kind === 'exterior';
+    if (!wood && (a.issues || []).includes('knots')) a.issues = a.issues.filter(x => x !== 'knots');
+    if (!on('siding')) { reset('siding'); forget('siding'); }
+    if (kind === 'buy') {
+      if (!on('texture')) { a.texture = ''; forget('texture'); }
+      if (!on('kids')) a.kids = null;
+      return;
+    }
+    if (!on('size')) reset('size');
+    if (!on('who') || !(E.WHO_FOR[a.space] || {})[a.forWho]) a.forWho = '';
+    if (!on('daylight')) forget('daylight');
+    if (!on('bulbs')) reset('bulbs');
+    if (!on('depth')) reset('depth');
+    if (!on('feel')) reset('feel', 'undertone', 'avoid');
+    if (!on('now')) reset('nowKind', 'nowHex', 'surface', 'issues');
+    if (!on('staying')) reset('fixed', 'customFixed');
+    // the kind-of-white question (ceilings, trim, doors) and the colors question never both count
+    if (E.WHITE_TYPES[sp.surface]) a.families = []; else a.whiteType = '';
   }
 
   // ---------------- each question ----------------
@@ -632,6 +714,12 @@
       html: a => `<div class="choices">${[['small', 'Small', 'Like a bathroom or a small bedroom', 'sizeS'], ['medium', 'Medium', 'Like a bedroom or an office', 'sizeM'], ['large', 'Large or Open', 'Like a living room or an open plan', 'sizeL']].map(([k, t, s, i]) => choice(`data-v="${k}"`, a.size === k, t, s, ic(i))).join('')}</div>`,
       pick: (a, v) => { a.size = v; },
     },
+    who: {
+      title: a => a.space === 'bedroom' ? 'Whose bedroom is it?' : a.space === 'nursery' ? 'Who is the nursery for?' : 'Who is the room for?',
+      sub: () => 'Optional. It leans the picks a little. Every color is still there.', auto: true,
+      html: a => `<div class="choices">${Object.entries(E.WHO_FOR[a.space] || {}).map(([k, o]) => choice(`data-v="${k}"`, a.forWho === k, o.label, o.sub, swatchPic(o.sw))).join('')}${choice('data-v=""', !a.forWho, 'Not Sure', 'Leave it open', ic('unsure'))}</div>`,
+      pick: (a, v) => { a.forWho = v; },
+    },
     siding: {
       title: () => 'What is the siding made of?', sub: () => 'Each kind takes paint a little differently.', auto: true,
       html: a => `<div class="choices">${Object.entries(E.SIDING).map(([k, v]) => `<button type="button" class="choice" data-v="${k}" aria-pressed="${a.siding === k}">${tick}<span class="ic sw" style="background:${SIDING_BG[k]}"></span><b>${esc(v)}</b><span class="sub">${esc(SIDING_SUB[k])}</span></button>`).join('')}</div>`,
@@ -658,8 +746,10 @@
       click: (a, t) => {
         const d = t.dataset.facing; if (!d) return false;
         a.facings = a.facings || [];
-        if (d === 'unsure' || d === 'none') { a.facings = []; a.facing = d; if (d === 'none') a.amount = 'low'; }
+        const wasNone = a.facing === 'none';
+        if (d === 'unsure' || d === 'none') { a.facings = []; a.facing = d; if (d === 'none') a.amount = 'low'; else if (wasNone && !(a._picked && a._picked.daylight)) a.amount = dayDefault(a.space); }
         else {
+          if (wasNone && !(a._picked && a._picked.daylight)) a.amount = dayDefault(a.space);
           a.facings = a.facings.includes(d) ? a.facings.filter(x => x !== d) : E.DIRS.filter(x => x === d || a.facings.includes(x));
           a.facing = a.facings[0] || 'unsure';
           if (a.facings.length >= 2 && a.amount === 'low') a.amount = 'medium';
@@ -697,7 +787,7 @@
     style: {
       title: () => 'What style do you like?', sub: () => 'Pick up to two, or keep Any Style.',
       html: a => `<div class="choices">${choice('data-style="any"', !a.styles.length, 'Any Style', 'Show me a mix of popular colors', ic('sparkle'))}${Object.entries(E.STYLES).map(([k, s]) => `<button type="button" class="choice tall" data-style="${k}" aria-pressed="${a.styles.includes(k)}">${tick}<span class="art"><span class="swatches3" data-palette="${k}"><span></span><span></span><span></span><span></span></span></span><b>${esc(s.label)}</b><span class="sub">${esc(STYLE_SUB[k])}</span></button>`).join('')}</div>`,
-      after: () => fillStylePalettes(),
+      after: a => { fillStylePalettes(); markFits(a, 'styles'); },
       click: (a, t) => {
         const k = t.dataset.style; if (!k) return false;
         if (k === 'any') a.styles = [];
@@ -727,6 +817,7 @@
         if (wt) return `<div class="choices">${choice('data-white=""', !a.whiteType, 'The Most Popular Whites', 'A handful of best sellers', ic('star'))}${Object.entries(wt).map(([k, v]) => `<button type="button" class="choice tall" data-white="${k}" aria-pressed="${a.whiteType === k}">${tick}<span class="art">${swatchPic(WHITE_SAMPLE[k])}</span><b>${esc(v)}</b></button>`).join('')}</div>`;
         return `<div class="choices">${choice('data-family="any"', !a.families.length, 'Any Color', 'Show me the best fits', ic('sparkle'))}${Object.entries(E.FAMILY_CHOICES).map(([k, v]) => `<button type="button" class="choice tall" data-family="${k}" aria-pressed="${a.families.includes(k)}">${tick}<span class="art">${swatchPic(FAMILY_SAMPLE[k])}</span><b>${esc(v)}</b></button>`).join('')}</div>`;
       },
+      after: a => { if (!E.WHITE_TYPES[(E.SPACES[a.space] || {}).surface]) markFits(a, 'families'); },
       click: (a, t) => {
         if (t.dataset.white != null) { a.whiteType = t.dataset.white; $$('[data-white]').forEach(b => b.setAttribute('aria-pressed', b.dataset.white === a.whiteType)); return 'auto'; }
         const k = t.dataset.family; if (!k) return false;
@@ -856,7 +947,7 @@
     },
     amount: {
       title: a => T.sizeKind({ kind: 'paint', space: a.space }) === 'house' ? 'How big is the house?' : T.sizeKind({ kind: 'paint', space: a.space }) === 'kitchen' ? 'How many cabinets?' : T.sizeKind({ kind: 'paint', space: a.space }) === 'piece' ? 'How big is the piece?' : 'How big is the room?',
-      sub: () => 'For how much to buy. You can type exact sizes on the next screen.', auto: true,
+      sub: () => 'For how much to buy. You can type exact measurements on the shopping list.', auto: true,
       html: a => { const kind = T.sizeKind({ kind: 'paint', space: a.space }); return `<div class="choices">${Object.entries(T.SIZES[kind]).map(([k, s], i) => choice(`data-v="${k}"`, a.amountSize === k, s.label, s.sub, ic(['sizeS', 'sizeM', 'sizeL'][i]))).join('')}</div>`; },
       // a new size answer replaces any measurements typed in before, so the numbers always match the answer
       pick: (a, v) => { a.amountSize = v; a.sizeCustom = null; },
@@ -901,6 +992,10 @@
     const y = window.scrollY;
     body.classList.remove('slide', 'slide-back');
     body.innerHTML = stepInner(kind, id, f.a);
+    // an answer can add or take away questions, so the count changes right away
+    const pt = $('.progress-text'), pb = $('.progress-bar i');
+    if (pt) pt.textContent = `${FLOW_INFO[kind].title} · Question ${f.step + 1} of ${list.length}`;
+    if (pb) pb.style.width = Math.round((f.step + 1) / list.length * 100) + '%';
     const st = STEPS[id]; if (st.after) st.after(f.a);
     SC.paintWoods(body, 'none');
     showBar(true, kind, f.step, list);
@@ -951,6 +1046,7 @@
       res = 'auto';
     }
     if (!res) return;
+    pruneAnswers(kind);
     if (res === 'redraw') redrawStep(kind);
     else showBar(true, kind, f.step, flowSteps(kind));
     nudgeNext();
@@ -1186,12 +1282,12 @@
     }
     const kind = sc.kind === 'kitchen' ? 'kitchen' : 'room';
     const furn = sc.furniture;
-    return SC.sceneSvg(kind, Object.assign({ label, furniture: furn, windows: SC.windowSlots(a, kind === 'kitchen' ? 'kitchen' : furn), floorType: sc.floor || SC.floorTypeOf(a), crown: !!a.crown }, SC.sceneExtras(a.space)));
+    return SC.sceneSvg(kind, Object.assign({ label, furniture: furn, windows: SC.windowSlots(a, kind === 'kitchen' ? 'kitchen' : furn, state.layout && state.layout.wins), floorType: sc.floor || SC.floorTypeOf(a), crown: !!a.crown }, SC.sceneExtras(a.space)));
   }
 
   const live = {};  // scene box id -> { spec, viewer }
   function teardownScenes() { for (const k of Object.keys(live)) { if (live[k].viewer) live[k].viewer.destroy(); delete live[k]; } }
-  const sceneBox = id => `<div class="scene" id="${id}"><div class="pic" role="img"></div><span class="scene-tag" hidden></span>${R3().supported() ? `<button type="button" class="scene-3d" data-toggle3d="1" aria-pressed="${!!settings.view3d}" aria-label="Turn in 3D">${ic('cube', 22)}3D</button>` : ''}</div><div class="scene-tools" id="${id}-tools"></div>`;
+  const sceneBox = id => `<div class="scene" id="${id}"><div class="pic" role="img"></div><span class="scene-tag" hidden></span><button type="button" class="scene-setup" data-room-setup="${id}" hidden>${ic('room', 20)}Set Up Room</button>${R3().supported() ? `<button type="button" class="scene-3d" data-toggle3d="1" aria-pressed="${!!settings.view3d}" aria-label="Turn in 3D">${ic('cube', 22)}3D</button>` : ''}</div><div class="scene-tools" id="${id}-tools"></div>`;
   // spec: { key, ids, roles(sceneId) -> role colors, tex (stain), stain, answers, label }
   function mountScene(id, spec) {
     const box = $('#' + id); if (!box) return;
@@ -1210,12 +1306,13 @@
     const sceneId = state.sceneFor[spec.key];
     const roles = spec.roles(sceneId);
     if (L.viewer) { L.viewer.destroy(); L.viewer = null; }
+    const setupBtn = $('[data-room-setup]', box); if (setupBtn) setupBtn.hidden = !['room', 'kitchen'].includes((SCN[sceneId] || {}).kind);
     const r3 = R3();
     pic.setAttribute('aria-label', `${spec.label || ''} in a ${(SCN[sceneId] || {}).label || 'room'}`);
     if (r3.supported() && r3.has && r3.has(sceneId)) {
       pic.innerHTML = '';
       const floor = (SCN[sceneId] || {}).floor || (spec.answers && !spec.stain ? SC.floorTypeOf(Object.assign({}, E.DEFAULT_ANSWERS, spec.answers)) : null);
-      L.viewer = r3.mount(pic, { scene: sceneId, roles, tex: spec.tex || null, stain: !!spec.stain, answers: spec.answers || {}, light: state.light, interactive: !!settings.view3d, reduced: reduced(), cal: settings.cal, floor, onLost: () => { if (live[id] && live[id].viewer) { live[id].viewer = null; pic.innerHTML = svgScene(spec, sceneId, roles); pic.dataset.roles = JSON.stringify(roles); pic.dataset.scene = (SCN[sceneId] || {}).kind === 'house' ? 'house' : 'room'; SC.paintScene(pic, state.light); } } });
+      L.viewer = r3.mount(pic, { scene: sceneId, roles, tex: spec.tex || null, stain: !!spec.stain, answers: spec.answers || {}, layout: state.layout, light: state.light, interactive: !!settings.view3d, reduced: reduced(), cal: settings.cal, floor, onLost: () => { if (live[id] && live[id].viewer) { live[id].viewer = null; pic.innerHTML = svgScene(spec, sceneId, roles); pic.dataset.roles = JSON.stringify(roles); pic.dataset.scene = (SCN[sceneId] || {}).kind === 'house' ? 'house' : 'room'; SC.paintScene(pic, state.light); } } });
       if (L.viewer) { setTag(id); return; }
     }
     pic.innerHTML = svgScene(spec, sceneId, roles);
@@ -1223,6 +1320,40 @@
     pic.dataset.scene = (SCN[sceneId] || {}).kind === 'house' ? 'house' : spec.stain ? (S.JOBS[spec.answers.target] || {}).scene : 'room';
     setTag(id, SC.paintScene(pic, state.light));
   }
+  // ---- Set Up the Room: windows (and in a kitchen the fridge and stove) where they really are ----
+  const WALL_LABEL = { left: 'Left Wall', back: 'Back Wall', right: 'Right Wall' };
+  let setupFor = null, setupDraft = null;
+  function openRoomSetup(id) {
+    const L = live[id]; if (!L) return;
+    const sceneId = state.sceneFor[L.spec.key], kitchen = (SCN[sceneId] || {}).kind === 'kitchen';
+    const v = L.viewer;
+    const walls = v && v.walls && v.walls.length ? v.walls : kitchen ? ['left', 'right'] : ['left', 'back', 'right'];
+    const cur = state.layout || {};
+    setupFor = id;
+    setupDraft = { wins: Array.isArray(cur.wins) ? cur.wins.slice() : (v && v.winWalls ? v.winWalls.slice() : walls.slice(0, 1)), fridge: cur.fridge || 'left', stove: cur.stove || cur.fridge || 'left' };
+    const chips = (key, opts, on) => `<div class="chipset setup-chips">${opts.map(([val, label]) => `<button type="button" class="chip plain" data-setup-${key}="${val}" aria-pressed="${on(val)}">${label}</button>`).join('')}</div>`;
+    openModal('Set Up the Room', `<p style="font-size:1.1rem">Put the windows${kitchen ? ', fridge and stove' : ''} where they really are, so the picture looks like the room at home.</p>
+      <div class="setup-group"><h3>Windows</h3>${chips('win', walls.map(w => [w, WALL_LABEL[w]]), w => setupDraft.wins.includes(w))}<p class="muted small">Tap to add or take one away. None picked means no windows.${kitchen && walls.includes('back') ? ' A window on the back wall goes over the sink.' : ''}</p></div>
+      ${kitchen ? `<div class="setup-group"><h3>Fridge</h3>${chips('fridge', [['left', 'On the Left'], ['right', 'On the Right']], x => setupDraft.fridge === x)}</div>
+      <div class="setup-group"><h3>Stove</h3>${chips('stove', [['left', 'Left of the Sink'], ['right', 'Right of the Sink']], x => setupDraft.stove === x)}</div>` : ''}
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-setup-reset="1">Start Over</button><span class="grow"></span><button type="button" class="btn big primary" data-setup-done="1">Done</button></div>`);
+  }
+  document.addEventListener('click', e => {
+    const open = e.target.closest('[data-room-setup]'); if (open) { openRoomSetup(open.dataset.roomSetup); return; }
+    const t = e.target.closest('#modal button'); if (!t || !setupDraft) return;
+    const d = t.dataset;
+    if (d.setupWin) { const i = setupDraft.wins.indexOf(d.setupWin); if (i >= 0) setupDraft.wins.splice(i, 1); else setupDraft.wins.push(d.setupWin); t.setAttribute('aria-pressed', i < 0); }
+    if (d.setupFridge || d.setupStove) {
+      const k = d.setupFridge ? 'fridge' : 'stove'; setupDraft[k] = d.setupFridge || d.setupStove;
+      $$(`#modal [data-setup-${k}]`).forEach(b => b.setAttribute('aria-pressed', b === t));
+    }
+    if (d.setupDone || d.setupReset) {
+      state.layout = d.setupDone ? setupDraft : null;
+      setupDraft = null; closeModal();
+      for (const k of Object.keys(live)) if (['room', 'kitchen'].includes((SCN[state.sceneFor[live[k].spec.key]] || {}).kind)) drawScene(k);
+      toast(d.setupDone ? 'The room is set up' : 'Back to the standard room');
+    }
+  });
   function setTag(id, text) {
     const tag = $('#' + id + ' .scene-tag'); if (!tag) return;
     const t = text || LIGHT_SHORT[state.light] || '';
@@ -1289,6 +1420,7 @@
       return out;
     }
     add('size', { small: 'Small room', medium: 'Medium room', large: 'Large room' }[a.size]);
+    add('who', ((E.WHO_FOR[a.space] || {})[a.forWho] || {}).label);
     const fs = E.facingsOf(a);
     add('windows', E.noWindows(a) ? 'No windows' : fs.length ? fs.map(d => E.FACING[d]).join(' + ') + ' light' : 'Any light');
     add('daylight', sp.kind === 'exterior' ? { low: 'Mostly shade', medium: 'Some sun', high: 'Full sun' }[a.amount] : { low: 'Not much daylight', medium: 'Some daylight', high: 'Lots of daylight' }[a.amount]);
@@ -1782,7 +1914,7 @@
       <div class="search"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         <input type="search" id="lookupInput" aria-label="Search colors" placeholder="Agreeable Gray, SW 7029 or #D1CBC1" value="${esc(state.query)}" autocomplete="off" spellcheck="false" enterkeyhint="search">
         <button type="button" class="clear" id="lookupClear" aria-label="Clear" ${state.query ? '' : 'hidden'}>${xIcon}</button></div>
-      <div class="actions"><span class="muted">Or pick a color to match:</span>${colorHtml('lookupColor', state.lookupHex || 'D1CBC1', 'Match a color', hex => { state.lookupHex = hex; const i = $('#lookupInput'); i.value = '#' + hex; state.query = i.value; $('#lookupClear').hidden = false; clearTimeout(lookTimer); lookTimer = setTimeout(showLookup, 60); })}</div>
+      <div class="actions"><button type="button" class="btn" data-camera="1">${ic('camera', 22)}Match With the Camera</button><span class="muted">or pick a color:</span>${colorHtml('lookupColor', state.lookupHex || 'D1CBC1', 'Match a color', hex => { state.lookupHex = hex; const i = $('#lookupInput'); i.value = '#' + hex; state.query = i.value; $('#lookupClear').hidden = false; clearTimeout(lookTimer); lookTimer = setTimeout(showLookup, 60); })}</div>
       <p class="muted small">Searching ${fmt(enabledCount())} colors from ${Object.values(brandsEnabled()).filter(Boolean).length} brands. Brand words work too, like “behr swiss coffee”.</p>
       <div id="lookupResults" class="section"></div></div>`;
     const input = $('#lookupInput'), clear = $('#lookupClear');
@@ -1791,6 +1923,117 @@
     showLookup();
     if (window.matchMedia('(pointer: fine)').matches) input.focus({ preventScroll: true });
   }
+  // ---- matching a color with the camera ----
+  // For when the store's color scanner is down. A camera can't see true color on its own: it keeps changing its
+  // brightness and warmth. So a sheet of plain white paper goes in the same picture, and the color is read
+  // against it. Whatever the light and the camera do to one, they do to the other, so it cancels out.
+  const PAPER = 0.86;   // how much light plain white copy paper reflects (about L* 94)
+  const toLin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const toEnc = v => { v = Math.max(0, Math.min(1, v)); return Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055)); };
+  const lumOf = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  let cam = null;   // { stream, video, canvas, timer, busy }
+  function camStop() {
+    if (!cam) return;
+    clearInterval(cam.timer);
+    if (cam.stream) cam.stream.getTracks().forEach(t => t.stop());
+    cam = null;
+  }
+  async function openCamera() {
+    camStop();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      openModal('Match With the Camera', '<p style="font-size:1.1rem">This browser can’t use the camera here. Try Chrome or Safari on a phone or tablet.</p><div class="modal-foot"><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">OK</button></div>');
+      return;
+    }
+    openModal('Match With the Camera', `
+      <div class="cam-wrap" id="camWrap"><video id="camVideo" playsinline muted autoplay></video>
+        <div class="cam-box cam-p"><span>Paper</span></div><div class="cam-box cam-c"><span>Color</span></div>
+        <p class="cam-wait" id="camWait">Starting the camera…</p></div>
+      <ol class="cam-steps"><li>Lay the chip or sample on a sheet of plain white paper, or hold the paper flat against the wall right beside the color.</li>
+        <li>Line up the paper in the <b>Paper</b> box and the color in the <b>Color</b> box, in even light with no glare or shadow.</li>
+        <li>Tap <b>Read Color</b>. It gets close, not exact, so check the match against a real chip.</li></ol>
+      <div class="cam-live" aria-live="polite"><span class="sw" id="camSw"></span><span id="camNote">Getting ready…</span></div>
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big primary" data-cam-read="1" disabled>${ic('camera', 22)}Read Color</button></div>`, { wide: true });
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    } catch (e) {
+      const w = $('#camWait');
+      if (w) w.textContent = e && e.name === 'NotAllowedError' ? 'The camera is blocked for this site. Allow it in the browser’s settings for this site, then try again.' : e && (e.name === 'NotFoundError' || e.name === 'OverconstrainedError') ? 'No camera was found on this device.' : 'The camera couldn’t start. Close other apps using it and try again.';
+      const wrap = $('#camWrap'); if (wrap) wrap.classList.add('off');
+      const live = $('#modal .cam-live'); if (live) live.hidden = true;
+      return;
+    }
+    const video = $('#camVideo');
+    if (!video) { stream.getTracks().forEach(t => t.stop()); return; }   // closed while it was starting
+    video.srcObject = stream;
+    try { await video.play(); } catch (e) { /* plays once it can */ }
+    cam = { stream, video, canvas: document.createElement('canvas'), timer: 0, busy: false };
+    const w = $('#camWait'); if (w) w.hidden = true;
+    cam.timer = setInterval(camLive, 250);
+  }
+  // the average color in the middle of one of the boxes: glints and specks (the brightest and darkest tenth)
+  // left out, how even it is, and how much of it is blown out to pure white
+  function camRead(box) {
+    const v = cam.video, vr = v.getBoundingClientRect(), vw = v.videoWidth, vh = v.videoHeight;
+    const k = Math.max(vr.width / vw, vr.height / vh), ox = (vr.width - vw * k) / 2, oy = (vr.height - vh * k) / 2;   // object-fit: cover
+    const r = box.getBoundingClientRect();
+    const sx = (r.left - vr.left - ox) / k, sy = (r.top - vr.top - oy) / k, sw = r.width / k, sh = r.height / k;
+    const N = 24, cv = cam.canvas; cv.width = N; cv.height = N;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    g.drawImage(v, sx + sw * 0.15, sy + sh * 0.15, sw * 0.7, sh * 0.7, 0, 0, N, N);
+    const d = g.getImageData(0, 0, N, N).data, px = [];
+    for (let i = 0; i < d.length; i += 4) { const c = [toLin(d[i]), toLin(d[i + 1]), toLin(d[i + 2])]; px.push({ c, y: lumOf(c), hot: Math.max(d[i], d[i + 1], d[i + 2]) >= 252 }); }
+    px.sort((p, q) => p.y - q.y);
+    const keep = px.slice(Math.floor(px.length * 0.1), Math.ceil(px.length * 0.9));
+    const avg = [0, 1, 2].map(i => keep.reduce((s, p) => s + p.c[i], 0) / keep.length);
+    const mean = lumOf(avg) || 1e-4;
+    const spread = Math.sqrt(keep.reduce((s, p) => s + (p.y - mean) * (p.y - mean), 0) / keep.length) / mean;
+    return { avg, spread, hot: px.filter(p => p.hot).length / px.length };
+  }
+  function camSample() {
+    if (!cam || !cam.video.videoWidth || !document.contains(cam.video)) return null;
+    return { P: camRead($('#camWrap .cam-p')), C: camRead($('#camWrap .cam-c')) };
+  }
+  // the color, as it would look next to paper that reflects PAPER of the light
+  const camHex = s => [0, 1, 2].map(i => toEnc(s.C.avg[i] / Math.max(1e-4, s.P.avg[i]) * PAPER).toString(16).padStart(2, '0')).join('').toUpperCase();
+  function camProblem(s) {
+    const pl = lumOf(s.P.avg), tint = Math.max(...s.P.avg) / Math.max(1e-4, Math.min(...s.P.avg));
+    if (pl < 0.03) return 'Too dark. Turn on more light, or move closer to a window.';
+    if (s.P.hot > 0.25) return 'The paper is too bright or shiny. Tilt it a little so there’s no glare.';
+    if (s.P.spread > 0.12) return 'Fill the Paper box with just the plain paper.';
+    if (tint > 2.2) return 'That doesn’t look like white paper. Put plain white paper in the Paper box.';
+    if (s.C.hot > 0.25) return 'There’s glare on the color. Tilt it a little.';
+    if (s.C.spread > 0.2) return 'Fill the Color box with just the one color.';
+    if (lumOf(s.C.avg) > pl * 1.1) return 'The color looks brighter than the paper. Check the paper is in the Paper box.';
+    return '';
+  }
+  function camLive() {
+    if (!cam || cam.busy) return;
+    const s = camSample();
+    if (!s) { if (cam && !document.contains(cam.video)) camStop(); return; }
+    const bad = camProblem(s), hex = camHex(s);
+    const sw = $('#camSw'), note = $('#camNote'), btn = $('[data-cam-read]');
+    if (sw) sw.style.background = '#' + hex;
+    if (note) { note.textContent = bad || `About #${hex}`; note.classList.toggle('bad', !!bad); }
+    if (btn) btn.disabled = !!bad;
+  }
+  document.addEventListener('click', async e => {
+    if (e.target.closest('[data-camera]')) { openCamera(); return; }
+    const t = e.target.closest('[data-cam-read]'); if (!t || !cam || cam.busy) return;
+    // several frames, averaged, so one flicker doesn't decide it
+    cam.busy = true; t.disabled = true; t.textContent = 'Reading…';
+    const got = [];
+    for (let i = 0; i < 10; i++) { const s = camSample(); if (s && !camProblem(s)) got.push(s); await new Promise(r => setTimeout(r, 60)); }
+    if (!cam) return;
+    cam.busy = false;
+    if (got.length < 4) { t.disabled = false; t.innerHTML = `${ic('camera', 22)}Read Color`; const n = $('#camNote'); if (n) { n.textContent = 'Hold it still for a moment and try again.'; n.classList.add('bad'); } return; }
+    const mean = part => ({ avg: [0, 1, 2].map(i => got.reduce((s, x) => s + x[part].avg[i], 0) / got.length) });
+    const hex = camHex({ P: mean('P'), C: mean('C') });
+    closeModal();
+    state.query = '#' + hex; state.lookupHex = hex;
+    if (state.view === 'lookup') renderLookup(); else go('lookup');
+    toast(`Read #${hex} with the camera. Check the match against a real chip.`);
+  });
   let lookTimer = 0;
   function exactCard(hex, c) {
     const rgb = C.hexToRgb(hex).map(v => Math.round(v)), lrv = c ? c.lrv : C.lrvFromHex(hex), ref = c ? c.id : '#' + hex, on = session.items.some(x => x.ref === ref);
@@ -1937,7 +2180,11 @@
     if (act === 'copy') copyText(sheetText(session), 'Copied the whole project');
     if (act === 'link') shareLink(session).then(l => copyText(l, 'Copied a link. Anyone who opens it sees these colors.'));
     if (act === 'delete') askDelete(session);
-    if (t.dataset.delItem) { session.items = session.items.filter(x => x.id !== t.dataset.delItem); saveSession(); updateListBtn(); renderList(); }
+    if (t.dataset.delItem) {
+      const id = t.dataset.delItem, li = t.closest('li');
+      const done = () => { session.items = session.items.filter(x => x.id !== id); saveSession(); updateListBtn(); if (state.view === 'list') renderList(); };
+      if (li && !reduced()) { li.classList.add('leaving'); setTimeout(done, 190); } else done();
+    }
     if (t.dataset.openItem) {
       const ref = t.dataset.openItem;
       if (ref.startsWith('#')) { state.query = ref; go('lookup'); }
@@ -2317,18 +2564,25 @@
   // POPUPS, COPYING AND MESSAGES
   // ================================================================
   let modalFocus = null;
+  let modalClosing = 0;
   function openModal(title, body, opts) {
     const el = $('#modal');
-    const swap = !el.hidden; // already open: change what's in it without playing the pop-in again
-    if (!swap) modalFocus = document.activeElement;
+    const wasClosing = !!modalClosing;
+    if (wasClosing) { clearTimeout(modalClosing); modalClosing = 0; el.classList.remove('closing'); }
+    const swap = !el.hidden && !wasClosing; // already open: change what's in it without playing the pop-in again
+    if (!swap && !wasClosing) modalFocus = document.activeElement;
     el.innerHTML = `<div class="modal-card${opts && opts.wide ? ' wide' : ''}${swap ? ' swap' : ''}" role="document"><div class="modal-head"><h2 id="modalTitle">${esc(title)}</h2><button type="button" class="icon-btn" data-modal-close="1" aria-label="Close">${xIcon}</button></div><div class="modal-body">${body}</div></div>`;
     el.hidden = false;
     $('[data-modal-close]', el).focus({ preventScroll: true });
   }
   function closeModal() {
-    const el = $('#modal'); if (el.hidden) return;
-    el.hidden = true; el.innerHTML = ''; state.duel = null; pad = null;
+    const el = $('#modal'); if (el.hidden || modalClosing) return;
+    state.duel = null; pad = null; camStop();
+    const done = () => { modalClosing = 0; el.classList.remove('closing'); el.hidden = true; el.innerHTML = ''; };
     if (modalFocus && document.contains(modalFocus)) modalFocus.focus({ preventScroll: true });
+    if (reduced()) { done(); return; }
+    el.classList.add('closing');
+    modalClosing = setTimeout(done, 170);
   }
   $('#modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.target.closest('[data-modal-close]')) closeModal(); else if (e.target.closest('[data-go]')) closeModal(); });
   document.addEventListener('keydown', e => {
@@ -2342,7 +2596,7 @@
   }
   document.addEventListener('click', e => { const t = e.target.closest('[data-copy]'); if (t) copyText(t.dataset.copy, 'Copied ' + t.dataset.copy); });
   let toastTimer;
-  function toast(msg) { const el = $('#toast'); el.textContent = msg; el.hidden = false; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 2800); }
+  function toast(msg) { const el = $('#toast'); el.textContent = msg; el.hidden = false; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; clearTimeout(toastTimer); el.classList.remove('out'); toastTimer = setTimeout(() => { if (reduced()) { el.hidden = true; return; } el.classList.add('out'); toastTimer = setTimeout(() => { el.hidden = true; el.classList.remove('out'); }, 220); }, 2800); }
 
   // ================================================================
   // SETTINGS
@@ -2380,6 +2634,7 @@
     const groups = [['us', 'US National Brands'], ['us-more', 'More US Brands'], ['intl', 'International'], ['standard', 'Color Standards'], ['custom', 'Imported']];
     const st = installState();
     view().innerHTML = `<div class="set">
+      ${backBtn()}
       <div class="page-head"><h1>Settings</h1><p>Everything here is saved on this device.</p></div>
       <div class="set-group"><h2>Who Uses This</h2><div class="set-card">
         ${segRow('audience', 'This device is for', settings.audience === 'kiosk' ? 'Kiosk: big buttons, and it starts over when nobody has touched it for 2 minutes. The Staff button at the top unlocks it with the PIN.' : home() ? 'Simple tips for buying and testing samples.' : 'Chip locations and paint lines for the paint desk.', { store: 'Store Staff', home: 'My Home', kiosk: 'Kiosk' }, settings.audience || 'store')}
@@ -2722,7 +2977,7 @@
     clearInterval(kioskTick);
     closeModal(); closePresent();
     session = blankSession(); saveSession(); updateListBtn();
-    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null }; state.query = ''; state.duelPick = ''; state.unlocked = false;
+    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null }; state.query = ''; state.duelPick = ''; state.unlocked = false; state.layout = null;
     go('', { replace: true });
     window.scrollTo(0, 0);
     kioskArm();
@@ -2924,7 +3179,8 @@
       store.set('shortlist', []);
     }
     state.ready = true;
-    $('#loading').hidden = true;
+    const ld = $('#loading');
+    if (reduced()) ld.hidden = true; else { ld.classList.add('done'); setTimeout(() => { ld.hidden = true; }, 320); }
     updateListBtn();
     if (!history.state) history.replaceState({ d: 0 }, '', location.hash || '#/');
     render(0);
