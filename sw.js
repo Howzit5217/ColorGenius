@@ -1,8 +1,8 @@
 /* ColorGenius service worker: makes the installed app open instantly and work offline.
    App files and color data are saved on first visit; when online the newest versions always load. */
-const VERSION = 'cg-2026-11-24-44';
+const VERSION = 'cg-2026-11-24-45';
 const SHELL = [
-  './', 'index.html', 'css/app.css', 'js/color.js', 'js/wood.js', 'js/stain.js', 'js/engine.js', 'js/tools.js', 'js/scenes.js', 'js/room3d.js', 'js/config.js', 'js/app.js',
+  './', 'index.html', 'css/app.css', 'js/color.js', 'js/wood.js', 'js/stain.js', 'js/engine.js', 'js/tools.js', 'js/scenes.js', 'js/room3d.js', 'js/qr.js', 'js/config.js', 'js/app.js',
   'data/brands.js', 'data/stains.js', 'data/popular.js', 'data/files.json', 'manifest.webmanifest',
   'img/tile-paint.jpg', 'img/tile-stain.jpg', 'img/tile-buy.jpg', 'img/tile-lookup.jpg',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-64.png',

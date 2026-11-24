@@ -24,7 +24,7 @@
     cal: { enabled: false, warmth: 0, brightness: 0, vividness: 0, ref: '' },
     theme: 'system', reduceMotion: false, lines: {}, collections: {}, audience: '', onboarded: false,
     jobs: { paint: true, stain: true }, stainBrands: {}, chain: '',
-    questions: 'quick', view3d: false, bigText: false, kioskPin: null,
+    questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false,
   };
   function merge(base, over) {
     const out = clone(base);
@@ -348,6 +348,7 @@
     if (['paint', 'stain', 'buy'].includes(a)) return b === 'results' ? { view: 'results', kind: a } : { view: 'flow', kind: a, step: Math.max(0, parseInt(b, 10) || 0) };
     if (a === 'color' && b) return { view: 'color', id: b };
     if (a === 'p' && b) return { view: 'shared', data: b };
+    if (a === 'kiosk' && b) return { view: 'kiosk', data: b };
     if (['lookup', 'list', 'settings'].includes(a)) return { view: a };
     return { view: 'home' };
   }
@@ -383,6 +384,8 @@
     closePop();
     teardownScenes();
     const r = parseHash();
+    // the kiosk QR code: set this phone up, then start at home
+    if (r.view === 'kiosk') { openKioskLink(r.data); history.replaceState({ d: 0 }, '', '#/'); render(0); return; }
     current = r;
     state.view = r.view;
     const v = view();
@@ -2741,11 +2744,11 @@
     s.items.forEach((x, i) => lines.push(`${i + 1}. ${[x.area, [x.brand, x.name, x.code].filter(Boolean).join(' '), x.hex ? '#' + x.hex.toUpperCase() : '', x.finish, x.product, x.primer ? 'Primer: ' + x.primer : '', x.amount, x.tools, x.loc ? 'Find it: ' + x.loc : ''].filter(Boolean).join(' - ')}`));
     return lines.join('\n');
   }
-  function printSheet(s) {
-    const sh = sheetOf(s);
-    $('#printArea').innerHTML = sh.html;
+  function printSheet(s) { const sh = sheetOf(s); printHtml(sh.html, sh.landscape); }
+  function printHtml(html, landscape) {
+    $('#printArea').innerHTML = html;
     const page = document.createElement('style'); page.id = 'printPage';
-    page.textContent = `@page { size: letter ${sh.landscape ? 'landscape' : 'portrait'}; margin: 0.5in; }`;
+    page.textContent = `@page { size: letter ${landscape ? 'landscape' : 'portrait'}; margin: 0.5in; }`;
     const old = $('#printPage'); if (old) old.remove();
     document.head.appendChild(page);
     document.documentElement.classList.add('printing');
@@ -2919,6 +2922,10 @@
         ${segRow('audience', 'This device is for', settings.audience === 'kiosk' ? 'Kiosk: big buttons, and it starts over when nobody has touched it for 2 minutes. The Staff button at the top unlocks it with the PIN.' : home() ? 'Simple tips for buying and testing samples.' : 'Chip locations and paint lines for the paint desk.', { store: 'Store Staff', home: 'My Home', kiosk: 'Kiosk' }, settings.audience || 'store')}
         <div class="set-row"><span class="pin-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/><circle cx="12" cy="15.3" r="1.4" fill="currentColor" stroke="none"/></svg></span><div class="set-text"><b>Kiosk PIN</b><span>${hasPin() ? 'Set. Staff use it to unlock kiosk mode.' : 'Not made yet. You’ll make one (4 to 8 numbers) before kiosk mode turns on.'}</span></div><button type="button" class="btn" data-pin-change="1">${hasPin() ? 'Change PIN' : 'Make a PIN'}</button></div>
       </div></div>
+      ${home() ? '' : `<div class="set-group"><h2>No Kiosk? Use Shoppers’ Phones</h2><div class="set-card">
+        <div class="set-row kq-row"><div class="kq" id="kioskQr">${kioskQrSvg()}</div><div class="set-text"><b>Shoppers scan this code</b><span>ColorGenius opens on their phone in kiosk mode, with this store’s brands and questions. Settings stay locked. Change the store or brands below and the code changes with them.</span></div></div>
+        <div class="set-row"><button type="button" class="btn primary" data-act="kiosk-sign">${ic('print', 20)}Print a Sign</button><button type="button" class="btn" data-act="kiosk-copy">Copy Link</button></div>
+      </div></div>`}
       <div class="set-group"><h2>${home() ? 'Where You Shop' : 'Your Store'}</h2><div class="set-card">
         <div class="set-row"><div class="set-text"><b>Store</b><span>Turns on the brands that store carries</span></div>${selectHtml('setChain', [['', 'Choose a Store']].concat(Object.entries(CHAINS).filter(([, ch]) => !ch.other).map(([k, ch]) => [k, ch.label])), settings.chain, 'Store', v => { settings.chain = v; if (chainPreset(v, settings)) { settings.stainBrands = Object.fromEntries(Object.entries(settings.stainBrands).filter(([, on]) => on === false)); toast(`Brands set for ${CHAINS[v].label}`); } saveSettings(); afterSettingsChange(); renderKeep(); })}</div>
         <div class="set-row"><div class="set-text"><b>${home() ? 'Favorite Brand' : 'Store Brand'}</b><span>Shown first, and used for which paint to buy</span></div>${selectHtml('setStoreBrand', [['', 'None, Mix Brands']].concat(brandsAZ().map(b => [b.id, b.name])), settings.storeBrand, home() ? 'Favorite brand' : 'Store brand', v => { settings.storeBrand = v; if (v) settings.brands[v] = true; saveSettings(); afterSettingsChange(); renderKeep(); })}</div>
@@ -3004,7 +3011,7 @@
       // once it's on, settings close and lock behind the PIN straight away
       if (k === 'audience' && v === 'kiosk') { if (!isKiosk()) turnOnKiosk(() => { afterSettingsChange('audience'); state.unlocked = false; go(''); }); return; }
       settings[k] = k === 'resultCount' ? +v : v;
-      if (k === 'audience') { settings.inStoreSamples = v !== 'home'; applyAudience(); }
+      if (k === 'audience') { settings.inStoreSamples = v !== 'home'; settings.kioskPhone = false; applyAudience(); }
       saveSettings(); applyTheme(); afterSettingsChange(k); renderKeep(); return;
     }
     if (t.dataset.brand) { const on = t.getAttribute('aria-checked') !== 'true'; t.setAttribute('aria-checked', on); settings.brands[t.dataset.brand] = on; saveSettings(); afterSettingsChange('brands'); bumpCount('paintOn', paintOnText()); return; }
@@ -3020,7 +3027,7 @@
       const j = t.dataset.jobSwitch, other = j === 'paint' ? 'stain' : 'paint';
       settings.jobs = Object.assign({ paint: true, stain: true }, settings.jobs);
       if (settings.jobs[j] && !settings.jobs[other]) { toast('Keep paint or stain on'); return; }
-      settings.jobs[j] = !settings.jobs[j]; t.setAttribute('aria-checked', settings.jobs[j]); saveSettings(); return;
+      settings.jobs[j] = !settings.jobs[j]; t.setAttribute('aria-checked', settings.jobs[j]); saveSettings(); refreshKioskQr(); return;
     }
     if (t.dataset.brandGroup) { const on = t.dataset.on === '1'; for (const b of brandList()) if (b.group === t.dataset.brandGroup) settings.brands[b.id] = on; saveSettings(); afterSettingsChange('brands'); renderKeep(); return; }
     const act = t.dataset.act;
@@ -3029,6 +3036,8 @@
     if (act === 'brands-all') { for (const b of brandList()) settings.brands[b.id] = true; saveSettings(); afterSettingsChange('brands'); renderKeep(); }
     if (act === 'brands-us') { for (const b of brandList()) settings.brands[b.id] = b.group === 'us'; saveSettings(); afterSettingsChange('brands'); renderKeep(); }
     if (act === 'install') startInstall();
+    if (act === 'kiosk-sign') printKioskSign();
+    if (act === 'kiosk-copy') copyText(kioskLink(), 'Kiosk link copied');
     if (act === 'run-setup') openOnboarding();
     if (act === 'clear-custom') { const custom = store.get('custom', {}); store.set('custom', {}); for (const name of Object.keys(custom)) removeBrand(customMeta(name).id); afterSettingsChange('brands'); renderKeep(); toast('Imported colors removed'); }
     if (act === 'reset-all') {
@@ -3042,6 +3051,7 @@
     if (state.results.buy) state.results.buy = buyPlan(flowOf('buy').a);
     if (key === 'calEnabled' || key === 'all') refreshSwatches();
     updateListBtn();
+    refreshKioskQr();
   }
   function customMeta(name) { return { id: 'custom-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, prefix: '', region: 'Imported', group: 'custom', source: 'Imported by the store', date: '', lrv: 'as imported', mixNote: '' }; }
   function removeBrand(id) { const idx = E.getIndex(); idx.brands = idx.brands.filter(b => b.id !== id); delete idx.brandById[id]; idx.colors = idx.colors.filter(c => c.brand !== id); delete idx.byBrand[id]; }
@@ -3242,9 +3252,9 @@
   const KIOSK_IDLE = 120000, KIOSK_WARN = 15;
   let kioskTimer = 0, kioskTick = 0, kioskLeft = 0;
   // in a kiosk, the Settings button is swapped for a Staff button with a lock: it asks for the PIN
-  function applyAudience() { const k = isKiosk(); document.documentElement.classList.toggle('kiosk', k); $('#settingsBtn').hidden = k; $('#lockBtn').hidden = !k; kioskArm(); }
+  function applyAudience() { const k = isKiosk(); document.documentElement.classList.toggle('kiosk', k); document.documentElement.classList.toggle('kiosk-phone', k && !!settings.kioskPhone); $('#settingsBtn').hidden = k; $('#lockBtn').hidden = !k; kioskArm(); }
   const kioskAtStart = () => state.view === 'home' && !session.items.length && $('#modal').hidden && $('#present').hidden;
-  function kioskArm() { clearTimeout(kioskTimer); clearInterval(kioskTick); const w = $('#kioskIdle'); if (w) w.hidden = true; if (isKiosk()) kioskTimer = setTimeout(kioskWarn, KIOSK_IDLE); }
+  function kioskArm() { clearTimeout(kioskTimer); clearInterval(kioskTick); const w = $('#kioskIdle'); if (w) w.hidden = true; if (isKiosk() && !settings.kioskPhone) kioskTimer = setTimeout(kioskWarn, KIOSK_IDLE); }
   function kioskWarn() {
     if (!$('#onboard').hidden || kioskAtStart()) { kioskArm(); return; }
     let w = $('#kioskIdle');
@@ -3347,6 +3357,7 @@
   }
   function openUnlock() {
     if (!isKiosk()) return;
+    if (!hasPin() && settings.kioskPhone) { openPhoneLeave(); return; }
     // a kiosk turned on before PINs existed has none, and no PIN could ever match: make one, then it opens
     if (!hasPin()) { makePin(showUnlocked, 'Make a Kiosk PIN', 'This kiosk doesn’t have a PIN yet. Pick 4 to 8 numbers to lock it with, then it unlocks. Write it down somewhere safe.'); return; }
     openPinPad({
@@ -3378,7 +3389,7 @@
     $('#modal .modal-card').classList.add('pin-card');
     holdToConfirm($('[data-forgot-hold]'), FORGOT_HOLD, resetForForgotPin);
   }
-  function holdToConfirm(btn, ms, done) {
+  function holdToConfirm(btn, ms, done, label) {
     let timer = 0;
     btn.style.setProperty('--hold', ms + 'ms');
     const start = e => {
@@ -3387,7 +3398,7 @@
       btn.classList.add('holding'); $('.hold-label', btn).textContent = 'Keep Holding…';
       timer = setTimeout(() => { timer = 0; done(); }, ms);
     };
-    const stop = () => { if (!timer) return; clearTimeout(timer); timer = 0; btn.classList.remove('holding'); $('.hold-label', btn).textContent = 'Press and Hold to Reset'; };
+    const stop = () => { if (!timer) return; clearTimeout(timer); timer = 0; btn.classList.remove('holding'); $('.hold-label', btn).textContent = label || 'Press and Hold to Reset'; };
     btn.addEventListener('pointerdown', start); btn.addEventListener('keydown', start);
     ['pointerup', 'pointerleave', 'pointercancel', 'keyup', 'blur'].forEach(ev => btn.addEventListener(ev, stop));
     btn.addEventListener('contextmenu', e => e.preventDefault());
@@ -3404,7 +3415,7 @@
   $('#modal').addEventListener('click', e => {
     const t = e.target.closest('[data-unlock]'); if (!t) return;
     closeModal();
-    if (t.dataset.unlock === 'leave') { settings.audience = 'store'; settings.inStoreSamples = true; saveSettings(); applyAudience(); go('settings'); toast('Kiosk mode is off'); }
+    if (t.dataset.unlock === 'leave') leaveKiosk();
     else { state.unlocked = true; go('settings'); }
   });
 
@@ -3424,9 +3435,105 @@
       },
     });
   }
+  // ================================================================
+  // KIOSK ON SHOPPERS' PHONES: a store without a kiosk puts up a sign with a QR code. Scanning it opens
+  // ColorGenius on the shopper's own phone in kiosk mode, set up like this store: its brands, store brand, paint
+  // and stain, and how many questions. Everything rides in the link (#/kiosk/...), so there's no server.
+  // A phone kiosk keeps normal-size text and doesn't start over by itself (it's the shopper's own phone).
+  // ================================================================
+  // the address phones should open: this copy's own, or the public one in config.js when this copy runs on
+  // this computer (a phone can't open "localhost")
+  function kioskSite() {
+    const pub = (window.CG_CONFIG || {}).siteUrl;
+    const local = !/^https?:$/.test(location.protocol) || /^(localhost|127\.|\[::1\]|.*\.local$)/.test(location.hostname);
+    return local && pub ? pub : siteUrl();
+  }
+  function kioskCode() {
+    const en = brandsEnabled(), ids = brandList().map(b => b.id).filter(id => !/^custom-/.test(id));
+    const on = ids.filter(id => en[id]), off = ids.filter(id => !en[id]);
+    const parts = [];
+    if (settings.chain && CHAINS[settings.chain] && !CHAINS[settings.chain].other) parts.push('c=' + settings.chain);
+    if (settings.storeBrand && !/^custom-/.test(settings.storeBrand)) parts.push('m=' + settings.storeBrand + (settings.storeOnly ? ';o=1' : ''));
+    parts.push(on.length <= off.length ? 'b=' + on.join(',') : 'bx=' + off.join(','));   // whichever list is shorter
+    const sOff = S.brands().map(b => b.id).filter(id => settings.stainBrands[id] === false);
+    if (sOff.length) parts.push('sx=' + sOff.join(','));
+    const cOff = Object.keys(settings.collections).filter(k => settings.collections[k] === false && !/^custom-/.test(k));
+    if (cOff.length) parts.push('co=' + cOff.join(','));
+    if (!jobOn('paint') || !jobOn('stain')) parts.push('j=' + (jobOn('paint') ? 'p' : 's'));
+    if (detailed()) parts.push('q=d');
+    return parts.join(';');
+  }
+  const kioskLink = () => `${kioskSite()}#/kiosk/${kioskCode()}`;
+  const kioskQrSvg = () => { try { return window.CG.qr.svg(kioskLink(), { label: 'QR code that opens ColorGenius in kiosk mode on a phone' }); } catch (e) { return ''; } };
+  function refreshKioskQr() { const el = $('#kioskQr'); if (el) el.innerHTML = kioskQrSvg(); }
+  function openKioskLink(code) {
+    // a store's own kiosk stays as it is: its setup only changes behind the PIN
+    if (isKiosk() && !settings.kioskPhone) return;
+    const p = {};
+    for (const part of String(code).split(';')) { const i = part.indexOf('='); if (i > 0) p[part.slice(0, i)] = part.slice(i + 1); }
+    const list = k => (p[k] || '').split(',').filter(Boolean);
+    // a device that was already set up (a staff member testing the sign) gets its own setup back on leaving
+    if (settings.onboarded && !isKiosk()) store.set('beforeKiosk', settings);
+    const prev = settings, next = clone(DEFAULT_SETTINGS);
+    // what belongs to this screen and this person stays
+    for (const k of ['theme', 'bigText', 'reduceMotion', 'view3d', 'cal', 'kioskPin']) next[k] = clone(prev[k]);
+    const idx = E.getIndex(), ids = brandList().map(b => b.id).filter(id => !/^custom-/.test(id));
+    if (p.b != null) for (const id of ids) next.brands[id] = list('b').includes(id);
+    else if (p.bx != null) for (const id of ids) next.brands[id] = !list('bx').includes(id);
+    for (const id of list('sx')) if (S.brands().some(b => b.id === id)) next.stainBrands[id] = false;
+    for (const k of list('co')) if (/^[a-z0-9-]+:[a-z0-9-]+$/i.test(k)) next.collections[k] = false;
+    if (CHAINS[p.c] && !CHAINS[p.c].other) next.chain = p.c;
+    if (p.m && idx.brandById[p.m]) { next.storeBrand = p.m; next.brands[p.m] = true; next.storeOnly = p.o === '1'; }
+    if (p.j === 'p') next.jobs = { paint: true, stain: false };
+    if (p.j === 's') next.jobs = { paint: false, stain: true };
+    next.questions = p.q === 'd' ? 'detailed' : 'quick';
+    Object.assign(next, { audience: 'kiosk', kioskPhone: true, onboarded: true, inStoreSamples: true });
+    settings = next; saveSettings();
+    closeModal(); if (!$('#onboard').hidden) closeOnboarding();
+    applyTheme(); applyAudience(); afterSettingsChange('all');
+    const shop = storeName();
+    setTimeout(() => toast(shop ? `Welcome to ${shop}! Tap one to start.` : 'Welcome! Tap one to start.'), 1300);   // once the loading screen has lifted
+  }
+  function printKioskSign() {
+    const shop = storeName(), what = jobOn('paint') && jobOn('stain') ? 'Paint or Stain Color' : jobOn('stain') ? 'Stain Color' : 'Paint Color';
+    const site = kioskSite().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    printHtml(`<div class="qr-sign">
+      <div class="qs-brand"><img src="icons/icon-192.png" alt="" width="56" height="56"><span>ColorGenius</span></div>
+      <h1>Find Your ${esc(what)}</h1>
+      <p class="qs-sub">Scan with your phone’s camera</p>
+      <div class="qs-code">${window.CG.qr.svg(kioskLink())}</div>
+      <ol class="qs-steps"><li><b>1</b>Open your phone’s camera</li><li><b>2</b>Point it at the code</li><li><b>3</b>Tap the link that pops up</li></ol>
+      <p class="qs-why">A few easy questions about your room, then colors picked for it${shop ? `, from the brands ${esc(shop)} carries` : ''}. Free, no app to download and no sign-up.</p>
+      <p class="qs-foot">${shop ? esc(shop) + ' Paint Department · ' : ''}${esc(site)}</p>
+    </div>`, false);
+  }
+  // leaving a phone kiosk: back to how this device was set up before, or to setup
+  function leaveKiosk() {
+    if (!settings.kioskPhone) { settings.audience = 'store'; settings.inStoreSamples = true; saveSettings(); applyAudience(); go('settings'); toast('Kiosk mode is off'); return; }
+    const before = store.get('beforeKiosk', null);
+    store.set('beforeKiosk', null);
+    const keep = { theme: settings.theme, bigText: settings.bigText, reduceMotion: settings.reduceMotion, cal: settings.cal, kioskPin: settings.kioskPin };
+    settings = before ? merge(DEFAULT_SETTINGS, before) : Object.assign(clone(DEFAULT_SETTINGS), keep);
+    settings.kioskPhone = false; if (settings.audience === 'kiosk') settings.audience = 'store';
+    saveSettings(); state.unlocked = false;
+    closeModal(); applyTheme(); applyAudience(); afterSettingsChange('all');
+    go('', { replace: true });
+    toast('Kiosk mode is off');
+    if (!settings.onboarded) openOnboarding();
+  }
+  function openPhoneLeave() {
+    openModal('Leave Kiosk Mode?', `<p style="font-size:1.1rem">This phone opened ColorGenius from a store’s sign, so it’s in kiosk mode with that store’s brands.</p>
+      <p style="font-size:1.1rem">${store.get('beforeKiosk', null) ? 'Leaving puts the app back the way it was on this phone.' : 'Leaving starts setup, so you can use ColorGenius your own way.'}</p>
+      <button type="button" class="btn big hold-btn" data-leave-hold="1"><span class="hold-fill" aria-hidden="true"></span><span class="hold-label">Press and Hold to Leave</span></button>
+      <p class="muted small" style="text-align:center;margin-top:-8px">Keep holding for 2 seconds.</p>
+      <div class="modal-foot"><span class="grow"></span><button type="button" class="btn big ghost" data-modal-close="1">Stay in Kiosk Mode</button></div>`);
+    $('#modal .modal-card').classList.add('pin-card');
+    holdToConfirm($('[data-leave-hold]'), 2000, leaveKiosk, 'Press and Hold to Leave');
+  }
+
   // turning kiosk mode on: a PIN first if there isn't one, otherwise a quick confirm
   function turnOnKiosk(done) {
-    const on = () => { settings.audience = 'kiosk'; settings.inStoreSamples = true; saveSettings(); applyAudience(); if (done) done(); toast('Kiosk mode is on. The Staff button unlocks it.'); };
+    const on = () => { settings.audience = 'kiosk'; settings.kioskPhone = false; settings.inStoreSamples = true; saveSettings(); applyAudience(); if (done) done(); toast('Kiosk mode is on. The Staff button unlocks it.'); };
     if (!hasPin()) { makePin(on); return; }
     openModal('Turn On Kiosk Mode?', `<p style="font-size:1.1rem">Shoppers will use this screen. Settings will be locked, and the <b>Staff</b> button at the top asks for your kiosk PIN to unlock it.</p>
       <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big primary" data-kiosk-on="1">Turn On Kiosk Mode</button></div>`);

@@ -54,6 +54,9 @@
 @media (min-width: 1200px) { :root { --gut: max(40px, env(safe-area-inset-left, 0px)); --gut-r: max(40px, env(safe-area-inset-right, 0px)); } }
 html.big-text { font-size: 118.75%; }
 html.kiosk { font-size: 112.5%; }
+/* a kiosk on a shopper's own phone (from the QR sign) keeps normal-size text */
+html.kiosk.kiosk-phone { font-size: 100%; }
+html.kiosk.kiosk-phone.big-text { font-size: 118.75%; }
 html.kiosk.big-text { font-size: 128%; }
 
 /* ---------------- base ---------------- */
@@ -824,6 +827,23 @@ html.bar-on .toast { bottom: calc(var(--bar-h) + 18px + env(safe-area-inset-bott
 .pr-sheet th { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1pt solid #000; }
 .pr-sheet td.c-name, .pr-sheet td.c-product, .pr-sheet td.c-tools { white-space: normal; }
 .pr-foot { display: flex; justify-content: space-between; gap: 12pt; margin-top: 12pt; font-size: 7.5pt; }
+/* the kiosk QR code in Settings, and the sign it prints on (for a store without a kiosk) */
+.kq-row { flex-wrap: nowrap; }
+.kq { flex: none; width: 148px; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px var(--line); }
+.kq svg { display: block; width: 100%; height: 100%; }
+@media (max-width: 460px) { .kq-row { flex-wrap: wrap; justify-content: center; } .kq { width: 180px; } }
+.qr-sign { font-family: Arial, Helvetica, sans-serif; color: #000; text-align: center; display: grid; justify-items: center; padding-top: .15in; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.qs-brand { display: flex; align-items: center; gap: 10pt; font-size: 20pt; font-weight: 700; }
+.qs-brand img { width: 42pt; height: 42pt; border-radius: 10pt; }
+.qr-sign h1 { font-size: 40pt; line-height: 1.05; margin: 20pt 0 6pt; font-weight: 800; letter-spacing: -.01em; }
+.qs-sub { font-size: 20pt; margin: 0 0 16pt; }
+.qs-code { width: 4.6in; height: 4.6in; border: 3pt solid #000; border-radius: 18pt; padding: 8pt; }
+.qs-code svg { display: block; width: 100%; height: 100%; }
+.qs-steps { list-style: none; padding: 0; margin: 20pt 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8pt 20pt; font-size: 13pt; }
+.qs-steps li { display: flex; align-items: center; gap: 7pt; }
+.qs-steps b { display: inline-grid; place-items: center; width: 22pt; height: 22pt; border-radius: 50%; background: #000; color: #fff; font-size: 12pt; }
+.qs-why { font-size: 13pt; max-width: 6in; margin: 16pt 0 0; line-height: 1.35; }
+.qs-foot { font-size: 11pt; margin: 14pt 0 0; color: #333; }
 @media print {
   html.printing body > *:not(#printArea) { display: none !important; }
   html.printing #printArea { display: block; }

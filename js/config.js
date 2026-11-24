@@ -6,6 +6,9 @@
    keep here. While they're empty, the Email buttons open the device's own email app instead.
    Setup steps are in README.md under "Email". */
 window.CG_CONFIG = {
+  // the site's public address. The kiosk QR code (Settings) uses it when this copy runs on a computer, where a
+  // phone couldn't open the computer's own address (localhost).
+  siteUrl: 'https://howzit5217.github.io/ColorGenius/',
   email: {
     serviceId: 'service_color6529',     // EmailJS → Email Services → the Gmail service → Service ID
     templateId: 'template_s0d3z6e',     // EmailJS → Email Templates → the template → Settings → Template ID
