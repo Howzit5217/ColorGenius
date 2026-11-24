@@ -102,11 +102,15 @@ h3 { font-size: 1.15rem; line-height: 1.3; font-weight: 700; }
 .top-btn, .logo { white-space: nowrap; }
 @media (max-width: 520px) {
   .logo-text { font-size: 1.1rem; }
-  #settingsBtn .top-label { display: none; }
+  #settingsBtn .top-label, #projBtn .top-label { display: none; }
+  #projBtn { gap: 6px; }
   #settingsBtn { padding: 0; width: 48px; }
   .top-btn { padding: 0 12px; }
 }
 @media (max-width: 400px) { .logo-text { display: none; } }
+.top-btn svg { flex: none; }
+/* very narrow phones in kiosk mode: the Staff button keeps just its lock so Home and Project still fit */
+@media (max-width: 380px) { #lockBtn .top-label { display: none; } #lockBtn { padding: 0; width: 48px; } }
 
 /* ---------------- page ---------------- */
 .main { max-width: 1440px; margin: 0 auto; padding: 24px var(--gut-r) 96px var(--gut); overflow-x: clip; outline: none; }
@@ -140,6 +144,11 @@ html.bar-on .main { padding-bottom: calc(var(--bar-h) + 48px); }
 .btn.accent { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .btn.ghost { border-color: transparent; background: transparent; }
 .btn.ghost:hover { background: var(--surface-2); }
+/* for deleting: red, so it's never mistaken for an everyday button */
+.btn.danger { background: var(--caution); border-color: var(--caution); color: var(--on-primary); }
+.btn.ghost.danger { background: transparent; border-color: transparent; color: var(--caution); }
+.btn.ghost.danger:hover { background: var(--caution-soft); }
+.proj-delete { display: flex; justify-content: center; padding-top: 6px; border-top: 1px solid var(--line); }
 .btn.big { min-height: 58px; padding: 0 26px; font-size: 1.12rem; }
 .btn.small { min-height: 44px; padding: 0 16px; font-size: .95rem; }
 .btn.wide { width: 100%; }
@@ -655,6 +664,30 @@ details.set-card > summary .muted { font-weight: 500; font-size: .95rem; }
 
 /* compare and sheens */
 .cmp-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface); }
+
+/* ---------------- scroll bars inside rounded boxes ----------------
+   The dropdowns, the box inside a dialog, the print preview and the compare table scroll inside rounded corners.
+   On a computer their scroll bar is slim, has no arrow buttons, and its track stops short of the rounded corners,
+   so the corners never cut it off. (Phones and tablets already use thin scroll bars that fade away.) */
+@media (hover: hover) and (pointer: fine) {
+  @supports selector(::-webkit-scrollbar) {
+    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar { width: 12px; height: 12px; }
+    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-track { background: transparent; }
+    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-corner { background: transparent; }
+    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 26%, transparent); border: 3px solid transparent; background-clip: padding-box; border-radius: 999px; min-height: 36px; }
+    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--ink) 42%, transparent); }
+    /* how far each track stays back from the ends: at least the corner's roundness */
+    .cg-pop::-webkit-scrollbar-track { margin: 14px 0; }
+    .modal-body::-webkit-scrollbar-track { margin: 6px 0 calc(var(--r-xl) - 2px); }
+    .paper-wrap::-webkit-scrollbar-track { margin: var(--r); }
+    .cmp-wrap::-webkit-scrollbar-track { margin: 0 var(--r); }
+  }
+  /* browsers without those (Firefox): at least a slim, quiet bar */
+  @supports not selector(::-webkit-scrollbar) {
+    .cg-pop, .modal-body, .paper-wrap, .cmp-wrap { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 30%, transparent) transparent; }
+  }
+}
 .cmp { display: grid; grid-template-columns: 130px repeat(var(--n), minmax(180px, 1fr)); min-width: calc(130px + var(--n) * 180px); }
 .cmp > div, .cmp > button { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; font-size: .95rem; }
 .cmp .k { font-weight: 750; color: var(--ink-3); background: var(--surface-2); position: sticky; left: 0; }
@@ -693,6 +726,10 @@ html.ob-open, html.ob-open body { overflow: hidden; }
 .present-col { flex: 1; display: flex; align-items: flex-end; padding: 20px; min-width: 0; }
 .present-col .lbl { padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, .9); color: #1c1b19; display: grid; font-size: .95rem; }
 .present-col .lbl b { font-size: 1.1rem; }
+/* the big color square on a color's page: tap it to see the color full screen */
+button.id-sw { position: relative; display: block; padding: 0; border: 0; cursor: zoom-in; }
+.id-sw-hint { position: absolute; right: 7px; bottom: 7px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .88); color: #1c1b19; box-shadow: 0 1px 4px rgba(0, 0, 0, .2); transition: transform var(--t1) var(--ease); }
+button.id-sw:hover .id-sw-hint { transform: scale(1.1); }
 .present-bar { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px var(--gut-r) calc(12px + env(safe-area-inset-bottom, 0px)) var(--gut); background: #111; }
 .present-bar .cg-select { background: #222; color: #fff; border-color: #444; }
 @media (max-width: 700px) { .present-strip { flex-direction: column; } }

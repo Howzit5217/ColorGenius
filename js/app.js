@@ -375,8 +375,10 @@
     state.view = r.view;
     const v = view();
     v.hidden = false;
-    // the top bar shows where you are
+    // the top bar shows where you are, with a Home button everywhere but home
     $('#settingsBtn').setAttribute('aria-current', r.view === 'settings' ? 'page' : 'false');
+    $('#projBtn').setAttribute('aria-current', r.view === 'list' ? 'page' : 'false');
+    $('#homeNav').hidden = r.view === 'home';
     showBar(false);
     if (r.view === 'home') renderHome();
     else if (r.view === 'flow') renderFlow(r.kind, r.step);
@@ -451,6 +453,8 @@
     if (t.dataset.go) { e.preventDefault(); if (t.dataset.go === 'back') goBack(); else go(t.dataset.go === 'home' ? '' : t.dataset.go); }
   });
   $('#settingsBtn').addEventListener('click', () => { if (state.ready) go('settings'); });
+  $('#homeNav').addEventListener('click', () => { if (state.ready) go(''); });
+  $('#projBtn').addEventListener('click', () => { if (state.ready) go('list'); });
   $('#homeBtn').addEventListener('click', () => { if (state.ready) go(''); });
 
   // ================================================================
@@ -1440,10 +1444,10 @@
       <div class="detail-hero">
         <div>${sceneBox('colorScene')}</div>
         <div class="id-card">
-          <div class="id-top"><span class="id-sw" ${swStyle(c.hex)}></span><div><h1>${esc(c.name)}</h1><p class="meta">${esc(b.name || c.brand)} · <span class="mono">${esc(E.codeLabel(c))}</span></p></div></div>
+          <div class="id-top"><button type="button" class="id-sw" ${swStyle(c.hex)} data-fullscreen="${esc(c.id)}" aria-label="Show ${esc(c.name)} full screen"><span class="id-sw-hint" aria-hidden="true">${expandIcon(16)}</span></button><div><h1>${esc(c.name)}</h1><p class="meta">${esc(b.name || c.brand)} · <span class="mono">${esc(E.codeLabel(c))}</span></p></div></div>
           <div class="badges">${c.flags & E.F.POPULAR ? '<span class="badge good">Best Seller</span>' : ''}<span class="badge">${esc(d.familyName)}</span><span class="badge">${esc(d.undertone === 'neutral' ? 'True neutral' : cap(d.undertone) + ' undertone')}</span>${c.flags & E.F.DISC ? '<span class="badge">Discontinued</span>' : ''}</div>
           ${settings.showLrv ? `<div class="lrv-box"><div class="lrv-top"><span>Light Reflectance (LRV)</span><span class="mono">${c.lrv} of 100</span></div><div class="lrv-bar"><i style="left:${Math.max(0, Math.min(100, c.lrv))}%"></i></div><p>${esc(lrvWords(c.lrv))}.</p></div>` : ''}
-          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
+          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-fullscreen="${esc(c.id)}">${expandIcon(20)}Full Screen</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
           ${sampleNote(c)}
         </div>
       </div>
@@ -1739,8 +1743,15 @@
   const titleOf = s => (s.name || '').trim() || (s === session ? 'New Project' : 'Untitled Project');
   const sessionTitle = () => titleOf(session);
   const whenOf = t => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-  // keeps every Add to Project button showing whether its color is already in the open project
-  function updateListBtn() {
+  // keeps the top bar's Project button (with how many things are in it) and every Add to Project button current
+  function updateListBtn(bump) {
+    const n = session.items.length, btn = $('#projBtn'), cnt = $('#projCount');
+    if (btn) {
+      btn.hidden = !n && !(session.name || '').trim();
+      cnt.textContent = n; cnt.hidden = !n;
+      btn.setAttribute('aria-label', `Your project, ${sessionTitle()}${n ? `, ${n} item${n === 1 ? '' : 's'}` : ''}`);
+      if (bump && n && !reduced()) { cnt.classList.remove('bump'); void cnt.offsetWidth; cnt.classList.add('bump'); }
+    }
     $$('[data-add]').forEach(b => { const on = session.items.some(x => x.ref === b.dataset.add); b.classList.toggle('done', on); b.innerHTML = on ? checkIcon + ' In Project' : plusIcon + ' Add to Project'; });
   }
   function paintItem(c) {
@@ -1789,7 +1800,6 @@
     past = [s].concat(past.filter(p => p.id !== s.id)).slice(0, PAST_MAX);
     savePast(); return true;
   }
-  let delArmed = '';
   function renderList() {
     const items = session.items;
     const paintRefs = items.filter(x => E.findColor(x.ref));
@@ -1804,10 +1814,11 @@
         <div class="actions stack"><button type="button" class="btn big primary" data-list="print">${ic('print', 22)}Print</button><button type="button" class="btn big primary" data-list="email">${mailIcon}Email It</button><button type="button" class="btn big" data-go="home">${plusIcon}Add More</button></div>
         <details class="more"><summary>More Things to Do</summary><div class="actions">${paintRefs.length ? '<button type="button" class="btn" data-list="present">Show Colors Full Screen</button>' : ''}${paintRefs.length > 1 ? '<button type="button" class="btn" data-list="compare">Compare the Colors</button>' : ''}<button type="button" class="btn" data-list="copy">Copy as Text</button><button type="button" class="btn ghost" data-project-new="1">Start a New Project</button></div></details>`
         : `<div class="empty"><h2>Nothing in this project yet</h2><p class="muted">Find a color, then tap Add to Project. Everything you add lands here.</p><div class="actions stack"><button type="button" class="btn big primary" data-start="paint">Find a Paint Color</button>${jobOn('stain') ? '<button type="button" class="btn big" data-start="stain">Find a Stain</button>' : ''}<button type="button" class="btn big" data-go="lookup">Look Up a Color</button></div></div>`}
+      ${items.length || (session.name || '').trim() ? `<div class="proj-delete"><button type="button" class="btn ghost danger" data-list="delete">${trashIcon}Delete This Project</button></div>` : ''}
       ${isKiosk() ? '' : `<section class="section" aria-labelledby="pastH"><h2 id="pastH">Earlier Projects</h2>${past.length ? `<div class="past">${past.map(s => `<div class="past-item"><span class="mini-sws">${s.items.slice(0, 5).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span><b>${esc(titleOf(s))}</b><span class="when">${s.items.length} item${s.items.length === 1 ? '' : 's'} · ${esc(whenOf(s.updated))}</span></span>
-          <span class="btns"><button type="button" class="btn small" data-past-open="${esc(s.id)}">Open</button><button type="button" class="btn small" data-past-print="${esc(s.id)}">Print</button><button type="button" class="btn small ghost${delArmed === s.id ? ' armed' : ''}" data-past-del="${esc(s.id)}">${delArmed === s.id ? 'Tap Again to Delete' : 'Delete'}</button></span></div>`).join('')}</div><p class="muted small">The last ${PAST_MAX} projects stay on this device.</p>` : '<p class="muted">When you start a new project, this one is kept here.</p>'}</section>`}
+          <span class="btns"><button type="button" class="btn small" data-past-open="${esc(s.id)}">Open</button><button type="button" class="btn small" data-past-print="${esc(s.id)}">Print</button><button type="button" class="btn small ghost danger" data-past-del="${esc(s.id)}" aria-label="Delete ${esc(titleOf(s))}">Delete</button></span></div>`).join('')}</div><p class="muted small">The last ${PAST_MAX} projects stay on this device.</p>` : '<p class="muted">When you start a new project, this one is kept here.</p>'}</section>`}
     </div>`;
-    $('#listName').addEventListener('input', e => { session.name = e.target.value; saveSession(); $('.page-head h1').textContent = sessionTitle(); });
+    $('#listName').addEventListener('input', e => { session.name = e.target.value; saveSession(); $('.page-head h1').textContent = sessionTitle(); updateListBtn(); });
     $('#listNotes').addEventListener('input', e => { session.notes = e.target.value; saveSession(); });
     $$('[data-area]').forEach(inp => inp.addEventListener('input', () => { const x = session.items.find(i => i.id === inp.dataset.area); if (x) { x.area = inp.value; saveSession(); } }));
   }
@@ -1820,6 +1831,7 @@
     if (act === 'present') openPresent();
     if (act === 'compare') openCompare();
     if (act === 'copy') copyText(sheetText(session), 'Copied the whole project');
+    if (act === 'delete') askDelete(session);
     if (t.dataset.delItem) { session.items = session.items.filter(x => x.id !== t.dataset.delItem); saveSession(); updateListBtn(); renderList(); }
     if (t.dataset.openItem) {
       const ref = t.dataset.openItem;
@@ -1832,10 +1844,28 @@
       session = p; saveSession(); updateListBtn(); renderList(); toast(`Opened ${sessionTitle()}`);
     }
     if (t.dataset.pastPrint) { const p = past.find(s => s.id === t.dataset.pastPrint); if (p) printPreview(p); }
-    if (t.dataset.pastDel) {
-      if (delArmed !== t.dataset.pastDel) { delArmed = t.dataset.pastDel; renderList(); return; }
-      past = past.filter(s => s.id !== delArmed); delArmed = ''; savePast(); renderList();
-    }
+    if (t.dataset.pastDel) { const p = past.find(s => s.id === t.dataset.pastDel); if (p) askDelete(p); }
+  });
+
+  // ---- deleting a project (the open one or an earlier one): asked once, plainly, because it can't be undone ----
+  const trashIcon = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/></svg>';
+  let deleting = null;
+  function askDelete(s) {
+    deleting = s;
+    const n = s.items.length;
+    openModal('Delete This Project?', `<p style="font-size:1.1rem"><b>${esc(titleOf(s))}</b>${n ? ` and the ${n} thing${n === 1 ? '' : 's'} in it` : ''} will be deleted from this device. This can’t be undone.</p>
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Keep It</button><span class="grow"></span><button type="button" class="btn big danger" data-del-confirm="1">${trashIcon}Delete Project</button></div>`);
+  }
+  $('#modal').addEventListener('click', e => {
+    if (!e.target.closest('[data-del-confirm]') || !deleting) return;
+    const s = deleting, name = titleOf(s);
+    deleting = null; closeModal();
+    if (s === session) {
+      // the open one: it's gone, a fresh empty project takes its place, and you're back home
+      session = blankSession(); saveSession(); updateListBtn();
+      go('');
+    } else { past = past.filter(p => p.id !== s.id); savePast(); renderList(); }
+    toast(`Deleted ${name}`);
   });
 
   // ---- starting a project: name it, and the one that was open is kept under Earlier Projects ----
@@ -1958,9 +1988,17 @@
   });
 
   // ---- full screen colors and compare ----
-  function openPresent() {
-    const colors = session.items.map(x => E.findColor(x.ref)).filter(Boolean); if (!colors.length) return;
-    const el = $('#present'); const light = state.presentLight || 'none';
+  // Full screen shows the project's paint colors side by side, or one color filling the whole screen (from a
+  // color's page, in the light it was being seen in).
+  function expandIcon(size) { return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>`; }
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-fullscreen]'); if (!t || !state.ready) return;
+    const c = E.findColor(t.dataset.fullscreen); if (c) openPresent([c], state.light);
+  });
+  function openPresent(only, light0) {
+    const colors = only || session.items.map(x => E.findColor(x.ref)).filter(Boolean); if (!colors.length) return;
+    const el = $('#present'); const light = light0 || state.presentLight || 'none';
+    if (light0) state.presentLight = light0;
     el.innerHTML = `<div class="present-strip">${colors.map(c => `<div class="present-col" ${swStyle(c.hex, light)}><div class="lbl"><b>${esc(c.name)}</b><span>${esc(brandName(c.brand))} ${esc(E.codeLabel(c))}</span></div></div>`).join('')}</div>
       <div class="present-bar">${selectHtml('presentLight', LIGHT_OPTS(), light, 'Light', v => { state.presentLight = v; $$('#present [data-hex]').forEach(x => { x.dataset.light = v; x.style.backgroundColor = paint(x.dataset.hex, v); }); })}<button type="button" class="btn big" data-present-close="1">Close</button></div>`;
     el.hidden = false;

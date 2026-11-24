@@ -12,7 +12,7 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 - **One question per screen**, each choice with a picture. Tap your answer, then press the big **Next** button to go on (or press **Enter** on a computer; a small Enter key shows above Next). Nothing moves on by itself, and Next gives a small nudge once an answer is picked so it's clear what to press. Questions you can leave alone start with a sensible answer picked ("Any Style", "Not Sure"), so there is no Skip button to puzzle over.
 - **A Back button on every screen**, and the phone's own back button and the browser's back arrow work too. Every screen has its own address.
 - **Large text and buttons** in an easy-to-read typeface (Atkinson Hyperlegible, made for people with low vision). Settings → Easy to See → **Bigger text** makes everything larger still.
-- **The top bar has only two things:** the logo (home) and **Settings** (on a kiosk, a **Staff** lock button instead).
+- **The top bar** has a **Home** button on every screen but home, a **Project** button with how many things are in the open project (once there's something in it), and **Settings** (on a kiosk, a **Staff** lock button instead). The logo goes home too.
 - Light and dark screens, and **Less motion** for anyone who prefers no sliding.
 
 ## Paint Colors
@@ -66,6 +66,7 @@ Every paint color's page has the same "What You'll Need" summary, with a button 
 
 ## Seeing the color
 
+- **Full screen.** On a color's page, tap **Full Screen** (or the big color square) and the color fills the whole screen, with its name and code and a light picker. Close or Esc goes back.
 - **Scenes for every job.** Wall colors can be seen in 16 rooms (living room, bedroom, kitchen, bathroom, dining room, office, nursery, kids' room, entry, stairway, laundry, media room, sunroom, basement, attic, garage). There are also a kitchen island, a fireplace wall, a bookcase wall, a dresser and a dining set for cabinets and furniture. Outside are five house styles (ranch, two-story, farmhouse with a porch, cottage, modern), the front door up close, the front porch, a shed or barn and a log cabin. Stains also get a deck, a deck with a pergola, outdoor chairs, a playset, a dock on a lake, a backyard fence and a picket fence. Pick one from the **Scene** menu under the picture.
 - **Real 3D.** Every scene is built in 3D and drawn with WebGL. Sunlight comes in through the actual window openings (the side the windows face decides where the sun falls), casts shadows, and the lamps come on at night.
 - **Shadows like a photo.** Sun shadows are crisp where something touches the ground and soften with distance, and outside the sun comes from the side so trees, houses and decks throw shadows you can see. Soft shade from the sky and the room's own light gathers where things meet: under and behind the sofa, around the toilet and tub, under cabinets and the eaves, beneath a deck. This shade is worked out once when a scene opens, so turning the room stays smooth, and open walls still show the exact chip color. The color on the walls matches the chip exactly under "Chip Color", and shifts like the chips do under other light.
@@ -88,6 +89,7 @@ A project keeps everything for one job in one place (one customer, one room, one
 - **Print** shows the page at real letter size first, then prints it: black and white, text only, one line per item, with area, brand, color, code, hex, finish, product, primer, amount, roller and brush, and where to find the chip. Columns nothing fills in are left out, and a wide list prints sideways.
 - **Email It** opens the device's email app with the whole project written in, one line per item. Type their address in the box (or in the email), check it, and press Send. On phones, **Share…** can send it by text or another app instead. A very long project is also copied, in case the email app cuts it short.
 - **More Things to Do:** show the colors full screen, compare them side by side, copy the project as text, or start a new project.
+- **Delete This Project** at the bottom of the project page deletes the open project (after asking once, since it can't be undone) and goes back home.
 - **Earlier Projects** (the last 10 on this device) can be opened, printed or deleted. Kiosks don't keep earlier projects.
 - Colors saved in the older Saved Colors list are kept as an earlier project called "Saved Colors".
 
