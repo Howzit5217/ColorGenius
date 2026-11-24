@@ -215,18 +215,26 @@
     if (reduced()) el.remove(); else { el.classList.add('out'); setTimeout(() => el.remove(), 150); }
     if (focusBack && anchor && document.contains(anchor)) anchor.focus({ preventScroll: true });
   }
+  // A menu opens below its button, or above it when there's more room there, and is as tall as the room allows
+  // (so every choice shows when it can, instead of a short list cut off at the bottom)
   function placePop(el, anchor) {
     const r = anchor.getBoundingClientRect();
     const vw = document.documentElement.clientWidth, vh = window.innerHeight;
     const w = Math.min(Math.max(r.width, el.offsetWidth), vw - 24);
     const left = Math.min(Math.max(12, r.left), vw - w - 12);
-    const h = el.offsetHeight, below = vh - r.bottom, above = r.top;
-    const up = below < h + 16 && above > below;
+    const below = vh - r.bottom - 18, above = r.top - 18;
+    el.style.maxHeight = 'none';
+    const natural = el.offsetHeight;
+    const up = natural > below && above > below;
+    el.style.maxHeight = Math.max(140, Math.min(natural, up ? above : below, 600)) + 'px';
+    const h = el.offsetHeight;
     el.style.left = left + 'px';
     el.style.minWidth = Math.min(r.width, vw - 24) + 'px';
     el.style.top = (up ? Math.max(12, r.top - h - 6) : Math.min(vh - h - 12, r.bottom + 6)) + 'px';
     el.style.transformOrigin = up ? 'bottom left' : 'top left';
   }
+  // where a menu goes: inside whatever is full screen right now (anything outside it isn't shown), or the page
+  const popHost = () => document.fullscreenElement || document.body;
   function openSelect(anchor) {
     const id = anchor.dataset.select, cfg = SELECTS[id]; if (!cfg) return;
     if (pop && popAnchor === anchor) { closePop(true); return; }
@@ -238,7 +246,7 @@
       const head = g && g !== lastGroup ? `<div class="cg-opt-group">${esc(g)}</div>` : ''; lastGroup = g || lastGroup;
       return `${head}<button type="button" role="option" class="cg-opt" data-value="${esc(v)}" aria-selected="${String(v) === String(cfg.value)}"><span>${esc(l)}</span><span class="check">${checkIcon}</span></button>`;
     }).join('');
-    document.body.appendChild(el);
+    popHost().appendChild(el);
     pop = el; popAnchor = anchor;
     anchor.setAttribute('aria-expanded', 'true');
     placePop(el, anchor);
@@ -284,7 +292,7 @@
       <div class="cp-hue" tabindex="0" aria-label="Hue: use the arrow keys"><span class="cp-hue-dot"></span></div>
       <div class="cp-row"><span class="cp-prev"></span><label class="cp-hex"><span>#</span><input type="text" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Hex color"></label><button type="button" class="btn small primary cp-done">Done</button></div>
       <div class="cp-quick">${QUICK.map(q => `<button type="button" class="cp-q" data-q="${q}" style="background:#${q}" aria-label="#${q}"></button>`).join('')}</div>`;
-    document.body.appendChild(el);
+    popHost().appendChild(el);
     pop = el; popAnchor = anchor; anchor.setAttribute('aria-expanded', 'true');
     const sv = $('.cp-sv', el), hue = $('.cp-hue', el), hexIn = $('.cp-hex input', el);
     const draw = fromInput => {
@@ -2006,7 +2014,9 @@
     el.onclick = e => { if (e.target.closest('[data-present-close]')) closePresent(); };
     if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
   }
-  function closePresent() { $('#present').hidden = true; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
+  function closePresent() { closePop(); $('#present').hidden = true; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
+  // leaving full screen some other way (the Esc key, the browser's own button) shouldn't leave a menu stranded
+  document.addEventListener('fullscreenchange', () => { if (pop && !popHost().contains(pop)) closePop(); });
   function openCompare() {
     const colors = session.items.map(x => E.findColor(x.ref)).filter(Boolean);
     if (colors.length < 2) { toast('Add at least two paint colors to compare'); return; }
