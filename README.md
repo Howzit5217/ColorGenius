@@ -14,6 +14,7 @@ It runs in any browser and installs on Android and iPhone as an app with its own
 - **Large text and buttons** in an easy-to-read typeface (Atkinson Hyperlegible, made for people with low vision). Settings → Easy to See → **Bigger text** makes everything larger still.
 - **The top bar** has a **Home** button on every screen but home, a **Project** button with how many things are in the open project (once there's something in it), and **Settings** (on a kiosk, a **Staff** lock button instead). On phones these are round icons only (each keeps its name for screen readers), and so is the camera screen's On Paper / On a Wall switch, which says what each means when it's picked. The logo goes home too. Going home starts over, so if there are answers, results or a search on the go it asks first ("Go Back Home?"); anything already added to the project stays.
 - Light and dark screens, and **Less motion** for anyone who prefers no sliding.
+- **The phone's own bars match the app:** the bar with the clock and the browser's address bar take the app's own background, in whichever light or dark the app is set to (not just the phone's setting), and go black for the camera and full-screen colors. The installed app's bottom bar on Android takes the app's background from `manifest.webmanifest` (with a dark one for phones that support it). An app installed before this keeps its old bottom-bar color until Android refreshes it; removing it from the home screen and adding it again does it right away.
 
 ## Paint Colors
 

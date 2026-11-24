@@ -2170,7 +2170,7 @@
     camStop();
     const el = $('#camera'); if (!el) return;
     document.removeEventListener('keydown', camKeys, true);
-    const done = () => { el.remove(); document.documentElement.classList.remove('cam-open'); };
+    const done = () => { el.remove(); document.documentElement.classList.remove('cam-open'); syncBars(); };
     if (reduced()) done(); else { el.classList.add('closing'); setTimeout(done, 200); }
     if (camFocus && document.contains(camFocus)) camFocus.focus({ preventScroll: true });
   }
@@ -2216,7 +2216,7 @@
         <span></span>
       </div>`;
     document.body.appendChild(el);
-    document.documentElement.classList.add('cam-open');
+    document.documentElement.classList.add('cam-open'); syncBars();
     document.addEventListener('keydown', camKeys, true);
     camLayout();
     $('[data-cam-close]', el).focus({ preventScroll: true });
@@ -3108,7 +3108,7 @@
     if (light0) state.presentLight = light0;
     el.innerHTML = `<div class="present-strip">${colors.map(c => `<div class="present-col" ${swStyle(c.hex, light)}><div class="lbl"><b>${esc(c.name)}</b><span>${esc(brandName(c.brand))} ${esc(E.codeLabel(c))}</span></div></div>`).join('')}</div>
       <div class="present-bar">${selectHtml('presentLight', LIGHT_OPTS(), light, 'Light', v => { state.presentLight = v; $$('#present [data-hex]').forEach(x => { x.dataset.light = v; x.style.backgroundColor = paint(x.dataset.hex, v); }); })}<button type="button" class="btn big" data-present-close="1">Close</button></div>`;
-    el.hidden = false;
+    el.hidden = false; syncBars();
     $('[data-present-close]', el).focus();
     el.onclick = e => { if (e.target.closest('[data-present-close]')) closePresent(); };
     // full screen where the browser allows it (iPhones don't for pages; the colors still fill the window)
@@ -3116,7 +3116,7 @@
     if (enter) { try { const p = enter.call(el); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not allowed here */ } }
   }
   function closePresent() {
-    closePop(); $('#present').hidden = true;
+    closePop(); $('#present').hidden = true; syncBars();
     if (fsElement()) { const leave = document.exitFullscreen || document.webkitExitFullscreen; try { const p = leave && leave.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) { /* already out */ } }
   }
   // leaving full screen some other way (the Esc key, the browser's own button) shouldn't leave a menu stranded
@@ -3398,7 +3398,21 @@
     if (settings.theme === 'light' || settings.theme === 'dark') root.setAttribute('data-theme', settings.theme); else root.removeAttribute('data-theme');
     root.classList.toggle('reduce-motion', !!settings.reduceMotion);
     root.classList.toggle('big-text', !!settings.bigText);
+    syncBars();
   }
+  // The phone's own bars (the one with the clock, the browser's address bar, and on many phones the bottom bar):
+  // the app's own background in whichever light or dark the app is showing (its own setting, not just the
+  // phone's), and black while the camera or the full-screen colors are up. The form controls and scrollbars go
+  // light or dark with it too, and Samsung Internet knows the app has its own dark look.
+  function syncBars() {
+    const root = document.documentElement;
+    const dark = settings.theme === 'dark' || (settings.theme !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    root.style.colorScheme = settings.theme === 'light' ? 'light' : settings.theme === 'dark' ? 'dark' : 'light dark';
+    const full = document.getElementById('camera') ? '#000000' : !$('#present').hidden ? '#111111' : '';
+    const bg = full || getComputedStyle(root).getPropertyValue('--bg').trim() || (dark ? '#141413' : '#f5f3ef');
+    for (const m of document.querySelectorAll('meta[name="theme-color"]')) if (m.getAttribute('content') !== bg) m.setAttribute('content', bg);
+  }
+  if (window.matchMedia) { const mq = window.matchMedia('(prefers-color-scheme: dark)'); const on = () => syncBars(); if (mq.addEventListener) mq.addEventListener('change', on); else if (mq.addListener) mq.addListener(on); }
 
   // ================================================================
   // SCREEN TUNING: match the screen to white paper, then to a real chip
