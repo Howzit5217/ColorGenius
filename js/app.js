@@ -47,7 +47,7 @@
     ready: false, view: 'home', screen: detectScreen(),
     flows: { paint: null, stain: null, buy: null }, // { a: answers, step }
     results: { paint: null, stain: null, buy: null },
-    pick: { paint: '', stain: '' }, light: 'daylight', sceneFor: {}, query: '', lookupHex: '', ftype: {}, duel: null, layout: null,
+    pick: { paint: '', stain: '' }, light: 'daylight', sceneFor: {}, query: '', lookupHex: '', ftype: {}, duel: null, layout: null, furniture: {},
     lastFlow: 'paint', depth: 0,
   };
 
@@ -473,7 +473,7 @@
   const hasWork = () => Object.values(state.flows).some(f => f && f.a && f.a._picked && Object.keys(f.a._picked).length) || Object.values(state.results).some(Boolean) || !!state.query.trim();
   function clearWork() {
     state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null };
-    state.query = ''; state.lookupHex = ''; state.duel = null; state.duelPick = ''; state.pick = { paint: '', stain: '' }; state.ftype = {}; state.layout = null;
+    state.query = ''; state.lookupHex = ''; state.duel = null; state.duelPick = ''; state.pick = { paint: '', stain: '' }; state.ftype = {}; state.layout = null; state.furniture = {};
   }
   function homeAsk() {
     if (!state.ready) return;
@@ -1312,7 +1312,7 @@
     if (r3.supported() && r3.has && r3.has(sceneId)) {
       pic.innerHTML = '';
       const floor = (SCN[sceneId] || {}).floor || (spec.answers && !spec.stain ? SC.floorTypeOf(Object.assign({}, E.DEFAULT_ANSWERS, spec.answers)) : null);
-      L.viewer = r3.mount(pic, { scene: sceneId, roles, tex: spec.tex || null, stain: !!spec.stain, answers: spec.answers || {}, layout: state.layout, light: state.light, interactive: !!settings.view3d, reduced: reduced(), cal: settings.cal, floor, onLost: () => { if (live[id] && live[id].viewer) { live[id].viewer = null; pic.innerHTML = svgScene(spec, sceneId, roles); pic.dataset.roles = JSON.stringify(roles); pic.dataset.scene = (SCN[sceneId] || {}).kind === 'house' ? 'house' : 'room'; SC.paintScene(pic, state.light); } } });
+      L.viewer = r3.mount(pic, { scene: sceneId, roles, tex: spec.tex || null, stain: !!spec.stain, answers: spec.answers || {}, layout: state.layout, furniture: state.furniture, onPick: settings.view3d ? what => openFurniture(what) : null, light: state.light, interactive: !!settings.view3d, reduced: reduced(), cal: settings.cal, floor, onLost: () => { if (live[id] && live[id].viewer) { live[id].viewer = null; pic.innerHTML = svgScene(spec, sceneId, roles); pic.dataset.roles = JSON.stringify(roles); pic.dataset.scene = (SCN[sceneId] || {}).kind === 'house' ? 'house' : 'room'; SC.paintScene(pic, state.light); } } });
       if (L.viewer) { setTag(id); return; }
     }
     pic.innerHTML = svgScene(spec, sceneId, roles);
@@ -1320,6 +1320,48 @@
     pic.dataset.scene = (SCN[sceneId] || {}).kind === 'house' ? 'house' : spec.stain ? (S.JOBS[spec.answers.target] || {}).scene : 'room';
     setTag(id, SC.paintScene(pic, state.light));
   }
+  // ---- furniture in its real color and material: tap it in 3D ----
+  const PART_LABEL = { upholstery: 'Upholstery', pillows: 'Pillows', bedding: 'Bedding', wood: 'Wood', curtains: 'Curtains', rug: 'Rug', towels: 'Towels', counter: 'Counters', tile: 'Backsplash' };
+  const FURN_SWATCHES = {
+    upholstery: [['3A3A3C', 'Charcoal'], ['77726B', 'Gray'], ['B9B2A6', 'Light Gray'], ['E6E0D4', 'Cream'], ['2F3B4C', 'Navy'], ['4E5B47', 'Olive'], ['8B5A3C', 'Cognac'], ['1F1F20', 'Black']],
+    wood: [['5A3E2B', 'Walnut'], ['8E6A48', 'Medium Oak'], ['C9A77A', 'Light Oak'], ['3B2A20', 'Espresso'], ['F2F1EC', 'White'], ['2A2A2B', 'Black']],
+    _: [['F1F0EC', 'White'], ['E6E0D4', 'Cream'], ['CFC6B8', 'Beige'], ['9A958E', 'Gray'], ['5E6B73', 'Slate'], ['2F3B4C', 'Navy'], ['8E4A32', 'Rust'], ['4E5B47', 'Green']],
+  };
+  const FINISHES = { upholstery: [['fabric', 'Fabric'], ['leather', 'Leather'], ['velvet', 'Velvet']], wood: [['grain', 'Wood Grain'], ['painted', 'Painted']] };
+  let furnPick = null;
+  function applyFurniture() { for (const k of Object.keys(live)) if (live[k].viewer && live[k].viewer.setFurniture) live[k].viewer.setFurniture(state.furniture); }
+  function openFurniture(what) {
+    if (!what.part) {
+      const isWall = ['wall', 'side', 'ceil', 'trim', 'door', 'wain'].includes(what.base);
+      toast(isWall ? 'The walls, ceiling and trim show the paint colors. Tap a piece of furniture to set its color.' : 'Tap a piece of furniture, a rug or the curtains to set its real color.');
+      return;
+    }
+    furnPick = Object.assign({}, what, { draft: Object.assign({ hex: what.hex, finish: what.finish || (what.part === 'upholstery' ? 'fabric' : what.part === 'wood' ? 'grain' : '') }, state.furniture[what.key] || {}) });
+    const title = what.piece ? (what.piece === PART_LABEL[what.part] ? what.piece : `${what.piece}: ${PART_LABEL[what.part]}`) : PART_LABEL[what.part];
+    const sw = FURN_SWATCHES[what.part] || FURN_SWATCHES._, fin = FINISHES[what.part];
+    openModal(title, `<p style="font-size:1.1rem">Set it to the color it really is, so the paint colors are seen with the real room.</p>
+      <div class="setup-group"><h3>Color</h3><div class="chipset furn-sws">${sw.map(([h, l]) => `<button type="button" class="chip plain furn-sw" data-furn-hex="${h}" aria-pressed="${furnPick.draft.hex === h}"><span class="dot" ${swStyle(h)}></span>${esc(l)}</button>`).join('')}</div>
+        <div class="actions"><span class="muted">or any color:</span>${colorHtml('furnColor', furnPick.draft.hex, 'Pick its color', hex => { furnSet({ hex }); })}</div></div>
+      ${fin ? `<div class="setup-group"><h3>Material</h3><div class="chipset">${fin.map(([k, l]) => `<button type="button" class="chip plain" data-furn-finish="${k}" aria-pressed="${furnPick.draft.finish === k}">${l}</button>`).join('')}</div></div>` : ''}
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-furn-reset="1">Use the Usual Color</button><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`);
+  }
+  // every change shows right away on the room behind
+  function furnSet(change) {
+    if (!furnPick) return;
+    Object.assign(furnPick.draft, change);
+    state.furniture[furnPick.key] = Object.assign({}, furnPick.draft);
+    applyFurniture();
+    $$('#modal [data-furn-hex]').forEach(b => b.setAttribute('aria-pressed', b.dataset.furnHex === furnPick.draft.hex));
+    $$('#modal [data-furn-finish]').forEach(b => b.setAttribute('aria-pressed', b.dataset.furnFinish === furnPick.draft.finish));
+    if (change.hex && COLORS.furnColor) { COLORS.furnColor.hex = change.hex; const pk = $('#furnColor'); if (pk) { $('.sw', pk).style.background = '#' + change.hex; $('.mono', pk).textContent = '#' + change.hex; } }
+  }
+  document.addEventListener('click', e => {
+    const t = e.target.closest('#modal button'); if (!t || !furnPick) return;
+    if (t.dataset.furnHex) furnSet({ hex: t.dataset.furnHex });
+    if (t.dataset.furnFinish) furnSet({ finish: t.dataset.furnFinish });
+    if (t.dataset.furnReset) { delete state.furniture[furnPick.key]; furnPick = null; applyFurniture(); closeModal(); toast('Back to the usual color'); }
+  });
+
   // ---- Set Up the Room: windows (and in a kitchen the fridge and stove) where they really are ----
   const WALL_LABEL = { left: 'Left Wall', back: 'Back Wall', right: 'Right Wall' };
   let setupFor = null, setupDraft = null;
@@ -1332,7 +1374,7 @@
     setupFor = id;
     setupDraft = { wins: Array.isArray(cur.wins) ? cur.wins.slice() : (v && v.winWalls ? v.winWalls.slice() : walls.slice(0, 1)), fridge: cur.fridge || 'left', stove: cur.stove || cur.fridge || 'left' };
     const chips = (key, opts, on) => `<div class="chipset setup-chips">${opts.map(([val, label]) => `<button type="button" class="chip plain" data-setup-${key}="${val}" aria-pressed="${on(val)}">${label}</button>`).join('')}</div>`;
-    openModal('Set Up the Room', `<p style="font-size:1.1rem">Put the windows${kitchen ? ', fridge and stove' : ''} where they really are, so the picture looks like the room at home.</p>
+    openModal('Set Up the Room', `<p style="font-size:1.1rem">Put the windows${kitchen ? ', fridge and stove' : ''} where they really are, so the picture looks like the room at home.${R3().supported() ? ' To set the furniture to its real color and material, turn on 3D and tap it.' : ''}</p>
       <div class="setup-group"><h3>Windows</h3>${chips('win', walls.map(w => [w, WALL_LABEL[w]]), w => setupDraft.wins.includes(w))}<p class="muted small">Tap to add or take one away. None picked means no windows.${kitchen && walls.includes('back') ? ' A window on the back wall goes over the sink.' : ''}</p></div>
       ${kitchen ? `<div class="setup-group"><h3>Fridge</h3>${chips('fridge', [['left', 'On the Left'], ['right', 'On the Right']], x => setupDraft.fridge === x)}</div>
       <div class="setup-group"><h3>Stove</h3>${chips('stove', [['left', 'Left of the Sink'], ['right', 'Right of the Sink']], x => setupDraft.stove === x)}</div>` : ''}
@@ -1349,6 +1391,7 @@
     }
     if (d.setupDone || d.setupReset) {
       state.layout = d.setupDone ? setupDraft : null;
+      if (d.setupReset) { state.furniture = {}; applyFurniture(); }
       setupDraft = null; closeModal();
       for (const k of Object.keys(live)) if (['room', 'kitchen'].includes((SCN[state.sceneFor[live[k].spec.key]] || {}).kind)) drawScene(k);
       toast(d.setupDone ? 'The room is set up' : 'Back to the standard room');
@@ -1381,7 +1424,7 @@
     settings.view3d = !settings.view3d; saveSettings();
     $$('[data-toggle3d]').forEach(b => b.setAttribute('aria-pressed', settings.view3d));
     for (const k of Object.keys(live)) drawScene(k);
-    toast(settings.view3d ? 'Drag the picture to look around. Pinch or scroll to zoom.' : '3D turned off');
+    toast(settings.view3d ? 'Drag the picture to look around. Tap furniture to set its real color.' : '3D turned off');
   });
 
   // ================================================================
@@ -2977,7 +3020,7 @@
     clearInterval(kioskTick);
     closeModal(); closePresent();
     session = blankSession(); saveSession(); updateListBtn();
-    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null }; state.query = ''; state.duelPick = ''; state.unlocked = false; state.layout = null;
+    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null }; state.query = ''; state.duelPick = ''; state.unlocked = false; state.layout = null; state.furniture = {};
     go('', { replace: true });
     window.scrollTo(0, 0);
     kioskArm();

@@ -51,10 +51,16 @@
   class Builder {
     // `solid` counts the closed shapes being built: a face made outside one (a roof sheet, a gable, a vase) belongs to
     // an open shape, which the soft-shadow views have to draw from both sides
-    constructor() { this.groups = {}; this.mats = {}; this.M = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]; this.stack = []; this.decals = []; this.lamps = []; this.windows = []; this.lo = [1e9, 1e9, 1e9]; this.hi = [-1e9, -1e9, -1e9]; this.solid = 0; }
+    constructor() { this.groups = {}; this.mats = {}; this.M = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]; this.stack = []; this.decals = []; this.lamps = []; this.windows = []; this.lo = [1e9, 1e9, 1e9]; this.hi = [-1e9, -1e9, -1e9]; this.solid = 0; this.pieceName = ''; }
+    // build one piece of furniture: the parts of it that can be recolored get the piece's own materials
+    piece(label, fn) { const was = this.pieceName; this.pieceName = label; try { return fn(); } finally { this.pieceName = was; } }
     // the first real definition of a material wins; one made up on first use can still be defined properly later
     mat(name, props) { const ex = this.mats[name]; if (!ex || ex.auto) this.mats[name] = Object.assign({ color: 'FFFFFF' }, props || {}); return name; }
-    grp(name) { if (!this.mats[name]) this.mats[name] = { color: 'FFFFFF', auto: true }; return this.groups[name] || (this.groups[name] = { p: [], n: [], u: [], i: [] }); }
+    grp(name) {
+      if (this.pieceName && PART_OF[name]) { const key = name + '@' + this.pieceName; if (!this.mats[key]) this.mats[key] = Object.assign({}, this.mats[name] || { color: 'FFFFFF' }, { base: name, piece: this.pieceName }); name = key; }
+      if (!this.mats[name]) this.mats[name] = { color: 'FFFFFF', auto: true };
+      return this.groups[name] || (this.groups[name] = { p: [], n: [], u: [], i: [] });
+    }
     push() { this.stack.push(this.M.slice()); return this; }
     pop() { this.M = this.stack.pop(); return this; }
     // the transform is a 3x3 rotation/scale (row-major) plus a translation
@@ -229,6 +235,12 @@
 
   // ---------------- drawing with WebGL 2 ----------------
   // Patterns are worked out in the shader from the surface position: lap siding, shingles, brick, tile, grass...
+  // The parts of the furniture that can be set to their real color (and material) by tapping them in 3D. Inside a
+  // piece of furniture each gets its own copy, so the sofa changes without the armchair.
+  const PART_OF = { fabric: 'upholstery', fabricD: 'upholstery', fabricL: 'upholstery', wicker: 'upholstery', bean: 'upholstery', art: 'pillows', art2: 'pillows', linen: 'bedding', wood: 'wood', woodlt: 'wood', cribw: 'wood', curtain: 'curtains', rug: 'rug', rugC: 'rug', runner: 'rug', bathmat: 'rug', towel: 'towels', counter: 'counter', tile: 'tile' };
+  // the darker and lighter fabrics of one piece keep their difference when it's recolored
+  const TONE = { fabricD: 0.88, fabricL: 1.08, art2: 1.22 };
+  const toneHex = (base, hex) => { const k = TONE[base]; if (!k) return hex; return [0, 2, 4].map(i => Math.max(0, Math.min(255, Math.round(parseInt(hex.slice(i, i + 2), 16) * k))).toString(16).padStart(2, '0')).join('').toUpperCase(); };
   const PAT = { plain: 0, lap: 1, shingle: 2, brick: 3, tile: 4, subway: 5, fabric: 6, grass: 7, batten: 8, shake: 9, stucco: 10, concrete: 11, bead: 12, water: 13, louver: 14, carpet: 15, glass: 16, metalroof: 17, walk: 18, sky: 19, leaves: 20, bark: 21, stone: 22, mirror: 23 };
   const VS = `#version 300 es
     layout(location = 0) in vec3 aPos; layout(location = 1) in vec3 aNor; layout(location = 2) in vec2 aUv;
@@ -1181,6 +1193,12 @@
   }
   const backHasWin = wins => wins.some(w => w.wall === 'back');
 
+  // each piece of furniture is its own piece, so tapping it in 3D sets its real color without touching the rest
+  const asPiece = (label, fn) => function (b, ...args) { return b.piece(label, () => fn(b, ...args)); };
+  sofa = asPiece('Sofa', sofa); armchair = asPiece('Armchair', armchair); bed = asPiece('Bed', bed); rug = asPiece('Rug', rug);
+  coffeeTable = asPiece('Coffee Table', coffeeTable); diningTable = asPiece('Dining Table', diningTable); chair = asPiece('Chairs', chair);
+  nightstand = asPiece('Nightstands', nightstand); dresser = asPiece('Dresser', dresser); stool = asPiece('Stools', stool);
+  curtain = asPiece('Curtains', curtain); desk = asPiece('Desk', desk); crib = asPiece('Crib', crib); shelves = asPiece('Shelves', shelves);
   const SCENES = {
     living(b, ctx) {
       ctx.curtains = true;
@@ -2001,7 +2019,7 @@
     const b = new Builder();
     let info;
     try { info = (SCENES[o.scene] || SCENES.living)(b, ctx) || {}; r.upload(b); } catch (e) { r.dispose(); canvas.remove(); if (window.console) console.warn('3D scene failed:', e && e.message); return null; }
-    let look = { roles: Object.assign({}, o.roles || {}), tex: o.tex || null };
+    let look = { roles: Object.assign({}, o.roles || {}), tex: o.tex || null, furn: Object.assign({}, o.furniture || {}) };
     let lightId = o.light || 'daylight';
     const cal = o.cal || null;
     let mats = {};
@@ -2014,13 +2032,24 @@
       const gain = WD.gainFor(lightObj, cal);
       const out = {};
       for (const [name, d] of Object.entries(b.mats)) {
-        const hex = d.role && look.roles[d.role] && /^[0-9A-F]{6}$/i.test(look.roles[d.role]) ? look.roles[d.role] : d.color;
+        const base = d.base || name, part = PART_OF[base];
+        const ov = part && look.furn ? look.furn[(d.piece || '') + '|' + part] : null;
+        const useOv = ov && /^[0-9A-F]{6}$/i.test(ov.hex || '') && !(look.tex && ctx.parts.includes(d.part));
+        const hex = useOv ? toneHex(base, ov.hex.toUpperCase()) : d.role && look.roles[d.role] && /^[0-9A-F]{6}$/i.test(look.roles[d.role]) ? look.roles[d.role] : d.color;
         const m = { lin: linOf(hex, lightObj, cal), gloss: d.gloss || 0, pat: d.pat || 0, scale: d.scale || 1, twoSided: !!d.twoSided, noShadow: !!d.noShadow, swap: !!d.swap, flatN: !!d.flatN, hex };
         if (d.emit) { m.emit = emitFor(d.emit, L, !info.outside); if (d.emit === 'win' || d.emit === 'fire' || d.emit === 'screen') m.lin = [0, 0, 0]; }
         const stained = look.tex && ctx.parts.includes(d.part);
         if (stained) { m.tex = woodTexture({ sp: look.tex.sp, stain: look.tex.stain, board: (d.wood && d.wood.board) || 12, vertical: d.wood && d.wood.vertical, cm: (d.wood && d.wood.cm) || 0.3, seed: 3 }, gain); m.gloss = Math.max(m.gloss, 0.3); if (d.pat === PAT.lap || d.pat === PAT.batten || d.pat === PAT.shake) m.pat = d.pat; else m.pat = 0; m.lin = [1, 1, 1]; }
         else if (d.wood) { m.tex = woodTexture({ sp: d.wood.sp, stain: d.wood.stain || null, tint: d.role && !d.wood.stain ? hex : null, board: d.wood.board, vertical: d.wood.vertical, cm: d.wood.cm || 0.3, seed: d.wood.seed || 2 }, gain); m.pat = d.pat === PAT.lap || d.pat === PAT.batten ? d.pat : 0; }
         else if (d.stone) { m.tex = stoneTexture(hex); }
+        if (useOv) {
+          // the material it really is: fabric, leather or velvet; wood grain or painted
+          if (part === 'upholstery') { if (ov.finish === 'leather') { m.pat = 0; m.gloss = 0.42; } else if (ov.finish === 'velvet') { m.pat = PAT.fabric; m.gloss = 0.16; } else { m.pat = PAT.fabric; m.gloss = 0.02; } }
+          if (part === 'wood') {
+            if (ov.finish === 'painted') { m.tex = null; m.pat = 0; m.gloss = 0.3; }
+            else { const w = d.wood || { sp: 'white_oak', board: 12 }; m.tex = woodTexture({ sp: w.sp, stain: null, tint: hex, board: w.board || 12, vertical: w.vertical, cm: w.cm || 0.3, seed: w.seed || 2 }, gain); m.pat = 0; }
+          }
+        }
         const prev = mats[name];
         if (anim && prev && anim.names.includes(name)) { m.prev = anim.prev[name]; m.wipe = 0; }
         out[name] = m;
@@ -2137,11 +2166,41 @@
     // Closing a view on purpose also loses its context, and that must not count.
     let closed = false;
     canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); if (closed) return; dead = true; if (o.onLost) o.onLost(); });
+    // what's under a spot on the picture: a ray from the camera through it, and the nearest face it meets
+    function pickAt(cx, cy) {
+      const rc = canvas.getBoundingClientRect(); if (!rc.width) return null;
+      const x = ((cx - rc.left) / rc.width) * 2 - 1, y = 1 - ((cy - rc.top) / rc.height) * 2;
+      const e = eye(), aspect = canvas.width / canvas.height;
+      const fov = (cam0.fov || 50) * D2R * (aspect < 1.4 ? Math.min(1.35, 1.4 / aspect) : 1), t = Math.tan(fov / 2);
+      const fw = norm(sub(orbit.target, e)), rt = norm(cross(fw, [0, 1, 0])), upv = cross(rt, fw);
+      const dir = norm(add(fw, add(scl(rt, x * t * aspect), scl(upv, y * t))));
+      let best = Infinity, hit = null;
+      for (const [name, g] of Object.entries(b.groups)) {
+        const d = b.mats[name] || {};
+        if (d.emit === 'win' || d.emit === 'house' || d.hidden) continue;
+        const P = g.p, I = g.i;
+        for (let k = 0; k < I.length; k += 3) {
+          const a0 = I[k] * 3, b0 = I[k + 1] * 3, c0 = I[k + 2] * 3;
+          const e1 = [P[b0] - P[a0], P[b0 + 1] - P[a0 + 1], P[b0 + 2] - P[a0 + 2]], e2 = [P[c0] - P[a0], P[c0 + 1] - P[a0 + 1], P[c0 + 2] - P[a0 + 2]];
+          const pv = cross(dir, e2), det = dot(e1, pv);
+          if (Math.abs(det) < 1e-9) continue;
+          const inv = 1 / det, tv = [e[0] - P[a0], e[1] - P[a0 + 1], e[2] - P[a0 + 2]];
+          const u = dot(tv, pv) * inv; if (u < 0 || u > 1) continue;
+          const qv = cross(tv, e1), v = dot(dir, qv) * inv; if (v < 0 || u + v > 1) continue;
+          const dist = dot(e2, qv) * inv;
+          if (dist > 1e-4 && dist < best) { best = dist; hit = name; }
+        }
+      }
+      if (!hit) return null;
+      const d = b.mats[hit] || {}, base = d.base || hit, part = PART_OF[base] || '';
+      const key = (d.piece || '') + '|' + part;
+      return { name: hit, base, part, piece: d.piece || '', key, hex: (mats[hit] || {}).hex || d.color, finish: (look.furn[key] || {}).finish || '' };
+    }
     // turning it: drag to orbit, pinch or scroll to zoom, double-tap to reset, arrow keys too
     let hint = null;
     if (o.interactive) {
       canvas.tabIndex = 0; canvas.setAttribute('role', 'img'); canvas.removeAttribute('aria-hidden'); canvas.setAttribute('aria-label', 'A 3D view. Drag to look around, pinch or scroll to zoom, arrow keys to turn.');
-      hint = document.createElement('span'); hint.className = 'scene-hint'; hint.textContent = 'Drag to look around'; container.appendChild(hint);
+      hint = document.createElement('span'); hint.className = 'scene-hint'; hint.textContent = o.onPick ? 'Drag to look around. Tap furniture to set its real color.' : 'Drag to look around'; container.appendChild(hint);
       const ptrs = new Map(); let pinch0 = 0, dist0 = 0;
       const lim = () => { orbit.pitch = Math.max(info.outside ? 0.02 : -0.25, Math.min(1.25, orbit.pitch)); orbit.dist = Math.max(orbit0.dist * 0.35, Math.min(orbit0.dist * (info.outside ? 2.2 : 2.6), orbit.dist)); };
       canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); if (ptrs.size === 2) { const [p, q] = [...ptrs.values()]; pinch0 = Math.hypot(p[0] - q[0], p[1] - q[1]); dist0 = orbit.dist; } if (hint) hint.classList.add('gone'); });
@@ -2156,7 +2215,19 @@
       canvas.addEventListener('wheel', e => { e.preventDefault(); orbit.dist *= Math.exp(e.deltaY * 0.0012); lim(); schedule(); }, { passive: false });
       canvas.addEventListener('dblclick', () => { orbit = Object.assign({}, orbit0, { target: orbit0.target.slice() }); schedule(); });
       canvas.addEventListener('keydown', e => { const k = e.key; if (k === 'ArrowLeft') orbit.yaw += 0.1; else if (k === 'ArrowRight') orbit.yaw -= 0.1; else if (k === 'ArrowUp') orbit.pitch += 0.06; else if (k === 'ArrowDown') orbit.pitch -= 0.06; else if (k === '+' || k === '=') orbit.dist *= 0.9; else if (k === '-') orbit.dist *= 1.1; else return; e.preventDefault(); lim(); schedule(); });
-      setTimeout(() => { if (hint) hint.classList.add('gone'); }, 4000);
+      // a quick tap (not a drag, not a double-tap) on something: tell the app what it was
+      if (o.onPick) {
+        let tap = null, tapTimer = 0;
+        canvas.addEventListener('pointerdown', e => { clearTimeout(tapTimer); tap = ptrs.size <= 1 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+        canvas.addEventListener('pointerup', e => {
+          const at = tap; tap = null;
+          if (!at || Math.hypot(e.clientX - at.x, e.clientY - at.y) > 8 || performance.now() - at.t > 450) return;
+          const cx = e.clientX, cy = e.clientY;
+          tapTimer = setTimeout(() => { if (dead) return; const what = pickAt(cx, cy); if (what) o.onPick(what); }, 280);
+        });
+        canvas.addEventListener('dblclick', () => clearTimeout(tapTimer));
+      }
+      setTimeout(() => { if (hint) hint.classList.add('gone'); }, o.onPick ? 6000 : 4000);
     }
     return {
       // for Set Up the Room: the walls this scene can have windows on, the ones it has, and whether it's a kitchen
@@ -2165,7 +2236,7 @@
         const old = {}; for (const [n, m] of Object.entries(mats)) old[n] = m.lin;
         const oldHex = {}; for (const [n, m] of Object.entries(mats)) oldHex[n] = m.hex;
         const texChanged = JSON.stringify(next.tex || null) !== JSON.stringify(look.tex || null);
-        look = { roles: Object.assign({}, next.roles || {}), tex: next.tex || null };
+        look = { roles: Object.assign({}, next.roles || {}), tex: next.tex || null, furn: look.furn };
         // the parts whose color changed roll on with the paint roller
         const names = Object.keys(b.mats).filter(n => { const d = b.mats[n]; const hex = d.role && look.roles[d.role] ? look.roles[d.role] : d.color; return d.role && oldHex[n] && hex !== oldHex[n] && !d.emit; });
         if (names.length && !o.reduced && !texChanged) {
@@ -2175,6 +2246,9 @@
         resolve(); draw(performance.now());
       },
       setLight(id) { lightId = id; resolve(); draw(performance.now()); },
+      // furniture set to its real color: { 'Sofa|upholstery': { hex, finish } }
+      setFurniture(furn) { look.furn = Object.assign({}, furn || {}); resolve(); draw(performance.now()); },
+      pickAt,
       destroy() { closed = true; dead = true; if (raf) cancelAnimationFrame(raf); if (ro) ro.disconnect(); r.dispose(); canvas.remove(); if (hint) hint.remove(); },
     };
   }
