@@ -1,192 +1,120 @@
 # ColorGenius
 
-A paint and stain color finder for the paint counter. Answer a few quick questions about the space, the light and the style, and ColorGenius suggests a handful of colors from the major paint brands. Each color comes with warnings about how it will behave in that room and the closest match in every other brand. For staining, it shows each stain on the actual wood, bare and stained.
+The paint department in your pocket. Find a paint or stain color in a few taps, see it in a real 3D room or on a house, and know exactly which paint, finish, primer, roller and brush to buy, and how much. It's built to be easy for anyone: a kid, a store employee or a grandparent.
 
 It runs in any browser and installs on Android and iPhone as an app with its own home-screen icon. Once loaded, it works offline.
 
-**Live site:** https://howzit5217.github.io/ColorGenius/ (open it on a phone and tap **Get the App**)
+**Live site:** https://howzit5217.github.io/ColorGenius/ (open it on a phone, then Settings → Get the App)
 
-## What it does
+## Easy to use
 
-- **First-launch setup** runs once on each device. It takes about a minute and can be rerun from Settings → Run setup again.
-  1. **Who's using it:** paint store staff, a homeowner, or a touch-screen kiosk in the store. This sets the wording and defaults; for example, in-store chip locations are on for staff and kiosks and off for homeowners.
-  2. **Where you work (or shop):** picking a store turns on the brands it usually carries. You can still turn any brand on or off on the next screen:
+- **Four big choices on the home screen:** Paint Colors, Stain Colors, Which Paint to Buy, and Look Up a Color. Each has a picture and one line saying what it does.
+- **One question per screen**, each choice with a picture. Tap your answer, then press the big **Next** button to go on. Nothing moves on by itself, and Next gives a small nudge once an answer is picked so it's clear what to press. Questions you can leave alone start with a sensible answer picked ("Any Style", "Not Sure"), so there is no Skip button to puzzle over.
+- **A Back button on every screen**, and the phone's own back button and the browser's back arrow work too. Every screen has its own address.
+- **Large text and buttons** in an easy-to-read typeface (Atkinson Hyperlegible, made for people with low vision). Settings → Easy to See → **Bigger text** makes everything larger still.
+- **The top bar has only three things:** the logo (home), **My List** with a count, and **Settings**.
+- Light and dark screens, and **Less motion** for anyone who prefers no sliding.
 
-     | Store | Paint | Stain |
-     | --- | --- | --- |
-     | The Home Depot | Behr, Glidden, PPG, KILZ | Minwax, Olympic |
-     | Lowe's | Valspar, HGTV Home | Cabot, Minwax |
-     | Ace Hardware | Benjamin Moore, Clark+Kensington, Magnolia Home | Cabot, Minwax |
-     | Menards | Dutch Boy | Minwax |
-     | Walmart | Glidden, KILZ | Minwax |
-     | Sherwin-Williams | Sherwin-Williams | SuperDeck, Minwax |
-     | Benjamin Moore store | Benjamin Moore | Minwax |
-     | PPG Paints store | PPG, Glidden | Olympic |
-     | Dunn-Edwards / Diamond Vogel | Their own brand | — |
+## Paint Colors
 
-     "Another store" keeps the brands as they are. The same screen has two switches, **Painting** and **Staining**. Turn either off and the app only does the other, skipping the "Painting or staining?" question. One must stay on.
-  3. **Brands:** one screen with two sections, each with its own heading, count and All/None.
-     - **Paint brands:** grouped into US national, more US, international, color standards and imported.
-     - **Stain brands:** split into Inside and Outside.
+The quick questions (about six):
 
-     Brands the store doesn't carry still show, switched off. A search box filters both sections, and a main paint brand can be picked at the bottom.
-  4. **What the store carries:** for each chosen brand, the color collections and paint lines on hand (see below). Skipped when no chosen brand has any.
-  5. **Screen tuning:** match the screen to white printer paper.
-  6. **Done:** a summary, with an option to install the app.
+1. **What are you painting?** A room; trim, doors or a ceiling; cabinets, furniture or floors; or outside the house.
+2. **Which one?**
+   - **Rooms:** living room, bedroom, kitchen, bathroom, powder room, dining room, home office, kids' room, nursery, hallway, stairway, laundry or mudroom, closet or pantry, sunroom, basement, attic, media room, garage, an accent wall.
+   - **Trim and more:** ceiling, trim, interior doors, wainscoting, a brick fireplace.
+   - **Cabinets and more:** cabinets, built-ins, furniture, concrete or wood floors.
+   - **Outside:** siding, exterior trim, front door, shutters, garage door, porch floor, shed or barn.
+3. **How big is the room?** (rooms) or **What is the siding made of?** (siding).
+4. **Which way do the windows face?** Tap the sides on a compass: corner rooms often have two. "Not Sure" and "No Windows" are there too.
+5. **How much daylight comes in?**
+6. **What style do you like?** Up to two, each shown with its own colors.
+7. **Which colors do you like?** Color families, or for ceilings and trim, what kind of white.
 
-- **Kiosk mode** (Settings → Who's using it → Kiosk):
-  - Bigger buttons and text for touch screens.
-  - No install prompt, and long-press menus are off.
-  - Settings are hidden; hold the ColorGenius logo for 3 seconds to open them.
-  - After 2 minutes with no touches it asks "Still there?" and then starts over, clearing saved colors for the next person.
+**Detailed questions** (Settings → Questions → Detailed) add light bulbs, what's on the wall now (for the primer), the feeling you want, warm or cool, colors to avoid, how light or dark, and what's staying in the room (floors, counters, cabinets, furniture, roof). Floors take two taps: the type, then its color.
 
-- **Color collections**: brands that split their colors into collections can have each one switched off, in setup or in Settings → Brands & collections. Picks, matches and pairings skip collections that are off.
-  - **Benjamin Moore:** Classic Color Collection, Color Preview, Historical Colors (HC), Off-White Collection (OC), Affinity (AF), Color Stories (CSP), Designer Classics (CC), Williamsburg (CW) and exterior stain colors (ES).
-  - **Magnolia Home:** main palette, Castle Collection, Lake House Collection.
-  - **Clark+Kensington:** fan deck, whites & neutrals card, exterior card, kids' rooms card.
-  - **PPG and Glidden:** PPG color system codes and older codes; PPG also has SidingSafe vinyl colors.
-  - **Diamond Vogel:** Color Essentials and Interior Whites.
+**Results:** the room picture sits on top, with the colors right under it. Tap a color and the room repaints, rolling the new color across the walls like a paint roller. On phones the colors are one swipeable row so the room stays in view. **Help Me Pick One** plays a few "Which do you like better?" rounds and marks your pick.
 
-- **Painting or Staining?** is the first question. One tap picks the job. (Either can be switched off in setup or Settings.)
+Colors come from about 34,700 colors across 19 brands, spread out so you don't get six versions of the same beige. Each has reasons it fits and its Light Reflectance (LRV: how much light the color bounces back, from 0 for black to 100 for white).
 
-- **Basic, Advanced or Perfect?** comes next:
-  - **Basic** (about 1 minute): the quick questions and a handful of colors to pick from.
-  - **Advanced** (about 3 minutes): adds more specific questions.
-    - **Painting:** what's on the surface now (the current color, what it is, such as drywall, glossy paint, laminate or bare wood, and any problems like water stains or old oil-based paint), plus how the room should feel, warm or cool, and colors to stay away from.
-    - **Staining:** other wood to match, the wall color next to it, the sheen, even or natural color, and pets or kids.
-  - **Perfect** (about 4 minutes): the advanced questions plus a few "Which do you like better?" rounds between the finalists. The result is the one color that wins, with the other finalists tucked below.
+## Stain Colors
 
-- **Primer advice** for every paint pick, based on the surface, any problems and how much the color changes:
-  - The kind of primer: stain-blocking, bonding, drywall, high-hiding, wood, oil-based for cedar and knots, masonry or metal.
-  - Specific products, with the store's own brand first (for example Sherwin-Williams Extreme Bond, Benjamin Moore Stix, Zinsser B-I-N, KILZ).
-  - Whether to tint the primer gray or toward the new color, and how many coats to plan on.
+1. **Inside or outside?**
+2. **What are you staining?** Inside: floors, stairs, cabinets, furniture, tabletops, trim and doors, interior doors, paneling, built-ins. Outside: decks, fences, siding, outdoor furniture, pergolas, front doors, wood garage doors, shutters, sheds, log homes, playsets, docks.
+3. **What kind of wood?** 15 woods, each drawn with its own grain, knots, pores and color (red and white oak, pine, maple, birch, cherry, walnut, hickory, ash, poplar, Douglas fir, cedar, redwood, pressure-treated pine, mahogany), or "Not Sure" for the usual one.
+4. **What shape is it in?** Bare, already finished, or new pressure-treated.
+5. **What look?** Natural, light, golden, warm or rich brown, espresso, reddish, gray, whitewash or a color, each shown with a real stain on your wood.
+6. **Show the grain or hide it?**
 
-- **Shadows:** previews darken the wall with the window and cast furniture shadows away from the light, stronger in sun. The advice covers walls that read darker in shadow, deep colors in shaded corners, and shaded siding.
+Each stain is judged by how it will look on that wood (maple takes stain lighter, walnut barely changes). The stain's page has a before-and-after board to drag across, the same stain on five other woods, paint colors that go with it (tap one to see it on the walls), warnings, and what to buy.
 
-- **Staining** takes three quick questions and shows every pick on real-looking wood, bare and stained:
-  1. **What's being stained:**
-     - Inside: floors, stairs, cabinets, furniture, tabletops or butcher block, trim and doors, interior doors, paneling and wood ceilings, shelves and built-ins.
-     - Outside: decks, fences, siding and shakes, outdoor furniture, pergolas, front doors, wood garage doors, shutters, sheds and barns, log homes, playsets, docks.
+## Which Paint to Buy
 
-     Each choice has a one-line note on what that job needs (for example "Gets walked on, so it needs 2–3 coats of floor polyurethane").
-  2. **What wood:** each wood is drawn with its own grain, knots, pores and color. There are 15 woods:
-     - Red oak, white oak, pine, maple, birch, cherry, walnut, hickory, ash, poplar.
-     - Douglas fir, cedar, redwood, pressure-treated pine, mahogany.
+A short questionnaire for the paint itself, not the color: what you're painting, what it's made of now (already painted, new drywall, bare wood, laminate, metal, brick...), how smooth it is, anything wrong with it (stains, shiny paint, old oil paint, knots, mildew, dents), the color it is now and the color it's going, kids or pets, what matters most (best price, good balance, best quality) and how big it is.
 
-     Also "Bare or sanded", "Has a finish on it" or "New pressure-treated".
-  3. **What look:** natural, light & airy, golden honey, warm brown, rich brown, dark espresso, reddish, gray & weathered, whitewash or a color. Each look shows a real stain on the chosen wood. Also pick "show the grain" or "hide the grain".
+The answer is a shopping list:
 
-  Each stain is judged by how it will look on that wood. A stain's swatch is how it looks on red oak. Maple, which resists stain, comes out lighter; walnut barely changes; open pores and knots soak up more. Results show each stain on a board, bare on one side and stained on the other.
+- **The paint:** the right kind (wall paint, enamel for trim and cabinets, porch & floor paint, exterior paint) and the line to buy from the store's brands at the chosen price level, with good / better / best options.
+- **The finish,** nudged by the job: kids and pets move a flat or matte wall up to eggshell, rough or patched walls go flatter.
+- **The primer,** if one is needed, with products to try and how many coats to plan on.
+- **The roller and brush:** nap length, roller width and cover, brush shape, size and bristle, with a picture of the roller cover at its real nap. Naps follow the paint brands' own guides: about 3/8 inch for most smooth walls, 1/2 inch for light texture, 3/4 inch for rough ceilings, 1 to 1¼ inch for brick and stucco, and short foam or microfiber covers for cabinets and doors. Water-based products get synthetic brushes, oil-based ones natural bristle.
+- **What else to grab,** as a checklist (tape, drop cloths, caulk, sanding sponges, cleaners, conditioner, topcoat and more).
+- **How much to buy,** worked out from the room's size (or type in the length, width, height, doors and windows), the coats and the coverage: about 350 sq ft a gallon on smooth walls, less on rough ones; about 150 sq ft a quart of interior oil stain; about 200 sq ft a gallon for a first coat of deck stain. It's shown as quarts, gallons and 5-gallon buckets.
+- **Safety notes,** like laying oily stain rags flat to dry.
 
-  The detail shows:
-  - A scene for the job: a living room floor, a kitchen of stained cabinets with real frame-and-panel doors, a dining table, trim and doors, beadboard paneling, a built-in, a deck with railings, a fence, cedar siding, a wood front door, a wood garage door or wood shutters.
-  - A board you drag across to compare. The left side can be bare wood or any other stain from the results.
-  - **With Paint Colors:** the stain under four wall colors that suit it. Tap one to see it on the walls in the scene.
-  - **Compare** on the results page shows every stain side by side on the same wood.
-  - The same stain on five other woods.
-  - Warnings, products to buy, and prep and topcoat tips.
+Every paint color's page has the same "What You'll Need" summary, with a button to open the full shopping list.
 
-  The warnings cover:
-  - Blotchy woods and dark stains on maple.
-  - Gray stains turning muddy on red oak.
-  - Cherry darkening with age.
-  - Finished wood that can only go darker.
-  - New pressure-treated wood that must dry first.
-  - Cedar tannin bleed.
-  - Solid stain peeling on deck boards.
-  - Recoat timing.
-  - Dark floors and hot decks.
+## Seeing the color
 
-  Products:
-  - **Inside:** Minwax Wood Finish, Water Based Wood Stain, Gel Stain, Pre-Stain Wood Conditioner and the topcoat.
-  - **Outside:** the line each pick comes in (Cabot Semi-Transparent or Semi-Solid, Olympic Elite or Maximum, SuperDeck Semi-Transparent, Solid or Deck & Dock), plus a cleaner or brightener.
+- **Scenes for every job.** Wall colors can be seen in 16 rooms (living room, bedroom, kitchen, bathroom, dining room, office, nursery, kids' room, entry, stairway, laundry, media room, sunroom, basement, attic, garage). There are also a kitchen island, a fireplace wall, a bookcase wall, a dresser and a dining set for cabinets and furniture. Outside are five house styles (ranch, two-story, farmhouse with a porch, cottage, modern), the front door up close, the front porch, a shed or barn and a log cabin. Stains also get a deck, a deck with a pergola, outdoor chairs, a playset, a dock on a lake, a backyard fence and a picket fence. Pick one from the **Scene** menu under the picture.
+- **Real 3D.** Every scene is built in 3D and drawn with WebGL. Sunlight comes in through the actual window openings (the side the windows face decides where the sun falls), casts shadows, and the lamps come on at night. The color on the walls matches the chip exactly under "Chip Color", and shifts like the chips do under other light.
+- **Turn it in 3D:** tap the **3D** button on the picture (or Settings → Easy to See → Turn rooms in 3D). Then drag to look around the room, pinch or scroll to zoom, double-tap to reset, or use the arrow keys. Zoom out to see the room like a dollhouse.
+- **The light picker:** chip color, daylight, north light, afternoon sun, golden hour, warm, soft white and daylight bulbs, and a dim corner.
+- Devices without WebGL 2 get the flat drawings instead.
 
-  Outside jobs pick from the outdoor stain brands that are on (Cabot, Olympic, SuperDeck). With none on, Minwax tones are shown and marked as tone guides. Outdoor solid stains come from the brands' solid colors, or from paint colors (which stores tint solid stain to) when none are on.
+## Look Up a Color
 
-- **Previews look like real rooms:**
-  - Floors are drawn in perspective as wood planks with real grain, tile with grout, carpet pile or concrete.
-  - Rooms have curtains, a rug, a coffee table, throw pillows, a plant and a ceiling light. Crown molding shows when the room has it.
-  - Furniture has wood grain and upholstery has a woven texture.
-  - Kitchens get stone counters, a sink, pendant lights and a fruit bowl.
-  - The wood and stone textures are adapted from the Flowchart Producer house builder's texture recipes.
+Type a color name, a code from a chip (`SW 7029`, `OC-17`, `behr swiss coffee`), a hex value (`#D1CBC1`, `D1CBC1`, `#DCB`) or an RGB value (`209 203 193`, `rgb(209, 203, 193)`), or pick a color to match. You get its exact hex, RGB and LRV (tap to copy), then the closest color in every brand, with brands that are turned off folded away underneath.
 
-- **The painting questions** (Basic mode)
-  1. What's being painted, in four groups:
-     - **Rooms:** living room, bedroom, kitchen, bathroom, powder room, dining room, home office, kids' room, nursery, hallway, stairway, laundry or mudroom, closet or pantry, sunroom, basement, attic or bonus room, media or game room, garage.
-     - **Walls, trim & woodwork:** accent wall, ceiling, trim, interior doors, wainscoting and paneling, brick fireplace.
-     - **Cabinets, furniture & floors:** cabinets, built-ins and shelves, furniture, concrete or wood floors.
-     - **Outside:** siding, exterior trim, front door, shutters, garage door, porch floor and steps, shed or barn.
+## My List
 
-     Each choice has a short note on what it covers and what the picks will take into account (finish, moisture, wear, light).
-  2. Which way the windows face, using a compass picker, plus how much daylight and what bulbs. Tap every side that has windows: corner rooms often have two. Each side changes the advice, for example a north wall reading cooler in an otherwise sunny room, or opposite windows making walls look different.
-  3. Style, with up to two picks shown as real color previews.
-  4. Color families and how light or dark.
-  5. What's staying. Only the rows that fit the job appear, mostly one tap each:
-     - **Bedrooms:** floor, trim and bedding.
-     - **Kitchens:** cabinets, countertops, floor and hardware.
-     - **Bathrooms:** vanity, countertop, floor and faucets.
-     - **Ceilings and trim:** the walls staying.
-     - **Front doors:** the siding and trim colors the door has to stand out from.
-     - **Other exteriors:** roof, brick or stone, trim and windows.
+Saved colors and customer sessions are now one thing: **My List**.
 
-     Floors take two taps: the type first (wood or LVP, carpet with five colors, tile or stone, concrete), then its color. Rooms also ask about trim, baseboards and crown molding (bright white, cream, stained wood or black, plus "Painting the trim too" and "Has crown molding"). Anything else can be added with a name and the in-house color picker.
+- Tap **Add to My List** on any paint, stain, exact color or shopping list (tap again to take it back off). The top bar shows the count.
+- Give the list a name ("Who is it for?") and notes for the printout, and type where each item goes.
+- **Print My List** shows the page at real letter size first, then prints it: black and white, text only, one line per item, with area, brand, color, code, hex, finish, product, primer, amount, roller and brush, and where to find the chip. Columns nothing fills in are left out, and a wide list prints sideways. **Copy as Text** puts the same list on the clipboard.
+- **More Things to Do:** show the colors full screen, compare them side by side, or copy the list.
+- **Start a New List** keeps the current one under **Earlier Lists** (the last 10 on this device). Earlier lists can be opened, printed or deleted.
+- Colors saved in the older Saved Colors list are kept as an earlier list called "Saved Colors".
 
-     Each paint color is checked against all of this. The checks catch undertone clashes (carpet and walls count as large surfaces), too much yellow with orange oak, pink next to cherry or brick, creamy or stark whites next to existing trim, doors that won't stand out from the siding, low contrast and complementary pairings. The preview shows the chosen floor, counters, cabinets, sofa and roof.
+## Setup, kiosks and settings
 
-  Ceilings and trim replace question 4 with one quick choice:
-  - **Ceilings:** crisp white, soft warm white, a light tint of the walls, or something bold.
-  - **Trim:** crisp white, soft warm white, match the walls, or black.
-- **Recommendations** from about 34,700 colors across 19 brands. Results are spread out so you don't get six versions of the same beige. Each comes with reasons it fits and its LRV (Light Reflectance Value: how much light the color bounces back, from 0 for black to 100 for pure white).
-- **Warnings** written in plain language. They cover:
-  - Colors that will read too dark or too light in that light.
-  - North light turning cool grays icy.
-  - Sun turning creams yellow.
-  - Undertones that lean green, pink or purple.
-  - Clashes with wood, tile or brick.
-  - Bulb effects.
-  - Bold colors intensifying on full walls.
-  - Ceilings that will feel lower.
-  - Dark colors on vinyl siding.
-  - Fading outdoors.
-  - Coverage and primer needs.
-- **Paint to use**: suggests the right product line for the job. Floors and porches get a porch & floor paint (Sherwin-Williams Porch & Floor Enamel, Benjamin Moore Floor & Patio, Behr Porch & Patio, Valspar Porch, Floor & Patio, Glidden Porch & Floor), never wall paint. For example, Benjamin Moore Aura Bath & Spa for a bathroom, Advance for cabinets or Scuff-X for a kids' room. Each suggestion comes with Good / Better / Best options. Lines are listed for Benjamin Moore, Sherwin-Williams, Behr, Valspar, HGTV Home, Dutch Boy, PPG, Glidden and Dunn-Edwards. Every line can be switched off in settings to match what the store carries. With a store brand set, colors from any brand are matched into the store's own paint.
-- **Color details**:
-  - A preview that matches the job:
-    - A room with a sofa, bed, bathroom vanity, desk, dining table, entry console, washer and dryer, or garage workbench.
-    - A kitchen, for kitchen walls or cabinets.
-    - The front of a house, for siding, exterior trim or a front door, with lap, shingle, board & batten, brick or stucco siding. Shutters, a garage door and a porch with steps are drawn when they are the job.
-    - Wainscoting on the lower walls, a brick fireplace with a mantel, built-in shelves, interior doors and painted floors.
-    - One window for each side that has windows (left wall, back wall, right wall), each casting its own patch of sun for that direction and time of day. Rooms with no windows show none. The floor shows as wood, carpet, tile or concrete.
-  - Advantages and disadvantages for each color, a side-by-side compare, and a sheen comparison (Flat to Gloss) shown on the color itself.
-  - A light switcher: daylight, north light, afternoon sun, golden hour, warm, soft white and daylight bulbs, and a dim corner.
-  - Undertone, depth and the recommended finish.
-  - Pairings for trim, lighter and deeper versions, and an accent.
-  - The closest color in every other brand, with a measured color difference (ΔE 2000).
-- **Look up & match**: find any color by name, code or color value (for example `SW 7029`, `OC-17`, `behr swiss coffee`, `#D1CBC1`).
-  - Type a hex code (`#D1CBC1`, `D1CBC1`, `#DCB`), an RGB value (`209 203 193`, `209,203,193`, `rgb(209, 203, 193)`) or an exact paint name or code, and the page shows its exact hex, RGB and LRV, each tap-to-copy.
-  - Below that is the closest color in every brand that's on, with the measured difference. Brands that are turned off are listed underneath, folded away, so a customer's color from another store can still be matched into what this store carries.
-- **Sessions**: everything picked for one customer in one list.
-  - Tap **Add to Session** on any paint, stain or exact color. The session button in the top bar shows **New Session** (or the customer's name) and a count.
-  - The session popup has a name, notes for the printout, and one row per item with an editable "where it goes". Tap a swatch to open that color again. **Add Another** starts the next search for the same customer.
-  - **New Session** saves the current one under **Past Sessions** and starts fresh. The last 10 sessions are kept on this device, newest first; older ones drop off automatically. Each past session can be opened again, printed or deleted (Delete asks once). Kiosks keep no past sessions and clear the current one when they start over.
-- **Printing**: one printout for everyone. **Print** opens a preview of the page at real letter proportions, then prints it.
-  - Black and white, text only, one line per item: area, brand, color, code, hex, finish, product, primer and where to find the chip. Columns nothing fills in are left out, and a wide list turns the page sideways so it fits.
-  - The header has the customer or project name, the store and the date, and any notes. **Copy as Text** puts the same list on the clipboard for a text or email.
-- **Full-width layout**: pages fill the screen on computers. The questions get a side panel with a short note on the current pick and your answers so far (tap one to go back to it).
-- **Saved colors**: star colors to compare them, show them full screen, or copy the list.
-- **Settings**:
-  - Who's using it: store staff, homeowner or kiosk.
-  - Store: pick a chain to set its usual brands. Switch Painting or Staining off to use the app for just one.
-  - Turn each brand on or off (search by name, or All on / All off for a group), switch off color collections the store doesn't carry, and set a store brand (with "store brand only" if wanted). Brands are listed under **Paint brands** and **Stain brands** (inside and outside).
-  - In-store samples: shows chip strip locations for Sherwin-Williams, Valspar and HGTV Home, and Behr's rack colors.
-  - Include discontinued colors, and choose how many colors each search shows.
-  - Turn individual questions on or off, plus warnings, LRV, matches and the light preview.
-  - Import your own colors from a CSV file.
-  - Theme and reduced motion.
-- **Screen accuracy**:
-  - Detects whether the screen is standard (sRGB) or wide color (Display P3), and whether it supports HDR.
-  - A one-minute calibration matches the screen to white paper and a real paint chip, then adjusts every swatch.
-  - Browsers can't read a monitor's brightness, color profile or night-light setting, which is why calibration exists.
+- **First-time setup** asks two things, each with a Next button: who uses the device (paint store staff, me for my home, or a store kiosk) and which store. Picking a store turns on the brands it usually carries:
+
+  | Store | Paint | Stain |
+  | --- | --- | --- |
+  | The Home Depot | Behr, Glidden, PPG, KILZ | Minwax, Varathane, Olympic |
+  | Lowe's | Valspar, HGTV Home | Cabot, Minwax |
+  | Ace Hardware | Benjamin Moore, Clark+Kensington, Magnolia Home | Minwax, Varathane, Cabot |
+  | Menards | Dutch Boy | Minwax, Varathane |
+  | Walmart | Glidden, KILZ | Minwax, Varathane |
+  | Sherwin-Williams | Sherwin-Williams | SuperDeck, Minwax |
+  | Benjamin Moore store | Benjamin Moore | Minwax |
+  | PPG Paints store | PPG, Glidden | Olympic |
+  | Dunn-Edwards / Diamond Vogel | Their own brand | — |
+
+  "Another store" lets you pick the brands yourself. Paint or stain can be switched off if the store only does one.
+- **Kiosk mode:** bigger text and buttons, no settings button (hold the logo for 3 seconds), and after 2 minutes with nobody using it, it asks "Still there?" and starts over with an empty list.
+- **Settings:** who uses it; store, store brand and "only suggest the store brand"; paint and stain on or off; quick or detailed questions and how many colors to show; bigger text, 3D rooms, light or dark, the light picker, less motion; LRV, warnings, matches, chip locations and discontinued colors; screen tuning; paint and stain brands, color collections and paint lines; importing colors from a CSV file; getting the app, running setup again and resetting everything.
+- **Color collections:** brands that split their colors into collections can have each switched off (Benjamin Moore's Classic, Color Preview, Historical, Off-White, Affinity, Color Stories, Designer Classics, Williamsburg and stain colors; Magnolia Home's collections; Clark+Kensington's cards; PPG and Glidden code sets; Diamond Vogel's collections). Picks, matches and pairings skip collections that are off.
+- **Screen tuning:** a one-minute calibration matches the screen to white paper and a real chip, then adjusts every swatch and the 3D rooms. Browsers can't read a monitor's brightness, color profile or night-light setting, which is why this exists.
+
+## The advice behind the picks
+
+- **Warnings** in plain language: colors that will read too dark or light in that light, north light turning cool grays icy, sun turning creams yellow, undertones that lean green, pink or purple, clashes with wood, tile or brick, bulb effects, bold colors on full walls, ceilings that will feel lower, dark colors on vinyl siding, fading outdoors, and coverage and primer needs. Stains add blotchy woods, gray stains on red oak, cherry darkening, finished wood that can only go darker, new pressure-treated wood, cedar tannin bleed, solid stain on decks, recoat timing, and dark floors and hot decks.
+- **Primer:** stain-blocking, bonding, drywall, high-hiding, wood, oil-based for cedar and knots, masonry or metal, with products (the store's own brand first) and whether to tint it.
+- **Paint lines** for Benjamin Moore, Sherwin-Williams, Behr, Valspar, HGTV Home, Dutch Boy, PPG, Glidden and Dunn-Edwards, matched to the job (bath paint for bathrooms, enamel for cabinets and trim, scuff-resistant for kids' rooms, porch & floor paint for floors). Each line can be switched off to match what the store carries.
+- **Pairings** for trim, lighter and deeper versions and an accent, and the **closest color in every other brand** by measured color difference (ΔE 2000).
 
 ## Colors included
 
@@ -244,12 +172,12 @@ Then open http://localhost:5173. Other devices on the same network can use the c
 
 ## Install it on a phone
 
-The site must be online at an `https://` address. GitHub Pages works and is free. Open that address on the phone, then tap **Get the App** (the download icon in the top bar, or Settings → Phone app):
+The site must be online at an `https://` address. GitHub Pages works and is free. Open that address on the phone, then go to Settings → The App → **Get the App**:
 
 - **Android**: the install prompt opens. Tap **Install**.
 - **iPhone / iPad**: follow the steps shown. Tap Share, then **Add to Home Screen**, then Add.
 
-The installed app opens full screen without browser bars and works offline. On iPhone it keeps its own settings and saved colors, separate from Safari.
+The installed app opens full screen without browser bars and works offline. On iPhone it keeps its own settings and lists, separate from Safari.
 
 **Updates are automatic.** Every time the app opens online, it loads the newest version of the app and the color data. If the app was left open in the background, it refreshes itself when it comes back, as long as nothing is in progress. Push changes to `main` and GitHub Pages publishes them within a minute or two.
 
@@ -259,7 +187,7 @@ The installed app opens full screen without browser bars and works offline. On i
 npm test
 ```
 
-The tests check the color math against published reference values. They also check that every brand file is complete and valid, and that search (including hex and RGB values), recommendations for every job, warnings, cross-brand matches, the CSV import and the offline file list all work.
+The tests check the color math against published reference values. They also check that every brand file is complete and valid, and that search (including hex and RGB values), recommendations for every job, warnings, cross-brand matches, the CSV import and the offline file list all work. The paint department tests check the roller naps and brushes for every job, the supplies, the quart, gallon and bucket math, how much paint a room takes, and that Which Paint to Buy gives the right paint, finish and primer for each kind of job.
 
 ## Updating the colors
 

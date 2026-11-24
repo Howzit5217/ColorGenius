@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ColorGenius</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Paint color finder for store staff: a few questions, the right colors from every major brand, with warnings and cross-brand matches.">
+<meta name="description" content="The paint department in your pocket: find paint and stain colors, see them in a room, and know which paint, primer, roller and brush to buy.">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#f3f3f2" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#141414" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f5f3ef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ColorGenius">
@@ -17,64 +17,49 @@
 <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700;800&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-<div class="app" id="app">
-  <header class="topbar">
-    <div class="topbar-inner">
-      <button class="wordmark" id="homeBtn" type="button" aria-label="ColorGenius, start a new search">
-        <span class="fan" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="wordmark-text">ColorGenius</span>
-      </button>
-      <nav class="tabs" aria-label="Main">
-        <button type="button" class="tab" data-view="find" aria-current="page"><span class="long">Find Paint &amp; Stain</span><span class="short">Find</span></button>
-        <button type="button" class="tab" data-view="lookup"><span class="long">Look Up a Color</span><span class="short">Look Up</span></button>
-        <button type="button" class="tab" data-view="shortlist"><span class="long">Saved Colors</span><span class="short">Saved</span> <span class="count" id="shortCount" hidden>0</span></button>
-      </nav>
-      <button type="button" class="btn small install-btn" id="installBtn" hidden>
-        <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0l-3.2-3.2M8 10l3.2-3.2M3 13h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Get the App</span>
-      </button>
-      <button type="button" class="btn small session-btn" id="sessionBtn" aria-label="Open the customer session">
-        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2.5" width="10" height="11.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.8 6h4.4M5.8 8.6h4.4M5.8 11.2h2.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <span class="session-label" id="sessionLabel">New Session</span><span class="count" id="sessionCount" hidden>0</span>
-      </button>
-      <button type="button" class="icon-btn" id="settingsBtn" aria-label="Settings">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
-      </button>
-    </div>
-  </header>
+<a class="skip-link" href="#main">Skip to the page</a>
+<header class="topbar">
+  <div class="topbar-in">
+    <button class="logo" id="homeBtn" type="button" aria-label="ColorGenius home">
+      <span class="fan" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="logo-text">ColorGenius</span>
+    </button>
+    <span class="grow"></span>
+    <button type="button" class="top-btn" id="listBtn" aria-label="My List">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span class="top-label">My List</span><span class="badge-count" id="listCount" hidden>0</span>
+    </button>
+    <button type="button" class="top-btn" id="settingsBtn" aria-label="Settings">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 100 6.8 3.4 3.4 0 000-6.8z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13.5l1.6 1.2-1.8 3.1-1.9-.7a7.6 7.6 0 01-2.2 1.3l-.3 2h-3.6l-.3-2a7.6 7.6 0 01-2.2-1.3l-1.9.7-1.8-3.1 1.6-1.2a7.4 7.4 0 010-3l-1.6-1.2 1.8-3.1 1.9.7A7.6 7.6 0 0110.9 4.3l.3-2h3.6l.3 2a7.6 7.6 0 012.2 1.3l1.9-.7 1.8 3.1-1.6 1.2a7.4 7.4 0 010 3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <span class="top-label">Settings</span>
+    </button>
+  </div>
+</header>
 
-  <main class="main" id="main">
-    <section class="loading" id="loading" aria-live="polite">
-      <div class="loading-fan" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-      <p class="loading-text" id="loadingText">Loading paint colors…</p>
-    </section>
-    <section class="view" id="view-find" hidden></section>
-    <section class="view" id="view-lookup" hidden></section>
-    <section class="view" id="view-shortlist" hidden></section>
-  </main>
-</div>
+<main class="main" id="main" tabindex="-1">
+  <section class="loading" id="loading" aria-live="polite">
+    <div class="loading-fan" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <p id="loadingText">Getting the paint colors ready…</p>
+  </section>
+  <div id="view" hidden></div>
+</main>
 
-<nav class="wizard-nav" id="wizardNav" aria-label="Question navigation" hidden><div class="wizard-nav-inner">
-  <button type="button" class="btn ghost nav-back" data-act="back" disabled><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
-  <span class="spacer"></span>
-  <button type="button" class="btn ghost nav-skip" data-act="skip">Skip</button>
-  <button type="button" class="btn primary nav-next" data-act="next"><span class="nav-next-label">Next</span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-</div></nav>
+<nav class="bottom-bar" id="bottomBar" aria-label="Question buttons" hidden>
+  <div class="bottom-in">
+    <button type="button" class="btn big ghost" data-flow="back"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M12.5 4L6.5 10l6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Back</button>
+    <span class="grow"></span>
+    <button type="button" class="btn big primary" data-flow="next"><span class="next-label">Next</span><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M7.5 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+</nav>
 
-<div class="scrim" id="scrim" hidden></div>
-<aside class="sheet" id="detailSheet" role="dialog" aria-modal="true" aria-labelledby="detailTitle" hidden></aside>
-<aside class="sheet sheet-settings" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden></aside>
-<div class="modal" id="calModal" role="dialog" aria-modal="true" aria-labelledby="calTitle" hidden></div>
-<div class="modal" id="installModal" role="dialog" aria-modal="true" aria-labelledby="installTitle" hidden></div>
-<div class="modal" id="infoModal" role="dialog" aria-modal="true" aria-labelledby="infoTitle" hidden></div>
-<div class="modal" id="sessionModal" role="dialog" aria-modal="true" aria-labelledby="sessionTitle" hidden></div>
-<div id="printArea" aria-hidden="true"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden></div>
 <div class="onboard" id="onboard" role="dialog" aria-modal="true" aria-labelledby="obTitle" hidden></div>
-<div class="present" id="present" role="dialog" aria-modal="true" aria-label="Saved colors, full screen" hidden></div>
+<div class="present" id="present" role="dialog" aria-modal="true" aria-label="Colors, full screen" hidden></div>
+<div id="printArea" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="data/brands.js"></script>
@@ -83,6 +68,9 @@
 <script src="js/wood.js"></script>
 <script src="js/stain.js"></script>
 <script src="js/engine.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/room3d.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
