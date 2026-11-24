@@ -2193,7 +2193,7 @@
       <div class="cam-top">
         <button type="button" class="cam-icon" data-cam-close="1" aria-label="Close">${xIcon}</button>
         <span class="grow"></span>
-        <div class="cam-mode" role="group" aria-label="Where the color is"><button type="button" data-cam-mode="paper" aria-pressed="${camMode === 'paper'}">On Paper</button><button type="button" data-cam-mode="wall" aria-pressed="${camMode === 'wall'}">On a Wall</button></div>
+        <div class="cam-mode" role="group" aria-label="Where the color is"><button type="button" data-cam-mode="paper" aria-pressed="${camMode === 'paper'}" aria-label="On paper" title="On paper">${CAM_PAPER_IC}<span class="cm-txt">On Paper</span></button><button type="button" data-cam-mode="wall" aria-pressed="${camMode === 'wall'}" aria-label="On a wall" title="On a wall">${CAM_WALL_IC}<span class="cm-txt">On a Wall</span></button></div>
         <span class="grow"></span>
         <button type="button" class="cam-icon" data-cam-light="1" aria-label="Turn the light on" aria-pressed="false" hidden>${ic('bulb', 24)}</button>
         <button type="button" class="cam-icon" data-cam-reset="1" aria-label="Put the boxes back">${resetIcon}</button>
@@ -2371,8 +2371,11 @@
     const pos = fd != null ? fdPos(fd) : Math.max(0.05, Math.min(0.78, 0.75 - e * 0.45));
     return { level, pos, text: fd != null ? `${text} · about ${Math.round(fd * 39.37)} in` : text };
   }
+  // the two ways of reading: a color lying on a sheet of paper, and a wall of bricks with a sheet held on it
+  const CAM_PAPER_IC = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="3" width="15" height="18" rx="1.8"/><rect x="8.5" y="8" width="7" height="7" rx="1" fill="currentColor" stroke="none"/></svg>';
+  const CAM_WALL_IC = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="16" rx="1"/><path d="M2.5 9.3h19M2.5 14.7h19M8.5 4v5.3M15.5 4v5.3M5.5 9.3v5.4M12 9.3v5.4M18.5 9.3v5.4M8.5 14.7V20M15.5 14.7V20"/></svg>';
   // a phone seen from the side, rocking from flat to a slight angle (shown with the glare message)
-  const TILT_ICON = '<svg class="tilt-ic" viewBox="0 0 40 32" width="44" height="35" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 28h34" opacity=".6"/><g class="tilt-phone"><rect x="8" y="8" width="24" height="5" rx="2"/><path d="M20 16v7" stroke-dasharray="1.5 3"/></g></svg>';
+  const TILT_ICON ='<svg class="tilt-ic" viewBox="0 0 40 32" width="44" height="35" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 28h34" opacity=".6"/><g class="tilt-phone"><rect x="8" y="8" width="24" height="5" rx="2"/><path d="M20 16v7" stroke-dasharray="1.5 3"/></g></svg>';
   function camLive() {
     if (!cam || cam.busy) return;
     const r = camSample();
@@ -2434,10 +2437,14 @@
     const d = t.dataset;
     if (d.camClose) { closeCamera(); return; }
     if (d.camMode) {
+      const was = camMode;
       camMode = d.camMode === 'wall' ? 'wall' : 'paper'; store.set('camMode', camMode);
       $$('[data-cam-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.camMode === camMode)));
       if (cam) cam.eS = null;
-      camLayout(); return;
+      camLayout();
+      // the buttons are just pictures on a phone, so say what each one means when it's picked
+      if (was !== camMode) toast(camMode === 'wall' ? 'On a wall: hold white paper beside the color. Paper box on the paper, Color box on the color.' : 'On paper: lay the color on white paper and fit the box inside it.');
+      return;
     }
     if (d.camTune) { cam && (cam.tuning = true); const tips = $('#camTips'); if (tips) tips.hidden = true; $('#camera').classList.remove('tips-open'); $$('[data-cam-help]').forEach(b => b.setAttribute('aria-expanded', 'false')); toast('Lay a chip you know on the paper, fit the box in it, then tap the round button.'); return; }
     if (d.camUntune) { settings.camTune = []; saveSettings(); const row = $('#camTuneRow'); if (row) row.innerHTML = camTuneRow(); toast('Camera tuning undone'); return; }

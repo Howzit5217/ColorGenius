@@ -99,17 +99,16 @@ h3 { font-size: 1.15rem; line-height: 1.3; font-weight: 700; }
 .badge-count.bump { animation: bump 420ms var(--spring); }
 @keyframes bump { 40% { transform: scale(1.35); } }
 .top-btn, .logo { white-space: nowrap; }
-@media (max-width: 520px) {
+/* phones: the top buttons are icons only (Home, Update, Project, Staff, Settings), round and the same size, so
+   the bar never crowds or wraps. Each keeps its spoken label. */
+@media (max-width: 600px) {
   .logo-text { font-size: 1.1rem; }
-  #settingsBtn .top-label, #projBtn .top-label { display: none; }
-  #projBtn { gap: 6px; }
-  #settingsBtn { padding: 0; width: 48px; }
-  .top-btn { padding: 0 12px; }
+  .topbar .top-label { display: none; }
+  .top-btn { padding: 0; width: 48px; gap: 0; }
+  #projBtn { width: auto; padding: 0 10px 0 12px; gap: 6px; }
 }
 @media (max-width: 400px) { .logo-text { display: none; } }
 .top-btn svg { flex: none; }
-/* very narrow phones in kiosk mode: the Staff button keeps just its lock so Home and Project still fit */
-@media (max-width: 380px) { #lockBtn .top-label { display: none; } #lockBtn { padding: 0; width: 48px; } }
 
 /* ---------------- page ---------------- */
 .main { max-width: 1440px; margin: 0 auto; padding: 24px var(--gut-r) 96px var(--gut); overflow-x: clip; outline: none; }
@@ -816,7 +815,6 @@ button.id-sw:hover .id-sw-hint { transform: scale(1.1); }
 .top-btn.update-btn { background: var(--accent); color: var(--on-accent); border-color: var(--accent); animation: updPulse 2.4s ease-in-out infinite; }
 .top-btn.update-btn:disabled { opacity: .7; animation: none; }
 @keyframes updPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(47, 107, 94, 0); } 50% { box-shadow: 0 0 0 6px rgba(47, 107, 94, .28); } }
-@media (max-width: 380px) { #updateBtn .top-label { display: none; } #updateBtn { padding: 0; width: 48px; } }
 .update-gate { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 120; display: grid; place-items: center; padding: 20px; background: rgba(15, 15, 14, .66); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: fade var(--t2) ease both; overscroll-behavior: contain; }
 .upd-card { width: min(420px, 100%); display: grid; gap: 14px; justify-items: center; text-align: center; padding: 30px 26px 26px; background: var(--bg); border-radius: var(--r-xl); box-shadow: var(--shadow-lg); animation: popIn var(--t3) var(--spring) both; }
 .upd-card img { border-radius: 18px; box-shadow: var(--shadow); }
@@ -854,10 +852,11 @@ html.gate-open { overflow: hidden; }
 /* camera: on paper or on a wall, the green ready line, and tuning with a known chip */
 .cam-box[hidden] { display: none; }
 .cam-mode { display: inline-flex; padding: 4px; gap: 2px; border-radius: 999px; background: rgba(20, 20, 19, .6); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.cam-mode button { min-height: 40px; padding: 0 14px; border-radius: 999px; color: #fff; font-weight: 800; font-size: .92rem; white-space: nowrap; transition: background var(--t1), color var(--t1); }
+.cam-mode button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; min-width: 44px; padding: 0 14px 0 11px; border-radius: 999px; color: #fff; font-weight: 800; font-size: .92rem; white-space: nowrap; transition: background var(--t1), color var(--t1); }
+.cam-mode button svg { flex: none; }
 .cam-mode button[aria-pressed="true"] { background: #fff; color: #1c1b19; }
-@media (max-width: 420px) { .cam-top { gap: 6px; } .cam-top .cam-icon { width: 40px; height: 40px; } .cam-mode button { min-height: 36px; padding: 0 9px; font-size: .8rem; } }
-@media (max-width: 370px) { .cam-mode button { padding: 0 7px; font-size: .76rem; } .cam-top .cam-icon { width: 38px; height: 38px; } }
+/* phones: just the pictures (each says what it is when picked, and to screen readers) */
+@media (max-width: 600px) { .cam-mode .cm-txt { display: none; } .cam-mode button { width: 48px; min-height: 40px; padding: 0; } }
 .cam-hint.ready:not([hidden]) { display: flex; align-items: center; gap: 8px; background: rgba(35, 112, 74, .92); }
 .cam-hint .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #9ff0c0; box-shadow: 0 0 0 3px rgba(159, 240, 192, .35); }
 .cam-tune-row { display: grid; gap: 8px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, .15); }
