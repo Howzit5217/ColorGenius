@@ -2209,13 +2209,15 @@
       if (!hit) return null;
       const d = b.mats[hit] || {}, base = d.base || hit, part = PART_OF[base] || '';
       const key = (d.piece || '') + '|' + part;
-      return { name: hit, base, part, piece: d.piece || '', key, hex: (mats[hit] || {}).hex || d.color, finish: (look.furn[key] || {}).finish || '' };
+      // role: which painted part it is (walls, trim, siding...); stained: it's showing the stain being looked at
+      return { name: hit, base, part, piece: d.piece || '', key, hex: (mats[hit] || {}).hex || d.color, finish: (look.furn[key] || {}).finish || '',
+        role: d.role || '', stained: !!(look.tex && ctx.parts.includes(d.part)) };
     }
     // turning it: drag to orbit, pinch or scroll to zoom, double-tap to reset, arrow keys too
     let hint = null;
     if (o.interactive) {
       canvas.tabIndex = 0; canvas.setAttribute('role', 'img'); canvas.removeAttribute('aria-hidden'); canvas.setAttribute('aria-label', 'A 3D view. Drag to look around, pinch or scroll to zoom, arrow keys to turn.');
-      hint = document.createElement('span'); hint.className = 'scene-hint'; hint.textContent = o.onPick ? 'Drag to look around. Tap furniture to set its real color.' : 'Drag to look around'; container.appendChild(hint);
+      hint = document.createElement('span'); hint.className = 'scene-hint'; hint.textContent = o.onPick ? 'Drag to look around. Tap anything to change its color.' : 'Drag to look around'; container.appendChild(hint);
       const ptrs = new Map(); let pinch0 = 0, dist0 = 0;
       const lim = () => { orbit.pitch = Math.max(info.outside ? 0.02 : -0.25, Math.min(1.25, orbit.pitch)); orbit.dist = Math.max(orbit0.dist * 0.35, Math.min(orbit0.dist * (info.outside ? 2.2 : 2.6), orbit.dist)); };
       canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); if (ptrs.size === 2) { const [p, q] = [...ptrs.values()]; pinch0 = Math.hypot(p[0] - q[0], p[1] - q[1]); dist0 = orbit.dist; } if (hint) hint.classList.add('gone'); });
@@ -2230,19 +2232,24 @@
       canvas.addEventListener('wheel', e => { e.preventDefault(); orbit.dist *= Math.exp(e.deltaY * 0.0012); lim(); schedule(); }, { passive: false });
       canvas.addEventListener('dblclick', () => { orbit = Object.assign({}, orbit0, { target: orbit0.target.slice() }); schedule(); });
       canvas.addEventListener('keydown', e => { const k = e.key; if (k === 'ArrowLeft') orbit.yaw += 0.1; else if (k === 'ArrowRight') orbit.yaw -= 0.1; else if (k === 'ArrowUp') orbit.pitch += 0.06; else if (k === 'ArrowDown') orbit.pitch -= 0.06; else if (k === '+' || k === '=') orbit.dist *= 0.9; else if (k === '-') orbit.dist *= 1.1; else return; e.preventDefault(); lim(); schedule(); });
-      // a quick tap (not a drag, not a double-tap) on something: tell the app what it was
-      if (o.onPick) {
-        let tap = null, tapTimer = 0;
-        canvas.addEventListener('pointerdown', e => { clearTimeout(tapTimer); tap = ptrs.size <= 1 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
-        canvas.addEventListener('pointerup', e => {
-          const at = tap; tap = null;
-          if (!at || Math.hypot(e.clientX - at.x, e.clientY - at.y) > 8 || performance.now() - at.t > 450) return;
-          const cx = e.clientX, cy = e.clientY;
-          tapTimer = setTimeout(() => { if (dead) return; const what = pickAt(cx, cy); if (what) o.onPick(what); }, 280);
-        });
-        canvas.addEventListener('dblclick', () => clearTimeout(tapTimer));
-      }
       setTimeout(() => { if (hint) hint.classList.add('gone'); }, o.onPick ? 6000 : 4000);
+    }
+    // a quick tap (not a drag, not a pinch, not a double-tap) on something, turning or not: tell the app what it
+    // was. A still picture takes taps too, and a finger that scrolls the page past it isn't a tap.
+    if (o.onPick) {
+      if (!o.interactive) canvas.classList.add('tappable');
+      let tap = null, tapTimer = 0, down = 0;
+      canvas.addEventListener('pointerdown', e => { clearTimeout(tapTimer); down++; tap = down <= 1 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+      canvas.addEventListener('pointercancel', () => { down = Math.max(0, down - 1); tap = null; });
+      canvas.addEventListener('pointerup', e => {
+        down = Math.max(0, down - 1);
+        const at = tap; tap = null;
+        if (!at || Math.hypot(e.clientX - at.x, e.clientY - at.y) > 8 || performance.now() - at.t > 450) return;
+        const cx = e.clientX, cy = e.clientY;
+        // (a turnable view waits a moment, since a double-tap there puts the view back)
+        tapTimer = setTimeout(() => { if (dead) return; const what = pickAt(cx, cy); if (what) o.onPick(what); }, o.interactive ? 280 : 0);
+      });
+      canvas.addEventListener('dblclick', () => clearTimeout(tapTimer));
     }
     return {
       // for Set Up the Room: the walls this scene can have windows on, the ones it has, and whether it's a kitchen

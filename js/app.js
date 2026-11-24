@@ -47,7 +47,7 @@
     ready: false, view: 'home', screen: detectScreen(),
     flows: { paint: null, stain: null, buy: null }, // { a: answers, step }
     results: { paint: null, stain: null, buy: null },
-    pick: { paint: '', stain: '' }, light: 'daylight', sceneFor: {}, query: '', lookupHex: '', ftype: {}, duel: null, layout: null, furniture: {},
+    pick: { paint: '', stain: '' }, light: 'daylight', sceneFor: {}, query: '', lookupHex: '', ftype: {}, duel: null, layout: null, furniture: {}, parts: {},
     lastFlow: 'paint', depth: 0,
   };
 
@@ -478,7 +478,7 @@
   const hasWork = () => Object.values(state.flows).some(f => f && f.a && f.a._picked && Object.keys(f.a._picked).length) || Object.values(state.results).some(Boolean) || !!state.query.trim();
   function clearWork() {
     state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null };
-    state.query = ''; state.lookupHex = ''; state.duel = null; state.duelPick = ''; state.pick = { paint: '', stain: '' }; state.ftype = {}; state.layout = null; state.furniture = {};
+    state.query = ''; state.lookupHex = ''; state.duel = null; state.duelPick = ''; state.pick = { paint: '', stain: '' }; state.ftype = {}; state.layout = null; state.furniture = {}; state.parts = {};
   }
   function homeAsk() {
     if (!state.ready) return;
@@ -1316,7 +1316,7 @@
     const L = live[id]; if (!L) return;
     const box = $('#' + id), pic = $('.pic', box), spec = L.spec;
     const sceneId = state.sceneFor[spec.key];
-    const roles = spec.roles(sceneId);
+    const roles = rolesFor(spec, sceneId);
     if (L.viewer) { L.viewer.destroy(); L.viewer = null; }
     const setupBtn = $('[data-room-setup]', box); if (setupBtn) setupBtn.hidden = !['room', 'kitchen'].includes((SCN[sceneId] || {}).kind);
     const r3 = R3();
@@ -1324,8 +1324,8 @@
     if (r3.supported() && r3.has && r3.has(sceneId)) {
       pic.innerHTML = '';
       const floor = (SCN[sceneId] || {}).floor || (spec.answers && !spec.stain ? SC.floorTypeOf(Object.assign({}, E.DEFAULT_ANSWERS, spec.answers)) : null);
-      L.viewer = r3.mount(pic, { scene: sceneId, roles, tex: spec.tex || null, stain: !!spec.stain, answers: spec.answers || {}, layout: state.layout, furniture: state.furniture, onPick: settings.view3d ? what => openFurniture(what) : null, light: state.light, interactive: !!settings.view3d, reduced: reduced(), cal: settings.cal, floor, onLost: () => { if (live[id] && live[id].viewer) { live[id].viewer = null; pic.innerHTML = svgScene(spec, sceneId, roles); pic.dataset.roles = JSON.stringify(roles); pic.dataset.scene = (SCN[sceneId] || {}).kind === 'house' ? 'house' : 'room'; SC.paintScene(pic, state.light); } } });
-      if (L.viewer) { setTag(id); return; }
+      L.viewer = r3.mount(pic, { scene: sceneId, roles, tex: spec.tex || null, stain: !!spec.stain, answers: spec.answers || {}, layout: state.layout, furniture: state.furniture, onPick: what => onScenePick(id, what), light: state.light, interactive: !!settings.view3d, reduced: reduced(), cal: settings.cal, floor, onLost: () => { if (live[id] && live[id].viewer) { live[id].viewer = null; pic.innerHTML = svgScene(spec, sceneId, roles); pic.dataset.roles = JSON.stringify(roles); pic.dataset.scene = (SCN[sceneId] || {}).kind === 'house' ? 'house' : 'room'; SC.paintScene(pic, state.light); } } });
+      if (L.viewer) { setTag(id); showTapCoach(box); return; }
     }
     pic.innerHTML = svgScene(spec, sceneId, roles);
     pic.dataset.roles = JSON.stringify(roles);
@@ -1342,20 +1342,189 @@
   const FINISHES = { upholstery: [['fabric', 'Fabric'], ['leather', 'Leather'], ['velvet', 'Velvet']], wood: [['grain', 'Wood Grain'], ['painted', 'Painted']] };
   let furnPick = null;
   function applyFurniture() { for (const k of Object.keys(live)) if (live[k].viewer && live[k].viewer.setFurniture) live[k].viewer.setFurniture(state.furniture); }
-  function openFurniture(what) {
-    if (!what.part) {
-      const isWall = ['wall', 'side', 'ceil', 'trim', 'door', 'wain'].includes(what.base);
-      toast(isWall ? 'The walls, ceiling and trim show the paint colors. Tap a piece of furniture to set its color.' : 'Tap a piece of furniture, a rug or the curtains to set its real color.');
-      return;
-    }
+  function openFurniture(what, id) {
+    partPick = null;
     furnPick = Object.assign({}, what, { draft: Object.assign({ hex: what.hex, finish: what.finish || (what.part === 'upholstery' ? 'fabric' : what.part === 'wood' ? 'grain' : '') }, state.furniture[what.key] || {}) });
     const title = what.piece ? (what.piece === PART_LABEL[what.part] ? what.piece : `${what.piece}: ${PART_LABEL[what.part]}`) : PART_LABEL[what.part];
     const sw = FURN_SWATCHES[what.part] || FURN_SWATCHES._, fin = FINISHES[what.part];
-    openModal(title, `<p style="font-size:1.1rem">Set it to the color it really is, so the paint colors are seen with the real room.</p>
+    openModal(title, `<p class="part-lead">What color is yours? Tap the closest one. It changes in the picture right away, so you see the paint with your own things.</p>
       <div class="setup-group"><h3>Color</h3><div class="chipset furn-sws">${sw.map(([h, l]) => `<button type="button" class="chip plain furn-sw" data-furn-hex="${h}" aria-pressed="${furnPick.draft.hex === h}"><span class="dot" ${swStyle(h)}></span>${esc(l)}</button>`).join('')}</div>
         <div class="actions"><span class="muted">or any color:</span>${colorHtml('furnColor', furnPick.draft.hex, 'Pick its color', hex => { furnSet({ hex }); })}</div></div>
-      ${fin ? `<div class="setup-group"><h3>Material</h3><div class="chipset">${fin.map(([k, l]) => `<button type="button" class="chip plain" data-furn-finish="${k}" aria-pressed="${furnPick.draft.finish === k}">${l}</button>`).join('')}</div></div>` : ''}
-      <div class="modal-foot"><button type="button" class="btn big ghost" data-furn-reset="1">Use the Usual Color</button><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`);
+      ${fin ? `<div class="setup-group"><h3>What It's Made Of</h3><div class="chipset">${fin.map(([k, l]) => `<button type="button" class="chip plain" data-furn-finish="${k}" aria-pressed="${furnPick.draft.finish === k}">${l}</button>`).join('')}</div></div>` : ''}
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-furn-reset="1">Put It Back</button><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`, peekFor(id));
+  }
+
+  // ---- tap any part of the room or house to change its color ----
+  // The painted parts, by the "role" the scenes give them (the two walls of a room are one part). Each gets
+  // colors that go with the color being looked at: whites for trim, accents for a front door, close shades for
+  // the part that's showing the color itself.
+  const PARTS = {
+    walls: { roles: ['wall', 'side'], label: 'Walls', kind: 'wall' }, ceil: { roles: ['ceil'], label: 'Ceiling', kind: 'white' },
+    trim: { roles: ['trim'], label: 'Trim', kind: 'white' }, door: { roles: ['door'], label: 'Doors', kind: 'white' },
+    wain: { roles: ['wain'], label: 'Wainscoting', kind: 'white' }, fire: { roles: ['fire'], label: 'Fireplace', kind: 'accent' },
+    cab: { roles: ['cab'], label: 'Cabinets', kind: 'cab' }, vanity: { roles: ['vanity'], label: 'Vanity', kind: 'cab' },
+    floor: { roles: ['floor'], label: 'Floor', kind: 'floor' }, body: { roles: ['body'], label: 'Siding', kind: 'wall' },
+    xtrim: { roles: ['xtrim'], label: 'Trim', kind: 'white' }, xdoor: { roles: ['xdoor'], label: 'Front Door', kind: 'accent' },
+    shut: { roles: ['shut'], label: 'Shutters', kind: 'accent' }, gdoor: { roles: ['gdoor'], label: 'Garage Door', kind: 'white' },
+    step: { roles: ['step'], label: 'Porch Steps', kind: 'accent' }, roof: { roles: ['roof'], label: 'Roof', kind: 'roof' },
+  };
+  const PART_OF_ROLE = {};
+  for (const [k, p] of Object.entries(PARTS)) for (const r of p.roles) PART_OF_ROLE[r] = k;
+  const NOT_PAINTED = { lawn: 'That’s the lawn. Tap the house to change its colors.', shrub: 'Those are bushes. Tap the house to change its colors.', tree: 'That’s a tree. Tap the house to change its colors.', walk: 'That’s the walkway. Tap the house to change its colors.', glass: 'That’s a window. Tap the walls or trim around it.', hood: 'The range hood is metal. Tap the cabinets or walls.', shade: 'That’s a lamp. Tap the walls or furniture.' };
+  // a roof or a floor isn't paint: set it to the one that's really there, so the paint is seen with it
+  const ROOF_COLORS = [['3F4246', 'Charcoal Shingles'], ['2B2C2E', 'Black Shingles'], ['7B6F63', 'Weathered Wood'], ['594536', 'Brown Shingles'], ['6D7378', 'Slate Gray'], ['A65B3B', 'Clay Tile'], ['3F5A47', 'Green Metal'], ['8E9497', 'Silver Metal']];
+  const FLOOR_COLORS = [['C9A77A', 'Light Oak'], ['A9784B', 'Medium Oak'], ['6B4A32', 'Walnut'], ['3B2A20', 'Espresso'], ['9A958E', 'Gray Wood'], ['E8E6E1', 'White Tile'], ['9E9B96', 'Gray Tile'], ['BDB3A5', 'Beige Carpet']];
+  const PLAIN_COLORS = [['F2F1EC', 'White'], ['ECE6DA', 'Cream'], ['D9D3C8', 'Greige'], ['B9B5AE', 'Light Gray'], ['6B7378', 'Slate'], ['2F3B4C', 'Navy'], ['4E5B47', 'Green'], ['2A2A2B', 'Black']];
+  const partKey = spec => spec.color ? spec.color.id : spec.key;
+  // a scene's colors with the parts that were changed by tapping
+  function rolesFor(spec, sceneId) {
+    const roles = Object.assign({}, spec.roles(sceneId));
+    const own = state.parts[partKey(spec)] || {};
+    for (const [k, v] of Object.entries(own)) for (const r of (PARTS[k] || { roles: [] }).roles) roles[r] = v.hex;
+    return roles;
+  }
+  // the panel sits low (or to one side), so the picture it's changing stays in view
+  function peekFor(id) {
+    const box = id && $('#' + id); if (!box) return { peek: true };
+    const r = box.getBoundingClientRect();
+    if (window.innerWidth <= 600) { const top = r.top + window.scrollY - 70; if (Math.abs(window.scrollY - top) > 4) window.scrollTo({ top, behavior: reduced() ? 'auto' : 'smooth' }); }
+    return { peek: true, left: r.left + r.width / 2 > window.innerWidth * 0.55 };
+  }
+  // the brand color nearest a Lab value, skipping some (and anything switched off or discontinued)
+  function nearestIn(brand, lab, skip, filter) {
+    let best = null, bd = Infinity;
+    for (const x of E.getIndex().byBrand[brand] || []) {
+      if ((x.flags & E.F.DISC) || skip.has(x.id) || (filter && !filter(x)) || (x.coll && settings.collections[x.brand + ':' + x.coll] === false)) continue;
+      const d = C.deltaE2000(lab, x.lab); if (d < bd) { bd = d; best = x; }
+    }
+    return best;
+  }
+  const labAt = (L, Cc, h) => { const r = h * Math.PI / 180; return [L, Cc * Math.cos(r), Cc * Math.sin(r)]; };
+  function partChoices(group, c, isTarget) {
+    const P = PARTS[group], out = [], skip = new Set();
+    const add = (x, why) => { if (x && !skip.has(x.id)) { skip.add(x.id); out.push({ hex: x.hex, name: x.name, code: E.codeLabel(x), id: x.id, why }); } };
+    const plain = list => list.map(([hex, name]) => ({ hex, name, code: '', id: '', why: '' }));
+    if (P.kind === 'roof') return plain(ROOF_COLORS);
+    if (P.kind === 'floor' && !isTarget) return plain(FLOOR_COLORS);
+    if (!c || !E.getIndex().byBrand[c.brand]) return plain(PLAIN_COLORS);
+    const pairs = E.pairings(c, { collections: settings.collections });
+    const pair = role => (pairs.find(p => p.role === role) || {}).color;
+    const near = (lab, why, filter) => add(nearestIn(c.brand, lab, skip, x => C.deltaE2000(x.lab, c.lab) > 2.5 && (!filter || filter(x))), why);
+    if (isTarget) {
+      // the part showing the color itself: it first, then the closest colors a step away in each direction
+      out.push({ hex: c.hex, name: c.name, code: E.codeLabel(c), id: c.id, why: 'The color you’re looking at' }); skip.add(c.id);
+      const [L, a, b] = c.lab;
+      near([Math.min(98, L + 7), a, b], 'A little lighter');
+      near([Math.max(8, L - 8), a, b], 'A little deeper');
+      near([L, a + 1.5, b + 5], 'A little warmer');
+      near([L, a - 1, b - 5], 'A little cooler');
+      near([L, a * 0.55, b * 0.55], 'Softer, less color');
+      if (c.C > 5) near([L, a * 1.4, b * 1.4], 'Richer, more color');
+      return out;
+    }
+    const whites = () => {
+      add(pair('Trim & ceiling'), 'Made to go with ' + c.name);
+      const warm = c.temp === 'warm';
+      const score = w => (warm ? (w.temp === 'cool' ? 6 : 0) + Math.abs(w.C - 4) : (w.temp === 'warm' && w.C > 4 ? 6 : 0) + w.C) - (E.isPopular(w) ? 2.5 : 0) + Math.abs(w.lrv - 86) * 0.15;
+      (E.getIndex().byBrand[c.brand] || []).filter(w => !(w.flags & E.F.DISC) && w.lrv >= 78 && w.C <= 10 && !(w.coll && settings.collections[w.brand + ':' + w.coll] === false))
+        .sort((x, y) => score(x) - score(y)).slice(0, 8).forEach(w => { if (out.length < 5) add(w, warm ? 'A soft white for a warm color' : 'A clean white for a cool color'); });
+    };
+    if (P.kind === 'white') {
+      whites();
+      if (!skip.has(c.id)) out.push({ hex: c.hex, name: c.name, code: E.codeLabel(c), id: c.id, why: group === 'ceil' ? 'Same as the walls' : 'Same color, one look' });
+      add(pair('Deeper, same family'), 'A deeper shade of it');
+    } else if (P.kind === 'wall') {
+      add(pair('Lighter, same family'), 'A lighter shade of ' + c.name);
+      near(labAt(90, Math.min(c.C, 5), c.h), 'A soft neutral that goes with it');
+      near(labAt(80, Math.min(c.C, 7), c.h), 'A light neutral that goes with it');
+      near(labAt(68, Math.min(c.C, 8), c.h), 'A medium neutral that goes with it');
+      add(pair('Trim & ceiling'), 'A white that goes with it');
+      add(pair('Accent'), 'A bolder color that goes with it');
+    } else {
+      // front doors, shutters, cabinets, fireplaces: an accent, a deeper shade, and the classics
+      add(pair('Accent'), 'An accent made to go with ' + c.name);
+      add(pair('Deeper, same family'), 'A deeper shade of it');
+      if (P.kind === 'cab') add(pair('Trim & ceiling'), 'A white that goes with it');
+      [[labAt(20, 1, 250), 'Classic black'], [labAt(30, 3, 250), 'Classic charcoal'], [labAt(30, 20, 265), 'Classic navy'], [labAt(34, 16, 155), 'Classic deep green'], [labAt(38, 36, 30), 'Classic red']]
+        .forEach(([lab, why]) => { if (out.length < 8) near(lab, why); });
+    }
+    return out.slice(0, 8);
+  }
+  let partPick = null;
+  function openPart(id, group) {
+    const L = live[id]; if (!L) return;
+    furnPick = null;
+    const spec = L.spec, sceneId = state.sceneFor[spec.key], key = partKey(spec), P = PARTS[group];
+    const base = spec.roles(sceneId), c = spec.color || null;
+    const isTarget = !!c && String(base[P.roles[0]] || '').toUpperCase() === c.hex.toUpperCase();
+    const now = (((state.parts[key] || {})[group] || {}).hex || base[P.roles[0]] || '').toUpperCase();
+    const choices = partChoices(group, c, isTarget);
+    partPick = { id, key, group, choices };
+    const what = P.label.toLowerCase();
+    const lead = P.kind === 'roof' ? 'What color is your roof? Tap the closest one, so you see the paint with it.'
+      : P.kind === 'floor' && !isTarget ? 'What floor do you have? Tap the closest one, so you see the paint with it.'
+      : isTarget ? `This is ${c.name}, the color you’re looking at. Tap a close color to try it on the ${what} instead.`
+      : c ? `Tap a color to try it on the ${what}. These go with ${c.name}. It changes in the picture right away.` : `Tap a color to try it on the ${what}. It changes in the picture right away.`;
+    openModal(P.label, `<p class="part-lead">${esc(lead)}</p>
+      <div class="part-sws">${choices.map((x, i) => `<button type="button" class="part-sw" data-part-i="${i}" aria-pressed="${x.hex.toUpperCase() === now}"><span class="psw" ${swStyle(x.hex)}></span><span class="ptx"><b>${esc(x.name)}</b>${x.code ? `<small>${esc(x.code)}</small>` : ''}${x.why ? `<em>${esc(x.why)}</em>` : ''}</span></button>`).join('')}</div>
+      <div class="actions"><span class="muted">or any color:</span>${colorHtml('partColor', now || 'F2F1EC', 'Pick any color', hex => partSet({ hex: hex.toUpperCase(), name: '#' + hex.toUpperCase(), id: '' }))}</div>
+      <div class="part-picked" id="partPicked"></div>
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-part-reset="1">Put It Back</button><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`, peekFor(id));
+    showPartPicked();
+  }
+  // what's on the part now: a brand color can go on the project, or be opened on its own
+  function showPartPicked() {
+    const el = $('#partPicked'); if (!el || !partPick) return;
+    const cur = (state.parts[partPick.key] || {})[partPick.group], c = cur && cur.id ? E.findColor(cur.id) : null;
+    if (!c) { el.innerHTML = ''; return; }
+    const on = session.items.some(x => x.ref === c.id);
+    el.innerHTML = `<span>On the ${esc(PARTS[partPick.group].label.toLowerCase())}: <b>${esc(c.name)}</b> ${esc(E.codeLabel(c))}</span><span class="grow"></span><button type="button" class="btn small" data-part-add="1">${on ? 'On Your Project' : 'Add to Project'}</button><button type="button" class="btn small ghost" data-go="color/${encodeURIComponent(c.id)}">See This Color</button>`;
+  }
+  // a change shows on every picture of the same color, rolled on like paint
+  function refreshParts(key) {
+    for (const k of Object.keys(live)) {
+      const L = live[k]; if (partKey(L.spec) !== key) continue;
+      const sceneId = state.sceneFor[L.spec.key];
+      if (L.viewer && L.viewer.setLook) L.viewer.setLook({ roles: rolesFor(L.spec, sceneId), tex: L.spec.tex || null }); else drawScene(k);
+    }
+  }
+  function partSet(choice) {
+    if (!partPick) return;
+    state.parts[partPick.key] = Object.assign({}, state.parts[partPick.key], { [partPick.group]: choice });
+    refreshParts(partPick.key);
+    $$('#modal [data-part-i]').forEach(b => b.setAttribute('aria-pressed', String(partPick.choices[+b.dataset.partI].hex.toUpperCase() === choice.hex.toUpperCase())));
+    if (COLORS.partColor) { COLORS.partColor.hex = choice.hex; const pk = $('#partColor'); if (pk) { $('.sw', pk).style.background = '#' + choice.hex; $('.mono', pk).textContent = '#' + choice.hex; } }
+    showPartPicked();
+  }
+  document.addEventListener('click', e => {
+    const t = e.target.closest('#modal button'); if (!t || !partPick) return;
+    if (t.dataset.partI != null) { const x = partPick.choices[+t.dataset.partI]; if (x) partSet({ hex: x.hex.toUpperCase(), name: x.name, id: x.id }); }
+    if (t.dataset.partAdd) {
+      const cur = (state.parts[partPick.key] || {})[partPick.group], c = cur && cur.id ? E.findColor(cur.id) : null;
+      if (c && !session.items.some(x => x.ref === c.id)) { addToList(Object.assign(paintItem(c), { area: PARTS[partPick.group].label })); showPartPicked(); }
+    }
+    if (t.dataset.partReset) {
+      const own = state.parts[partPick.key]; if (own) delete own[partPick.group];
+      refreshParts(partPick.key); partPick = null; closeModal(); toast('Put back');
+    }
+  });
+  function onScenePick(id, what) {
+    tapTried();
+    if (what.stained) { toast('That shows the stain you’re looking at. Tap anything else to change its color.'); return; }
+    if (what.part) { openFurniture(what, id); return; }
+    const group = PART_OF_ROLE[what.role];
+    if (group) { openPart(id, group); return; }
+    toast(NOT_PAINTED[what.role] || 'Tap the walls, trim, doors or furniture to change their color.');
+  }
+  // the first time: a note in the middle of the picture, until something is tapped (on a kiosk, for each shopper)
+  let tapDone = !isKiosk() && !!store.get('tapTried', false);
+  function tapTried() { if (tapDone) return; tapDone = true; if (!isKiosk()) store.set('tapTried', true); $$('.tap-coach').forEach(x => { x.classList.add('gone'); setTimeout(() => x.remove(), 400); }); }
+  const tapIcon = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 013 0V11"/><path d="M12 10V8.5a1.5 1.5 0 013 0V11"/><path d="M15 10.5a1.5 1.5 0 013 0V15a6 6 0 01-6 6h-.6a6 6 0 01-4.7-2.3L4.4 16a1.5 1.5 0 012.3-1.9L9 16"/><path d="M5.3 6.5a5 5 0 016.7-3.6" opacity=".55"/></svg>';
+  function showTapCoach(box) {
+    if (tapDone || !box || $('.tap-coach', box)) return;
+    const s = document.createElement('span'); s.className = 'tap-coach'; s.setAttribute('aria-hidden', 'true');
+    s.innerHTML = `${tapIcon}Tap any part to change its color`;
+    box.appendChild(s);
   }
   // every change shows right away on the room behind
   function furnSet(change) {
@@ -1576,7 +1745,7 @@
   function paintSceneSpec(c, answers, fromResults) {
     const pairs = E.pairings(c, { collections: settings.collections });
     const ids = answers ? paintScenes(answers.space) : ['living', 'bedroom', 'kitchen', 'bath', 'dining', 'office', 'entry', 'house', 'colonial'];
-    return { key: answers ? 'paint:' + answers.space : 'paint:any', ids, answers: answers || null, label: c.name, roles: sid => paintRoles(sid, c, answers, pairs), stain: false };
+    return { key: answers ? 'paint:' + answers.space : 'paint:any', ids, answers: answers || null, label: c.name, color: c, roles: sid => paintRoles(sid, c, answers, pairs), stain: false };
   }
   function stainSceneSpec(R, r) {
     const a = R.answers;
@@ -2880,6 +3049,9 @@
     const swap = !el.hidden && !wasClosing; // already open: change what's in it without playing the pop-in again
     if (!swap && !wasClosing) modalFocus = document.activeElement;
     el.innerHTML = `<div class="modal-card${opts && opts.wide ? ' wide' : ''}${swap ? ' swap' : ''}" role="document"><div class="modal-head"><h2 id="modalTitle">${esc(title)}</h2><button type="button" class="icon-btn" data-modal-close="1" aria-label="Close">${xIcon}</button></div><div class="modal-body">${body}</div></div>`;
+    // peek: a panel low on the screen (or at one side) with no dimming, so the picture it changes stays in view
+    // and can still be tapped
+    el.classList.toggle('peek', !!(opts && opts.peek)); el.classList.toggle('peek-left', !!(opts && opts.peek && opts.left));
     el.hidden = false;
     $('[data-modal-close]', el).focus({ preventScroll: true });
   }
@@ -3385,10 +3557,11 @@
     clearInterval(kioskTick);
     closeModal(); closePresent(); closeCamera();
     session = blankSession(); saveSession(); updateListBtn();
-    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null }; state.query = ''; state.duelPick = ''; state.unlocked = false; state.layout = null; state.furniture = {};
+    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null }; state.query = ''; state.duelPick = ''; state.unlocked = false; state.layout = null; state.furniture = {}; state.parts = {};
     go('', { replace: true });
     window.scrollTo(0, 0);
     kioskArm();
+    tapDone = false;   // the next shopper sees the tap note too
     // a fresh start is when a waiting update goes in
     if (updateReady) openUpdateGate();
   }
