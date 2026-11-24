@@ -5,7 +5,7 @@
 // Row format in every color file: [code, name, hex, lrv, flags, extra]
 //   flags bit 1 = interior, 2 = exterior (neither set = brand didn't say),
 //         4 = discontinued, 8 = LRV calculated from the color (brand didn't publish one),
-//         16 = popular / best seller, 32 = on the in-store chip display
+//         16 = (unused; was "popular"), 32 = on the in-store chip display
 //   extra = strip locator or collection, when the brand gives one
 
 import fs from 'fs';
@@ -45,19 +45,7 @@ function lrvFromHex(hex) {
 }
 function num(v) { const n = parseFloat(v); return Number.isFinite(n) ? Math.round(n * 10) / 10 : null; }
 
-// Names the store sees as staples. Matched by exact color name within the brand.
-const POPULAR_NAMES = {
-  sw: ['Alabaster', 'Pure White', 'Extra White', 'Agreeable Gray', 'Repose Gray', 'Accessible Beige', 'Sea Salt', 'Naval',
-    'Tricorn Black', 'Iron Ore', 'Creamy', 'Snowbound', 'Worldly Gray', 'Mindful Gray', 'Dorian Gray', 'High Reflective White',
-    'Drift of Mist', 'Urbane Bronze', 'Oyster Bay', 'Evergreen Fog', 'Greek Villa', 'Colonnade Gray', 'Amazing Gray',
-    'Aesthetic White', 'Balanced Beige', 'Mega Greige', 'Gauntlet Gray', 'Dover White', 'Shoji White', 'Westhighland White',
-    'Clary Sage', 'Rosemary', 'Pewter Green', 'Peppercorn', 'Origami White', 'Silver Strand', 'Natural Linen', 'Kilim Beige',
-    'Edgy Gold', 'Nebulous White', 'Upward', 'Redend Point', 'Cyberspace', 'Indigo Batik', 'Uncertain Gray', 'Passive', 'Popular Gray'],
-  behr: ['Swiss Coffee', 'Polar Bear', 'Ultra Pure White', 'Silver Drop', 'Blank Canvas', 'Cracked Pepper', 'Light French Gray',
-    'Whisper White', 'Cameo White', 'Bit of Sugar', 'Smoky White', 'Natural Gray', 'Wheat Bread', 'Sculptor Clay', 'Watery',
-    'Graphic Charcoal', 'Dragon Fruit', 'Breezeway', 'Wet Cement', 'Silky White', 'Campfire Ash', 'Shoji White', 'Evening Hush'],
-  valspar: ['Bistro White', 'Woodlawn Snow', 'Filtered Shade', 'Rocky Ridge', 'Comfortable Gray', 'Frosty White', 'Mountain Smoke'],
-};
+// (No list of popular names here: the app works out which colors are popular itself, in js/engine.js.)
 
 const brands = [];
 const report = [];
@@ -74,8 +62,6 @@ function emit(meta, rows) {
     if (r[3] == null) { r[3] = lrvFromHex(r[2]); r[4] |= F.LRV_EST; }
     out.push(r);
   }
-  const pop = new Set((POPULAR_NAMES[meta.id] || []).map(s => s.toLowerCase()));
-  if (pop.size) for (const r of out) if (pop.has(r[1].toLowerCase())) r[4] |= F.POPULAR;
   out.sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'en', { numeric: true }));
   const active = out.filter(r => !(r[4] & F.DISC)).length;
   const lrvOfficial = out.filter(r => !(r[4] & F.LRV_EST)).length;
@@ -134,7 +120,6 @@ if (exists('bm/bm_all.json')) {
     if (ext === 'available') f |= F.INT | F.EXT;
     else if (ext === 'unavailable' || ext === 'not recommended') f |= F.INT;
     else if (ext.includes('exterior only')) f |= F.EXT;
-    if (c.is_best_selling) f |= F.POPULAR;
     return [c.number, decode(c.name), normHex(c.hex), num(c.lrv), f, collOf.get(c.number) || (Array.isArray(c.collections) ? c.collections[0] || '' : '')];
   });
   emit({ id: 'bm', name: 'Benjamin Moore', prefix: '', region: 'US / Canada', group: 'us', source: 'benjaminmoore.com color collections', date: today, lrv: 'official', mixNote: 'Order by color number.' }, rows);
@@ -221,7 +206,6 @@ if (exists('ace/ace-paint-colors.json')) {
   const of = brand => j.colors.filter(c => c.brand === brand).map(c => {
     const cols = c.collections || [];
     let f = 0;
-    if (cols.includes('Popular with Contractors')) f |= F.POPULAR;
     // the file's LRV is calculated from the color, not measured, so leave it to be marked as calculated
     return [String(c.code).trim(), decode(c.name), normHex(c.hex), null, f, cols.find(x => !/hues$/i.test(x)) || cols[0] || ''];
   });

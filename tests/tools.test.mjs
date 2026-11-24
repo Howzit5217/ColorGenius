@@ -84,6 +84,35 @@ test('how much paint: a medium room takes about 2 to 3 gallons for two coats', (
   assert.ok(dk.gallons > 1.5 && dk.gallons < 4, dk.gallons);
 });
 
+test('room calculator: the numbers work out by hand', () => {
+  const walls = { kind: 'paint', space: 'living', texture: 'smooth' };
+  // 14 x 12 ft, 8 ft high: 2 x (14 + 12) x 8 = 416 sq ft, less a door (20) and two windows (2 x 15) = 366
+  const a = T.amount(walls, { l: 14, w: 12, h: 8, doors: 1, windows: 2 }, 2);
+  assert.equal(a.area, 366);
+  assert.equal(a.coverage, 350);
+  // two coats: 732 / 350 = 2.09 gallons, bought as 2 gallons and a quart (2.25)
+  assert.equal(a.gallons, 2.09);
+  assert.equal(a.buy, '2 gallons + 1 quart');
+  // one coat of the same is 1.05 gallons: 1 gallon + 1 quart
+  assert.equal(T.amount(walls, { l: 14, w: 12, h: 8, doors: 1, windows: 2 }, 1).buy, '1 gallon + 1 quart');
+  // decimals count: 12.5 x 10 ft, 8.5 ft high, no openings = 2 x 22.5 x 8.5 = 382.5 sq ft
+  assert.equal(T.amount(walls, { l: 12.5, w: 10, h: 8.5, doors: 0, windows: 0 }, 2).area, 383);
+  // rough walls cover less (250 sq ft a gallon), so they take more
+  const rough = T.amount({ kind: 'paint', space: 'living', texture: 'rough' }, { l: 14, w: 12, h: 8, doors: 1, windows: 2 }, 2);
+  assert.equal(rough.coverage, 250);
+  assert.equal(rough.gallons, Math.round(366 * 2 / 250 * 100) / 100);
+  // 2.25 gallons is 2 gallons and a quart, even when the math comes out a hair over (366 x 2 / 325 = 2.2523)
+  assert.equal(T.amount({ kind: 'paint', space: 'living', texture: 'light' }, { l: 14, w: 12, h: 8, doors: 1, windows: 2 }, 2).buy, '2 gallons + 1 quart');
+  assert.equal(T.cartText(T.containers(2.26)), '2 gallons + 1 quart');
+  assert.equal(T.cartText(T.containers(2.3)), '2 gallons + 2 quarts');
+  // a room full of windows never goes below zero
+  assert.equal(T.amount(walls, { l: 6, w: 6, h: 8, doors: 4, windows: 20 }, 2).area, 0);
+  // the ceiling is the floor area: 14 x 12 = 168
+  assert.equal(T.amount({ kind: 'paint', space: 'ceiling' }, { l: 14, w: 12, h: 8, doors: 1, windows: 2 }, 2).area, 168);
+  // a primer coat gets its own line: 366 sq ft at 300 a gallon = 1.22 gallons, a gallon and a quart
+  assert.equal(T.amount(Object.assign({ primer: true }, walls), { l: 14, w: 12, h: 8, doors: 1, windows: 2 }, 2).primer, '1 gallon + 1 quart');
+});
+
 test('which paint to buy: the plan fits the job', () => {
   const ctx = { brands: US };
   const bath = T.paintPlan({ space: 'bathroom', size: 'small' }, ctx);

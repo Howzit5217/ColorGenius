@@ -59,7 +59,7 @@ The answer is a shopping list:
 - **The primer,** if one is needed, with products to try and how many coats to plan on.
 - **The roller and brush:** nap length, roller width and cover, brush shape, size and bristle, with a picture of the roller cover at its real nap. Naps follow the paint brands' own guides: about 3/8 inch for most smooth walls, 1/2 inch for light texture, 3/4 inch for rough ceilings, 1 to 1¼ inch for brick and stucco, and short foam or microfiber covers for cabinets and doors. Water-based products get synthetic brushes, oil-based ones natural bristle.
 - **What else to grab,** as a checklist (tape, drop cloths, caulk, sanding sponges, cleaners, conditioner, topcoat and more).
-- **How much to buy,** worked out from the room's size (or type in the length, width, height, doors and windows), the coats and the coverage: about 350 sq ft a gallon on smooth walls, less on rough ones; about 150 sq ft a quart of interior oil stain; about 200 sq ft a gallon for a first coat of deck stain. It's shown as quarts, gallons and 5-gallon buckets.
+- **How much to buy,** worked out from the room's size (or type in the length, width, height, doors and windows), the coats and the coverage: about 350 sq ft a gallon on smooth walls, less on rough ones; about 150 sq ft a quart of interior oil stain; about 200 sq ft a gallon for a first coat of deck stain. It's shown as quarts, gallons and 5-gallon buckets. Walls are 2 × (length + width) × height, less about 20 sq ft a door and 15 a window. Each number box has the app's own up and down arrows (hold to keep going), a size left empty is asked for instead of guessed, the line under the answer shows the area, coats, coverage and exact gallons so it can be checked, and a tenth of a quart over (about 3 oz) doesn't add another can.
 - **Safety notes,** like laying oily stain rags flat to dry.
 
 Every paint color's page has the same "What You'll Need" summary, with a button to open the full shopping list.
@@ -77,6 +77,8 @@ Every paint color's page has the same "What You'll Need" summary, with a button 
 ## Look Up a Color
 
 Type a color name, a code from a chip (`SW 7029`, `OC-17`, `behr swiss coffee`), a hex value (`#D1CBC1`, `D1CBC1`, `#DCB`) or an RGB value (`209 203 193`, `rgb(209, 203, 193)`), or pick a color to match. You get its exact hex, RGB and LRV (tap to copy), then the closest color in every brand, with brands that are turned off folded away underneath.
+
+**Popular colors** (shown before you type, and as a **Popular** tag on a color's page) aren't a typed-in list. They start from the kinds of colors that sell most (soft, light neutrals; deep, quiet classics like black, charcoal and navy; then muted mid-tones) and whether a chip is on the store display, then learn from what gets picked on that device: opening a color, adding it to a project, printing or emailing it. What's picked counts most, so a store's own favorites rise over time. It stays on the device, and Settings → Color Advice → Popular colors → Start Over clears it.
 
 ## Projects
 

@@ -176,6 +176,7 @@
     list: '<rect x="6" y="4" width="20" height="25" rx="3"/><path d="M11 11h10M11 16h10M11 21h6"/>',
     print: '<path d="M9 11V4h14v7M9 23H5a2 2 0 01-2-2v-8a2 2 0 012-2h22a2 2 0 012 2v8a2 2 0 01-2 2h-4M9 18h14v10H9z"/>',
     tape: '<circle cx="14" cy="16" r="10"/><circle cx="14" cy="16" r="4"/><path d="M24 16h5v6H14"/>',
+    basket: '<path d="M4.5 13h23"/><path d="M6.5 13l2.3 11.3A2.2 2.2 0 0011 26h10a2.2 2.2 0 002.2-1.7L25.5 13"/><path d="M11.5 13l4.5-7 4.5 7"/><path d="M12.5 17.5v4.5M16 17.5v4.5M19.5 17.5v4.5"/>',
     sparkle: '<path d="M14 4l2 7 7 2-7 2-2 7-2-7-7-2 7-2zM25 18l1 3.5 3.5 1-3.5 1-1 3.5-1-3.5-3.5-1 3.5-1z"/>',
     cube: '<path d="M16 3l12 6.5v13L16 29 4 22.5v-13z"/><path d="M4 9.5L16 16l12-6.5M16 16v13"/>',
   };
@@ -833,7 +834,8 @@
       title: a => T.sizeKind({ kind: 'paint', space: a.space }) === 'house' ? 'How big is the house?' : T.sizeKind({ kind: 'paint', space: a.space }) === 'kitchen' ? 'How many cabinets?' : T.sizeKind({ kind: 'paint', space: a.space }) === 'piece' ? 'How big is the piece?' : 'How big is the room?',
       sub: () => 'For how much to buy. You can type exact sizes on the next screen.', auto: true,
       html: a => { const kind = T.sizeKind({ kind: 'paint', space: a.space }); return `<div class="choices">${Object.entries(T.SIZES[kind]).map(([k, s], i) => choice(`data-v="${k}"`, a.amountSize === k, s.label, s.sub, ic(['sizeS', 'sizeM', 'sizeL'][i]))).join('')}</div>`; },
-      pick: (a, v) => { a.amountSize = v; },
+      // a new size answer replaces any measurements typed in before, so the numbers always match the answer
+      pick: (a, v) => { a.amountSize = v; a.sizeCustom = null; },
     },
   };
   // the question that needs an answer before Next works
@@ -1430,6 +1432,7 @@
     if (inStainResults || (!E.findColor(id) && S.find(id))) { renderStainColor(id); return; }
     const c = E.findColor(id);
     if (!c) { view().innerHTML = `<div class="page">${backBtn()}<div class="empty"><h1>Color not found</h1><p class="muted">It may be from a brand that’s turned off.</p><button type="button" class="btn primary big" data-go="lookup">Look Up a Color</button></div></div>`; return; }
+    notePick(c.id, 1);
     const R = state.results.paint;
     const res = R && R.results.concat(R.finalists || []).find(r => r.color.id === c.id);
     const answers = res ? R.answers : null;
@@ -1453,7 +1456,7 @@
         <div>${sceneBox('colorScene')}</div>
         <div class="id-card">
           <div class="id-top"><button type="button" class="id-sw" ${swStyle(c.hex)} data-fullscreen="${esc(c.id)}" aria-label="Show ${esc(c.name)} full screen"><span class="id-sw-hint" aria-hidden="true">${expandIcon(16)}</span></button><div><h1>${esc(c.name)}</h1><p class="meta">${esc(b.name || c.brand)} · <span class="mono">${esc(E.codeLabel(c))}</span></p></div></div>
-          <div class="badges">${c.flags & E.F.POPULAR ? '<span class="badge good">Best Seller</span>' : ''}<span class="badge">${esc(d.familyName)}</span><span class="badge">${esc(d.undertone === 'neutral' ? 'True neutral' : cap(d.undertone) + ' undertone')}</span>${c.flags & E.F.DISC ? '<span class="badge">Discontinued</span>' : ''}</div>
+          <div class="badges">${E.isPopular(c) ? '<span class="badge good">Popular</span>' : ''}<span class="badge">${esc(d.familyName)}</span><span class="badge">${esc(d.undertone === 'neutral' ? 'True neutral' : cap(d.undertone) + ' undertone')}</span>${c.flags & E.F.DISC ? '<span class="badge">Discontinued</span>' : ''}</div>
           ${settings.showLrv ? `<div class="lrv-box"><div class="lrv-top"><span>Light Reflectance (LRV)</span><span class="mono">${c.lrv} of 100</span></div><div class="lrv-bar"><i style="left:${Math.max(0, Math.min(100, c.lrv))}%"></i></div><p>${esc(lrvWords(c.lrv))}.</p></div>` : ''}
           <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-fullscreen="${esc(c.id)}">${expandIcon(20)}Full Screen</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
           ${sampleNote(c)}
@@ -1627,21 +1630,52 @@
           <div class="lines">${P.lines.length ? P.lines.map(l => `<div class="line-card"><div class="top"><b>${esc(lineLabel(l.brand, l.line))}</b><span class="tier t${l.line.tier}">${esc(E.TIERS[l.line.tier])}</span></div><span class="muted">${esc(l.why[0] ? l.why[0] + '. ' : '')}${esc(l.line.note)}</span>${l.tiers.length > 1 ? `<span class="small muted">Other ${esc(brandName(l.brand))} choices: ${l.tiers.filter(x => x.id !== l.line.id).map(x => `${esc(x.name)} (${esc(E.TIERS[x.tier])})`).join(', ')}</span>` : ''}</div>`).join('') : `<p class="muted">No paint lines are listed for the brands that are on. Any ${esc(P.type.toLowerCase())} made for this job works.</p>`}</div>
           <p class="muted small">Product lines change, so check the current label for the finish and coverage.</p></div>
         <div class="block"><h2><span class="ic">${ic('roller', 24)}</span>Roller &amp; Brush</h2>${P.tools.roller ? rollerArt(P.tools.roller.napId) : ''}<div class="need">${toolRows(P.tools)}</div>${P.tools.tips.map(t => `<div class="q-note">${ic('ok', 22)}<span>${esc(t)}</span></div>`).join('')}</div>
-        <div class="block wide"><h2><span class="ic">${ic('list', 24)}</span>How Much to Buy</h2><div class="calc" id="calc">${calcInputs(kind, a, P)}<div class="calc-out"><span class="can">${ic('can', 44)}</span><span><b id="calcBuy">${esc(P.amount.buy)}</b><span id="calcWhat">${esc(P.amount.what)}, ${P.coats} coats${P.amount.primer ? `, plus ${esc(P.amount.primer)} of primer` : ''}</span></span></div><p class="muted small">Coverage is about ${P.amount.coverage} sq ft per gallon for this job. Rough or porous surfaces soak up more.</p></div></div>
-        <div class="block"><h2><span class="ic">${ic('tape', 24)}</span>Also Grab</h2><p class="muted">Check things off as you go.</p>${checklistHtml(P.supplies)}</div>
+        <div class="block wide"><h2><span class="ic">${ic('list', 24)}</span>How Much to Buy</h2><div class="calc" id="calc">${calcInputs(kind, a, P)}<div class="calc-out"><span class="can">${ic('can', 44)}</span><span><b id="calcBuy">${esc(P.amount.buy)}</b><span id="calcWhat">${esc(amountLine(P.amount))}</span></span></div><p class="muted small">Coverage is about ${P.amount.coverage} sq ft per gallon for this job. Rough or porous surfaces soak up more.</p></div></div>
+        <div class="block"><h2><span class="ic">${ic('basket', 24)}</span>Also Grab</h2><p class="muted">Check things off as you go.</p>${checklistHtml(P.supplies)}</div>
         ${P.primer.tips.length || P.safety.length ? `<div class="block"><h2><span class="ic">${ic('ok', 24)}</span>Good to Know</h2><ul class="why">${P.primer.tips.concat(P.safety).map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
       </div>
     </div>`;
     wireCalc(kind, a, P);
   }
+  // A number box with the app's own up and down arrows inside it (the browser's tiny ones are hidden). Tap an arrow
+  // to go up or down by `step`; hold it to keep going. Typing works too, decimals included.
+  const arrowSvg = up => `<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="${up ? 'M5 12.5l5-5 5 5' : 'M5 7.5l5 5 5-5'}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  function numField(id, label, v, step) {
+    step = step || 1;
+    return `<label class="field">${esc(label)}<span class="num"><input class="input" type="number" inputmode="decimal" min="0" step="any" id="${id}" value="${esc(v)}">
+      <span class="num-arrows"><button type="button" class="num-btn up" data-num-for="${id}" data-num-step="${step}" tabindex="-1" aria-label="${esc(label)}: up ${step}">${arrowSvg(true)}</button><button type="button" class="num-btn down" data-num-for="${id}" data-num-step="${-step}" tabindex="-1" aria-label="${esc(label)}: down ${step}">${arrowSvg(false)}</button></span></span></label>`;
+  }
+  function nudgeNum(btn) {
+    const inp = document.getElementById(btn.dataset.numFor); if (!inp) return;
+    const step = +btn.dataset.numStep, min = inp.min !== '' ? +inp.min : -Infinity;
+    const v = Math.max(min, Math.round(((parseFloat(inp.value) || 0) + step) * 100) / 100);
+    inp.value = String(v);
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  let numHold = 0;
+  const stopHold = () => { clearTimeout(numHold); clearInterval(numHold); numHold = 0; };
+  document.addEventListener('pointerdown', e => {
+    const b = e.target.closest('[data-num-step]'); if (!b || e.button > 0) return;
+    e.preventDefault();
+    nudgeNum(b);
+    stopHold(); numHold = setTimeout(() => { numHold = setInterval(() => nudgeNum(b), 90); }, 420);
+    b.addEventListener('pointerleave', stopHold, { once: true });
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => document.addEventListener(ev, stopHold, true));
+  window.addEventListener('blur', stopHold);
+  // the line under "what to buy": the area, the coats, and the actual gallons, so the numbers can be checked
+  function amountLine(amt) {
+    const g = Math.round(amt.gallons * 100) / 100;
+    return `${amt.what}. ${amt.coats} coat${amt.coats > 1 ? 's' : ''} at about ${amt.coverage} sq ft a gallon is ${g} gallon${g === 1 ? '' : 's'}${amt.primer ? `, plus ${amt.primer} of primer` : ''}.`;
+  }
   function calcInputs(kind, a, P) {
     const s = a.sizeCustom || {};
     const base = (T.SIZES[kind] || {})[a.amountSize || 'medium'] || {};
-    const f = (id, label, v, step) => `<label class="field">${esc(label)}<input class="input" type="number" inputmode="decimal" min="0" step="${step || 1}" id="${id}" value="${esc(v)}"></label>`;
+    const f = (id, label, v, step) => numField(id, label, v, step);
     let h = '';
     if (kind === 'room') h = f('cL', 'Length (ft)', s.l || base.l) + f('cW', 'Width (ft)', s.w || base.w) + f('cH', 'Height (ft)', s.h || base.h) + f('cD', 'Doors', s.doors != null ? s.doors : base.doors) + f('cWi', 'Windows', s.windows != null ? s.windows : base.windows);
-    else if (kind === 'fence') h = f('cLen', 'Fence length (ft)', s.len || base.len) + f('cFh', 'Height (ft)', s.h || 6);
-    else h = f('cA', 'Square feet', s.area || base.area);
+    else if (kind === 'fence') h = f('cLen', 'Fence length (ft)', s.len || base.len, 5) + f('cFh', 'Height (ft)', s.h || 6);
+    else h = f('cA', 'Square feet', s.area || base.area, 10);
     return `<div class="calc-in">${h}</div><div class="q-group"><p class="q-label">Coats</p><div class="seg" role="group" aria-label="Coats">${[1, 2, 3].map(n => `<button type="button" data-coats="${n}" aria-pressed="${(a.coats || P.coats) === n}">${n} coat${n > 1 ? 's' : ''}</button>`).join('')}</div></div>`;
   }
   function wireCalc(kind, a, P) {
@@ -1649,12 +1683,19 @@
     const num = id => { const i = $('#' + id); return i ? Math.max(0, parseFloat(i.value) || 0) : undefined; };
     const update = () => {
       const size = kind === 'room' ? { l: num('cL'), w: num('cW'), h: num('cH'), doors: num('cD'), windows: num('cWi') } : kind === 'fence' ? { len: num('cLen'), h: num('cFh'), sides: 2 } : { area: num('cA') };
+      // a size left empty (or 0) gets asked for, rather than quietly filled in with a guess
+      const missing = kind === 'room' ? !(size.l && size.w && size.h) : kind === 'fence' ? !(size.len && size.h) : !size.area;
+      if (missing) {
+        $('#calcBuy').textContent = 'Fill in the size';
+        $('#calcWhat').textContent = kind === 'room' ? 'Type the room’s length, width and height to see how much paint it takes.' : 'Type the size to see how much it takes.';
+        return;
+      }
       a.sizeCustom = size;
       const job = { kind: 'paint', space: a.space, texture: a.texture, siding: a.siding, surface: a.surface, primer: !!P.primer.need };
       const amt = T.amount(job, size, a.coats || P.coats);
       P.amount = amt;
       $('#calcBuy').textContent = amt.buy; $('#planBuy').textContent = amt.buy;
-      $('#calcWhat').textContent = `${amt.what}, ${amt.coats} coat${amt.coats > 1 ? 's' : ''}${amt.primer ? `, plus ${amt.primer} of primer` : ''}`;
+      $('#calcWhat').textContent = amountLine(amt);
       $('#planWhat').textContent = `${amt.what}, ${amt.coats} coats.`;
     };
     el.addEventListener('input', update);
@@ -1711,8 +1752,9 @@
     const q = state.query.trim();
     const opts = { brands: brandsEnabled(), showDiscontinued: settings.showDiscontinued, limit: 60 };
     if (!q) {
-      const popular = E.getIndex().colors.filter(c => opts.brands[c.brand] && (c.flags & E.F.POPULAR) && !(c.flags & E.F.DISC)).sort((x, y) => y.lrv - x.lrv);
-      host.innerHTML = `<h2>Best Sellers</h2><div class="rows">${popular.slice(0, 30).map(c => colorRow(c)).join('')}</div>`;
+      // worked out from what sells and what's been picked on this device, not a fixed list
+      const popular = E.popularList({ brands: opts.brands, collections: settings.collections, limit: 30 });
+      host.innerHTML = `<h2>Popular Colors</h2><p class="muted small">Picked from the kinds of colors that sell most, and from what's been chosen on this device.</p><div class="rows">${popular.map(c => colorRow(c)).join('')}</div>`;
       return;
     }
     const hex = E.parseColorValue(q);
@@ -1782,10 +1824,13 @@
     const best = E.closestByBrand(hex, { brands: brandsEnabled() })[0];
     return { kind: 'custom', ref: '#' + hex, area: '', brand: 'Exact Color', name: best ? `Closest: ${brandName(best.color.brand)} ${best.color.name}` : 'Exact color', code: best ? E.codeLabel(best.color) : '', hex, lrv: String(C.lrvFromHex(hex)), finish: '', product: '', primer: '', loc: '' };
   }
+  // what's picked here teaches the app which colors are popular. Kept on this device only.
+  function notePick(id, w) { if (!id || !E.findColor(id)) return; E.notePick(id, w); store.set('picks', E.getPicks()); }
   function addToList(item) {
     if (!item) return;
     session.items.push(Object.assign({ id: newId() }, item));
     saveSession(); updateListBtn(true);
+    notePick(item.ref, 3);
     toast(`Added ${item.kind === 'custom' ? '#' + item.hex : item.name} to ${sessionTitle()}`);
   }
   // the Add to Project buttons: tap again to take it back off
@@ -1918,6 +1963,7 @@
   document.addEventListener('click', async e => {
     const t = e.target.closest('button'); if (!t || !emailOf) return;
     if (t.dataset.mailOpen) {
+      emailOf.items.forEach(x => notePick(x.ref, 2));
       // keep only characters an address can have, so nothing typed can add extra mailto fields
       const to = ($('#mailTo').value || '').trim().replace(/[^\w.@+-]/g, '');
       const body = mailBody(emailOf);
@@ -1959,6 +2005,7 @@
     return lines.join('\n');
   }
   function printSheet(s) {
+    s.items.forEach(x => notePick(x.ref, 2));
     const sh = sheetOf(s);
     $('#printArea').innerHTML = sh.html;
     const page = document.createElement('style'); page.id = 'printPage';
@@ -2098,7 +2145,7 @@
   const segRow = (key, label, sub, map, value) => `<div class="set-row"><div class="set-text"><b>${esc(label)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</div><div class="seg" role="group" aria-label="${esc(label)}">${Object.entries(map).map(([k, v]) => `<button type="button" data-seg="${key}" data-val="${k}" aria-pressed="${String(value) === k}">${esc(v)}</button>`).join('')}</div></div>`;
   function brandDots(id) {
     const all = E.getIndex().byBrand[id] || [];
-    const pop = all.filter(c => c.flags & E.F.POPULAR);
+    const pop = all.filter(c => E.isPopular(c)).sort((x, y) => E.popularity(y) - E.popularity(x));
     const list = (pop.length >= 4 ? pop : all.filter((_, i, arr) => i % Math.max(1, Math.floor(arr.length / 4)) === 0)).slice(0, 4);
     return `<span class="dots">${list.map(c => `<i style="background:#${c.hex}"></i>`).join('')}</span>`;
   }
@@ -2137,6 +2184,7 @@
         ${sw('showMatches', settings.showMatches, 'Show matches in other brands')}
         ${sw('inStoreSamples', settings.inStoreSamples, 'Show where chips are in the store')}
         ${sw('showDiscontinued', settings.showDiscontinued, 'Include discontinued colors', 'Older colors many stores can still mix')}
+        ${(n => `<div class="set-row"><div class="set-text"><b>Popular colors</b><span>${n ? `Learning from ${fmt(n)} color${n === 1 ? '' : 's'} picked on this device, along with the kinds of colors that sell most. Nothing leaves the device.` : 'Worked out from the kinds of colors that sell most, then learned from what gets picked on this device.'}</span></div>${n ? '<button type="button" class="btn small ghost" data-act="reset-picks">Start Over</button>' : ''}</div>`)(Object.keys(E.getPicks()).length)}
       </div></div>
       <div class="set-group"><h2>Screen Color</h2><div class="set-card">
         <div class="set-note" style="border-top:0">Screens show colors differently. Matching this screen to white paper and a real chip makes every color truer.</div>
@@ -2223,6 +2271,7 @@
     if (act === 'install') startInstall();
     if (act === 'run-setup') openOnboarding();
     if (act === 'clear-custom') { const custom = store.get('custom', {}); store.set('custom', {}); for (const name of Object.keys(custom)) removeBrand(customMeta(name).id); afterSettingsChange('brands'); renderKeep(); toast('Imported colors removed'); }
+    if (act === 'reset-picks') { E.setPicks({}); store.set('picks', {}); renderKeep(); toast('Popular colors will learn again from here'); }
     if (act === 'reset-all') {
       if (t.dataset.confirm) { settings = clone(DEFAULT_SETTINGS); saveSettings(); applyTheme(); applyAudience(); afterSettingsChange('all'); toast('Settings reset'); openOnboarding(); }
       else { t.dataset.confirm = '1'; t.textContent = 'Tap Again to Reset Everything'; t.classList.add('armed'); setTimeout(() => { if (document.contains(t)) { delete t.dataset.confirm; t.textContent = 'Reset All Settings'; t.classList.remove('armed'); } }, 3500); }
@@ -2639,6 +2688,7 @@
     S.init(window.CG_STAINS);
     const custom = store.get('custom', {});
     for (const name of Object.keys(custom)) E.addBrand(customMeta(name), custom[name]);
+    E.setPicks(store.get('picks', {}));
     // Saved Colors from older versions are kept as an earlier project, so nothing is lost
     const oldSaved = store.get('shortlist', null);
     if (Array.isArray(oldSaved) && oldSaved.length) {

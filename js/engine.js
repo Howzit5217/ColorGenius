@@ -446,6 +446,7 @@
       }
     }
     INDEX = { colors, byBrand, brands, brandById: Object.fromEntries(brands.map(b => [b.id, b])) };
+    POP = null; POP_TOP = null;
     return INDEX;
   }
   function addBrand(meta, rows) {
@@ -460,10 +461,93 @@
     }
     INDEX.colors = INDEX.colors.filter(c => c.brand !== meta.id).concat(list);
     INDEX.byBrand[meta.id] = list;
+    POP = null; POP_TOP = null;
     return list.length;
   }
   const getIndex = () => INDEX;
   const findColor = id => INDEX.colors.find(c => c.id === id) || null;
+
+  // ---------------- popular colors ----------------
+  // Nothing here is a hand-typed list of names. "Popular" is worked out from:
+  //  - what people actually pick in this app on this device (opening a color, adding it to a project, printing
+  //    it). That counts most, so a store's own favorites rise as it's used. The picks stay on the device.
+  //  - the kinds of color that sell most: soft, light neutrals for walls and trim; deep, quiet classics (black,
+  //    charcoal, navy, deep green) for doors and cabinets; then muted mid-tones like sage and greige,
+  //  - and whether its chip is on the store's display.
+  let POP = null, PICKS = {}, POP_TOP = null;
+  const popBrand = c => { const b = INDEX.brandById[c.brand]; return b && b.group !== 'standard' && b.group !== 'custom'; };
+  // 0 to 1: how much a color is like the ones that sell most. The quieter it is the better; light ones for walls and
+  // trim, very deep ones (which can carry a little more color, like navy) for doors and cabinets, then mid-tones.
+  // Tints leaning pink or purple sell less than warm, gray or blue-green ones.
+  function sellsLike(c) {
+    const L = c.lrv, Cc = c.C, h = c.h;
+    const quiet = k => Math.exp(-(Cc / k) * (Cc / k));
+    const light = L >= 50 ? (L >= 58 && L <= 92 ? 1 : 1 - Math.min(1, (L < 58 ? 58 - L : L - 92) / 10)) * quiet(12) : 0;
+    const deep = L < 10 ? 0.65 * quiet(20) : 0;
+    const mid = L >= 20 && L < 58 ? 0.5 * quiet(14) : 0;
+    const tint = Cc <= 3 ? 1 : (h > 285 || h < 30) ? 0.45 : (h > 200 && h <= 285) ? 0.75 : 1;
+    return Math.max(light, deep, mid) * tint;
+  }
+  function popBase() {
+    if (POP) return POP;
+    POP = new Map();
+    for (const c of INDEX.colors) if (!(c.flags & F.DISC) && popBrand(c)) POP.set(c.id, 0.8 * sellsLike(c) + 0.2 * (c.flags & F.RACK ? 1 : 0));
+    return POP;
+  }
+  // pick the top of a list, but varied: not too many of one color family or one brand, and no near-identical pairs
+  function varied(sorted, n, famShare, brandCap) {
+    const out = [], fams = {}, brands = {};
+    const famCap = f => Math.max(2, Math.ceil(n * (famShare[f] || famShare._)));
+    for (const c of sorted) {
+      if (out.length >= n) break;
+      if ((fams[c.fam] || 0) >= famCap(c.fam) || (brands[c.brand] || 0) >= brandCap) continue;
+      if (out.some(o => C.deltaE2000(o.lab, c.lab) < 3)) continue;
+      out.push(c); fams[c.fam] = (fams[c.fam] || 0) + 1; brands[c.brand] = (brands[c.brand] || 0) + 1;
+    }
+    return out;
+  }
+  const FAM_SHARE = { white: 0.3, gray: 0.22, beige: 0.22, _: 0.12 };
+  // 0 to 1: how popular a color looks from all of that
+  function popularity(c) {
+    if (!c) return 0;
+    const base = popBase().get(c.id); if (base == null) return 0;
+    // what's been picked here outweighs the starting guess, so a color people keep choosing becomes popular
+    const w = PICKS[c.id] || 0;
+    return 0.45 * base + 0.55 * Math.min(1, Math.log1p(w) / Math.log1p(25));
+  }
+  // the top few in each brand (2%, at least 6, at most 36), varied, get called popular
+  function isPopular(c) {
+    if (!c) return false;
+    if (!POP_TOP) {
+      POP_TOP = new Set();
+      for (const b of INDEX.brands) {
+        const list = (INDEX.byBrand[b.id] || []).filter(x => popBase().has(x.id));
+        const k = Math.max(6, Math.min(36, Math.round(list.length * 0.02)));
+        const sorted = list.map(x => [x, popularity(x)]).sort((p, q) => q[1] - p[1]).slice(0, k * 12).map(p => p[0]);
+        varied(sorted, k, FAM_SHARE, k).forEach(x => POP_TOP.add(x.id));
+      }
+    }
+    return POP_TOP.has(c.id);
+  }
+  // the most popular colors across the brands asked for, varied so it isn't thirty near-identical whites
+  function popularList(opts) {
+    opts = opts || {};
+    const n = opts.limit || 30;
+    const sorted = INDEX.colors.filter(c => popBase().has(c.id) && (!opts.brands || opts.brands[c.brand] !== false) && collectionOn(c, opts.collections) && isPopular(c))
+      .map(c => [c, popularity(c)]).sort((p, q) => q[1] - p[1]).map(p => p[0]);
+    return varied(sorted, n, FAM_SHARE, Math.ceil(n / 6));
+  }
+  // what's been picked on this device: weights by color id (an open counts 1, adding to a project 3, printing 2)
+  function setPicks(map) { PICKS = map && typeof map === 'object' ? Object.assign({}, map) : {}; POP_TOP = null; }
+  function notePick(id, w) {
+    if (!id || !popBase().has(id)) return PICKS;
+    PICKS[id] = Math.min(9999, (PICKS[id] || 0) + (w || 1));
+    const ids = Object.keys(PICKS);
+    if (ids.length > 3000) { ids.sort((x, y) => PICKS[x] - PICKS[y]).slice(0, ids.length - 3000).forEach(k => delete PICKS[k]); }
+    POP_TOP = null;
+    return PICKS;
+  }
+  const getPicks = () => PICKS;
 
   function codeLabel(c) {
     const b = INDEX.brandById[c.brand] || {};
@@ -1044,7 +1128,7 @@
     else if (c.C > 35) pros.push('Makes a clear color statement');
     if (lowLight(a) && c.temp === 'warm' && c.neutral) pros.push('Warm undertone holds up in cool or dim light');
     if (brightWarmLight(a) && (c.temp === 'cool' || c.ut === 'neutral')) pros.push('Won’t turn yellow in strong sun');
-    if (c.flags & F.POPULAR) pros.push('Proven best seller');
+    if (isPopular(c)) pros.push('A popular choice');
     if (s.inStoreSamples && (c.flags & F.RACK)) pros.push('Chip is on the store display');
     if ((c.flags & F.INT) && (c.flags & F.EXT)) pros.push('Available for inside and outside');
     if (!ext && c.lrv < 40 && busy) pros.push('Hides everyday dirt better than light colors');
@@ -1095,7 +1179,7 @@
     const lf = lightFit(c, a);
     const fx = (a.fixed && a.fixed.length) || (a.customFixed && a.customFixed.length) ? fixedEffects(c, a) : null;
     let score = 0.40 * fam + 0.27 * d + 0.13 * ch + 0.15 * lf.score + (fx ? fx.score : 0);
-    if (c.flags & F.POPULAR) score += (sp.surface === 'ceiling' || sp.surface === 'trim' || !(a.styles || []).length) ? 0.07 : 0.05;
+    if (isPopular(c)) score += (sp.surface === 'ceiling' || sp.surface === 'trim' || !(a.styles || []).length) ? 0.07 : 0.05;
     // "crisp" or "soft, warm" white was asked for: make that the deciding factor among whites
     if (a.prefTemp === 'cool') score += c.temp === 'warm' ? -0.18 : 0.04;
     if (a.prefTemp === 'warm') score += c.temp === 'warm' ? 0.06 : c.temp === 'cool' ? -0.18 : -0.04;
@@ -1121,7 +1205,7 @@
     if (fb && fb[1] >= 0.6) R.push(`One of the ${FAMILY_CHOICES[fb[0]].toLowerCase()} you picked`);
     if (parts.depth > 0.75) R.push(`LRV ${c.lrv}: ${C.depthLabel(c.lrv).toLowerCase()}, right for ${a.depth === 'any' ? 'this space' : DEPTHS[a.depth].toLowerCase()}`);
     for (const r of parts.lightReasons) if (R.length < 4) R.push(r);
-    if (c.flags & F.POPULAR) R.push(`A ${b.name || 'brand'} best seller`);
+    if (isPopular(c)) R.push(`One of ${b.name || 'the brand'}’s popular colors`);
     return R.slice(0, 4);
   }
 
@@ -1267,7 +1351,7 @@
     const whites = (INDEX.byBrand[color.brand] || []).filter(c => ok(c) && isWhiteish(c) && c.lrv >= 80 && !(c.flags & F.DISC) && c.id !== color.id);
     if (whites.length) {
       const wantWarm = color.temp === 'warm';
-      const scoreW = w => (wantWarm ? (w.temp === 'cool' ? 6 : 0) + Math.abs(w.C - 4) : (w.temp === 'warm' && w.C > 4 ? 6 : 0) + w.C) - (w.flags & F.POPULAR ? 2.5 : 0) + Math.abs(w.lrv - 86) * 0.15;
+      const scoreW = w => (wantWarm ? (w.temp === 'cool' ? 6 : 0) + Math.abs(w.C - 4) : (w.temp === 'warm' && w.C > 4 ? 6 : 0) + w.C) - (isPopular(w) ? 2.5 : 0) + Math.abs(w.lrv - 86) * 0.15;
       const w = whites.slice().sort((x, y) => scoreW(x) - scoreW(y))[0];
       out.push({ role: 'Trim & ceiling', color: w });
     }
@@ -1297,7 +1381,7 @@
     for (const k of Object.keys(hints).sort((x, y) => y.length - x.length)) {
       if (nq === k || nq.startsWith(k + ' ')) { brandHint = hints[k]; nq = nq.slice(k.length).trim(); break; }
     }
-    if (!nq && brandHint) return pool.filter(c => c.brand === brandHint && (c.flags & F.POPULAR)).slice(0, opts.limit || 40).map(c => ({ color: c }));
+    if (!nq && brandHint) return pool.filter(c => c.brand === brandHint && isPopular(c)).sort((x, y) => popularity(y) - popularity(x)).slice(0, opts.limit || 40).map(c => ({ color: c }));
     const qCode = nq.replace(/\s+/g, '');
     const scoredList = [];
     for (const c of pool) {
@@ -1311,7 +1395,7 @@
       else if (name.startsWith(nq)) s = 60;
       else if (nq.length >= 3 && (' ' + name).includes(' ' + nq)) s = 45;
       else if (nq.length >= 3 && name.includes(nq)) s = 30;
-      if (s) { if (c.flags & F.POPULAR) s += 3; scoredList.push({ c, s }); }
+      if (s) { if (isPopular(c)) s += 3; scoredList.push({ c, s }); }
     }
     scoredList.sort((x, y) => y.s - x.s || x.c.name.localeCompare(y.c.name));
     return scoredList.slice(0, opts.limit || 60).map(x => ({ color: x.c }));
@@ -1350,7 +1434,7 @@
     return { brands, errors };
   }
 
-  const api = { parseColorValue, closestByBrand, F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
+  const api = { popularity, isPopular, popularList, setPicks, notePick, getPicks, parseColorValue, closestByBrand, F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
     init, addBrand, getIndex, findColor, codeLabel, target, familyMatch, styleMatch, scoreColor, warningsFor, roomTips, recommend,
     matchesFor, pairings, search, lightForAnswers, parseCustomCsv, allowedColor, facingsOf, facingPhrase, noWindows, DIRS,
     MOODS, UNDERTONES, NOW_COLORS, NOW_HEX, SURFACES, surfacesFor, ISSUES, PRIMERS, primerFor, nowHexOf,

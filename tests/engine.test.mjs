@@ -544,3 +544,38 @@ test('more things to paint and stain, each with a finish, a preview and primer s
     assert.ok(ST.recommend({ target: k, looks: [] }).results.length, k + ' gets stain picks');
   }
 });
+
+// ---------------- popular colors ----------------
+test('popular colors are worked out, not read from a list', () => {
+  // no color in the data carries the old hand-made "popular" mark
+  assert.equal(E.getIndex().colors.filter(c => c.flags & E.F.POPULAR).length, 0);
+  // every paint brand gets a handful, never a huge list
+  for (const b of window.CG_BRANDS.filter(b => b.group !== 'standard')) {
+    const n = (E.getIndex().byBrand[b.id] || []).filter(c => E.isPopular(c)).length;
+    assert.ok(n >= 6 && n <= 36, `${b.id}: ${n}`);
+  }
+  // the shared list is varied: no near-identical pairs, and not mostly one color family
+  const list = E.popularList({ limit: 30 });
+  assert.equal(list.length, 30);
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) assert.ok(C.deltaE2000(list[i].lab, list[j].lab) >= 3);
+  const fams = {}; for (const c of list) fams[c.fam] = (fams[c.fam] || 0) + 1;
+  assert.ok(Math.max(...Object.values(fams)) <= 10, JSON.stringify(fams));
+  // mostly the quiet colors that sell: whites, grays, beiges and deep neutrals
+  assert.ok(list.filter(c => c.C < 14).length >= 24);
+});
+test('popular colors learn from what gets picked on the device', () => {
+  const c = E.getIndex().byBrand.sw.find(x => x.C > 25 && x.lrv > 20 && x.lrv < 60 && !(x.flags & E.F.DISC));
+  E.setPicks({});
+  const before = E.popularity(c);
+  assert.equal(E.isPopular(c), false);
+  for (let i = 0; i < 12; i++) E.notePick(c.id, 3);
+  assert.ok(E.popularity(c) > before);
+  assert.equal(E.isPopular(c), true);
+  assert.ok(E.getPicks()[c.id] === 36);
+  // starting over forgets it
+  E.setPicks({});
+  assert.equal(E.isPopular(c), false);
+  // unknown ids are ignored
+  E.notePick('nope:123', 5);
+  assert.equal(Object.keys(E.getPicks()).length, 0);
+});

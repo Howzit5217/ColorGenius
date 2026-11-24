@@ -257,7 +257,8 @@
   }
   // gallons -> what to put in the cart: quarts for small jobs, gallons, and 5-gallon buckets for big ones
   function containers(gal) {
-    const q = Math.max(1, Math.ceil(gal * 4 - 1e-9));
+    // coverage figures are rounded anyway, so a tenth of a quart over (about 3 oz) doesn't mean another can
+    const q = Math.max(1, Math.ceil(gal * 4 - 0.1));
     if (q <= 2) return [{ n: q, size: 'quart' }];
     let g = Math.floor(q / 4), rq = q % 4;
     if (rq >= 3) { g += 1; rq = 0; }

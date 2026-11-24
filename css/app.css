@@ -525,6 +525,18 @@ details.more > div { padding-top: 12px; }
 .field { display: grid; gap: 6px; font-weight: 700; font-size: .95rem; }
 .input { width: 100%; min-height: 52px; padding: 0 14px; border-radius: 14px; border: 2px solid var(--line-2); background: var(--surface); font-size: 1.1rem; color: var(--ink); }
 .input:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 35%, transparent); }
+/* number boxes: the browser's own tiny spinner arrows are hidden, and the app's arrows sit inside the box */
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
+.num { position: relative; display: block; }
+.num .input { min-height: 60px; padding-right: 58px; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.num-arrows { position: absolute; top: 6px; right: 6px; bottom: 6px; width: 44px; display: grid; grid-template-rows: 1fr 1fr; gap: 3px; }
+.num-btn { display: grid; place-items: center; padding: 0; border: 0; background: var(--surface-2); color: var(--ink-2); touch-action: manipulation; user-select: none; -webkit-user-select: none; transition: background var(--t1), color var(--t1), transform var(--t1) var(--ease); }
+.num-btn.up { border-radius: 10px 10px 4px 4px; }
+.num-btn.down { border-radius: 4px 4px 10px 10px; }
+.num-btn:hover { background: var(--surface-3); color: var(--ink); }
+.num-btn:active { background: var(--accent); color: var(--on-accent); transform: scale(.94); }
+.num .input:focus-visible + .num-arrows .num-btn { color: var(--ink); }
 .calc-out { display: flex; gap: 16px; align-items: center; padding: 18px; border-radius: var(--r-lg); background: var(--primary); color: var(--on-primary); flex-wrap: wrap; }
 .calc-out .can { flex: none; }
 .calc-out b { font-size: 1.6rem; line-height: 1.15; display: block; }
@@ -665,27 +677,32 @@ details.set-card > summary .muted { font-weight: 500; font-size: .95rem; }
 /* compare and sheens */
 .cmp-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface); }
 
-/* ---------------- scroll bars inside rounded boxes ----------------
-   The dropdowns, the box inside a dialog, the print preview and the compare table scroll inside rounded corners.
-   On a computer their scroll bar is slim, has no arrow buttons, and its track stops short of the rounded corners,
-   so the corners never cut it off. (Phones and tablets already use thin scroll bars that fade away.) */
+/* ---------------- the app's own scroll bars ----------------
+   On a computer every scroll bar (the page's own, menus, dialogs, the print preview, the compare table) is the
+   app's: a slim rounded bar in the app's colors on a clear track, no arrow buttons. Inside rounded boxes the track
+   stops short of the rounded corners so they never cut it off. (Phones and tablets already use thin scroll bars
+   that fade away, so they're left alone.) */
 @media (hover: hover) and (pointer: fine) {
   @supports selector(::-webkit-scrollbar) {
+    ::-webkit-scrollbar { width: 14px; height: 14px; }
+    ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-corner { background: transparent; }
+    ::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--ink) 24%, transparent); border: 4px solid transparent; background-clip: padding-box; border-radius: 999px; min-height: 40px; }
+    ::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--ink) 40%, transparent); }
+    ::-webkit-scrollbar-thumb:active { background-color: color-mix(in srgb, var(--ink) 52%, transparent); }
+    /* the boxes inside the page are a little slimmer */
     :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar { width: 12px; height: 12px; }
-    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-track { background: transparent; }
-    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-corner { background: transparent; }
-    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 26%, transparent); border: 3px solid transparent; background-clip: padding-box; border-radius: 999px; min-height: 36px; }
-    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--ink) 42%, transparent); }
+    :is(.cg-pop, .modal-body, .paper-wrap, .cmp-wrap)::-webkit-scrollbar-thumb { border-width: 3px; min-height: 36px; }
     /* how far each track stays back from the ends: at least the corner's roundness */
     .cg-pop::-webkit-scrollbar-track { margin: 14px 0; }
     .modal-body::-webkit-scrollbar-track { margin: 6px 0 calc(var(--r-xl) - 2px); }
     .paper-wrap::-webkit-scrollbar-track { margin: var(--r); }
     .cmp-wrap::-webkit-scrollbar-track { margin: 0 var(--r); }
   }
-  /* browsers without those (Firefox): at least a slim, quiet bar */
+  /* browsers without those (Firefox): the same slim bar in the app's colors */
   @supports not selector(::-webkit-scrollbar) {
-    .cg-pop, .modal-body, .paper-wrap, .cmp-wrap { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 30%, transparent) transparent; }
+    html, .cg-pop, .modal-body, .paper-wrap, .cmp-wrap, .onboard { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 30%, transparent) transparent; }
   }
 }
 .cmp { display: grid; grid-template-columns: 130px repeat(var(--n), minmax(180px, 1fr)); min-width: calc(130px + var(--n) * 180px); }
