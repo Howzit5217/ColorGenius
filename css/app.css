@@ -62,8 +62,10 @@ html.kiosk.big-text { font-size: 128%; }
 /* ---------------- base ---------------- */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; scroll-padding-top: calc(var(--top-h) + 12px); }
-body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 1.0625rem; line-height: 1.5; -webkit-font-smoothing: antialiased; min-height: 100vh; overflow-x: hidden; padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Smooth text: both fonts load every weight (variable fonts, 200 to 800), and the browser is never allowed to fake
+   a bold or an italic by smearing or slanting the letters, which is what gave some text rough edges */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; scroll-padding-top: calc(var(--top-h) + 12px); font-synthesis: none; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 1.0625rem; line-height: 1.5; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-kerning: normal; min-height: 100vh; overflow-x: hidden; padding-bottom: env(safe-area-inset-bottom, 0px); }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; background: none; border: 0; padding: 0; }
 button:disabled { cursor: default; }
@@ -337,7 +339,7 @@ details.more > div { padding-top: 12px; }
 .enter-hint { display: none; }
 @media (hover: hover) and (pointer: fine) {
   .bottom-bar [data-flow="next"], .ob-nav [data-ob="next"] { position: relative; }
-  .enter-hint { display: inline-flex; align-items: center; gap: 5px; position: absolute; left: 50%; bottom: calc(100% + 12px); transform: translateX(-50%); padding: 3px 10px 2px; border-radius: 8px; border: 1px solid var(--line-2); border-bottom-width: 3px; background: var(--surface); color: var(--ink-2); font-size: .8rem; font-weight: 700; line-height: 1.5; white-space: nowrap; pointer-events: none; box-shadow: var(--shadow); }
+  .enter-hint { display: inline-flex; align-items: center; gap: 5px; position: absolute; left: 0; right: 0; margin: 0 auto; width: max-content; bottom: calc(100% + 12px); padding: 3px 10px 2px; border-radius: 8px; border: 1px solid var(--line-2); border-bottom-width: 3px; background: var(--surface); color: var(--ink-2); font-size: .8rem; font-weight: 700; line-height: 1.5; white-space: nowrap; pointer-events: none; box-shadow: var(--shadow); }
   .enter-hint .ret { font-size: 1rem; line-height: 1; }
 }
 @media (max-width: 400px) { .bottom-bar [data-flow="next"] { min-width: 150px; } .bottom-bar [data-flow="back"] { min-width: 96px; } }
@@ -451,7 +453,7 @@ details.more > div { padding-top: 12px; }
 .mail-msg:empty { min-height: 0; }
 /* the address box: what's typed, then "@gmail.com" in grey right after it */
 .mail-addr { position: relative; display: block; }
-.mail-at { position: absolute; top: 50%; transform: translateY(-50%); color: var(--ink-3); pointer-events: none; white-space: pre; }
+.mail-at { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; color: var(--ink-3); pointer-events: none; white-space: pre; }
 .mail-at.ph { opacity: .75; }
 .mail-addr.has-at .mail-at { display: none; }
 .mail-meas { position: absolute; visibility: hidden; white-space: pre; left: 0; top: 0; }
@@ -843,9 +845,9 @@ html.gate-open { overflow: hidden; }
 .part-picked:empty { display: none; }
 .part-picked .grow { flex: 1; }
 /* the first-time note in the middle of the picture */
-.scene .tap-coach { position: absolute; left: 50%; top: 50%; z-index: 3; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; background: rgba(20, 20, 19, .74); color: #fff; font-weight: 750; font-size: .98rem; white-space: nowrap; pointer-events: none; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); transform: translate(-50%, -50%); animation: coachPulse 2.2s ease-in-out infinite; transition: opacity 300ms ease; }
+.scene .tap-coach { position: absolute; top: 0; right: 0; bottom: 0; left: 0; margin: auto; width: max-content; height: max-content; z-index: 3; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; background: rgba(20, 20, 19, .74); color: #fff; font-weight: 750; font-size: .98rem; white-space: nowrap; pointer-events: none; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); animation: coachPulse 2.2s ease-in-out infinite; transition: opacity 300ms ease; }
 .scene .tap-coach.gone { opacity: 0; }
-@keyframes coachPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.05); } }
+@keyframes coachPulse { 0%, 100% { box-shadow: 0 6px 18px rgba(0, 0, 0, .25), 0 0 0 0 rgba(255, 255, 255, .5); } 50% { box-shadow: 0 6px 18px rgba(0, 0, 0, .25), 0 0 0 8px rgba(255, 255, 255, 0); } }
 @media (max-width: 420px) { .scene .tap-coach { font-size: .88rem; padding: 8px 12px; } }
 @media (prefers-reduced-motion: reduce) { .scene .tap-coach { animation: none; } }
 
@@ -863,7 +865,7 @@ html.gate-open { overflow: hidden; }
 .cam-tune-btns { display: flex; flex-wrap: wrap; gap: 8px; }
 .cam-chip { min-height: 40px; padding: 0 14px; border-radius: 999px; background: #fff; color: #1c1b19; font-weight: 800; font-size: .9rem; }
 .cam-chip.ghost { background: transparent; color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6); }
-.cam-tune { position: absolute; left: 50%; top: calc(70px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(420px, calc(100% - 24px)); max-height: calc(100% - 230px); overflow: auto; display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: rgba(20, 20, 19, .92); color: #fff; z-index: 3; }
+.cam-tune { position: absolute; left: 0; right: 0; margin: 0 auto; top: calc(70px + env(safe-area-inset-top, 0px)); width: min(420px, calc(100% - 24px)); max-height: calc(100% - 230px); overflow: auto; display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: rgba(20, 20, 19, .92); color: #fff; z-index: 3; }
 .cam-tune[hidden] { display: none; }
 .cam-tune h2 { font-size: 1.2rem; }
 .cam-tune p { margin: 0; color: rgba(255, 255, 255, .8); }
@@ -898,9 +900,9 @@ html.gate-open { overflow: hidden; }
 @media (min-width: 1000px) { .together { max-width: 1100px; } }
 
 /* ---------------- toast ---------------- */
-.toast { position: fixed; z-index: 99; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: max-content; max-width: min(560px, calc(100% - 32px)); padding: 14px 20px; border-radius: 16px; background: var(--primary); color: var(--on-primary); font-weight: 700; font-size: 1.02rem; box-shadow: var(--shadow-lg); animation: toastIn var(--t3) var(--spring); text-align: center; }
+.toast { position: fixed; z-index: 99; left: 0; right: 0; margin: 0 auto; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: max-content; max-width: min(560px, calc(100% - 32px)); padding: 14px 20px; border-radius: 16px; background: var(--primary); color: var(--on-primary); font-weight: 700; font-size: 1.02rem; box-shadow: var(--shadow-lg); animation: toastIn var(--t3) var(--spring); text-align: center; }
 html.bar-on .toast { bottom: calc(var(--bar-h) + 18px + env(safe-area-inset-bottom, 0px)); }
-@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 16px); } }
+@keyframes toastIn { from { opacity: 0; transform: translateY(16px); } }
 
 /* ---------------- the printout: black and white, one line per item ---------------- */
 #printArea { display: none; }
@@ -962,7 +964,7 @@ html.cam-open { overflow: hidden; }
 .cam-box { position: absolute; border: 3px solid #fff; border-radius: 16px; box-shadow: 0 0 0 2px rgba(0, 0, 0, .4), inset 0 0 0 2px rgba(0, 0, 0, .25); touch-action: none; cursor: grab; transition: box-shadow var(--t1); }
 .cam-box.moving { cursor: grabbing; box-shadow: 0 0 0 2px rgba(0, 0, 0, .4), inset 0 0 0 2px rgba(0, 0, 0, .25), 0 0 0 6px rgba(255, 255, 255, .35); }
 .cam-box.resetting { transition: left 280ms var(--ease), top 280ms var(--ease), width 280ms var(--ease), height 280ms var(--ease); }
-.cam-box span { position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, .6); color: #fff; font-weight: 800; font-size: .85rem; white-space: nowrap; pointer-events: none; }
+.cam-box span { position: absolute; left: 0; right: 0; margin: 0 auto; width: max-content; bottom: calc(100% + 6px); padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, .6); color: #fff; font-weight: 800; font-size: .85rem; white-space: nowrap; pointer-events: none; }
 /* the corner to drag for a bigger or smaller box */
 .cam-size { position: absolute; right: -13px; bottom: -13px; width: 30px; height: 30px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .45); cursor: nwse-resize; }
 .cam-size::after { content: ""; position: absolute; top: 9px; right: 9px; bottom: 9px; left: 9px; border-right: 2.5px solid #1c1b19; border-bottom: 2.5px solid #1c1b19; border-radius: 1px; }
@@ -976,7 +978,7 @@ html.cam-open { overflow: hidden; }
 .cam-icon[hidden] { display: none; }
 .cam-icon[aria-pressed="true"], .cam-icon[aria-expanded="true"] { background: #fff; color: #1c1b19; }
 /* one line, only when something needs fixing */
-.cam-hint { position: absolute; left: 50%; top: calc(72px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); margin: 0; max-width: calc(100% - 32px); padding: 8px 16px; border-radius: 999px; background: rgba(20, 20, 19, .7); color: #fff; font-weight: 750; text-align: center; animation: fade var(--t2) ease both; }
+.cam-hint { position: absolute; left: 0; right: 0; margin: 0 auto; width: max-content; top: calc(72px + env(safe-area-inset-top, 0px)); max-width: calc(100% - 32px); padding: 8px 16px; border-radius: 999px; background: rgba(20, 20, 19, .7); color: #fff; font-weight: 750; text-align: center; animation: fade var(--t2) ease both; }
 .cam-hint.tilt:not([hidden]) { display: flex; align-items: center; gap: 10px; text-align: left; border-radius: 18px; padding: 10px 16px 10px 12px; line-height: 1.3; }
 .cam-hint .tilt-ic { flex: none; }
 /* a phone seen from the side, rocking from flat to a slight angle over the surface */
@@ -995,7 +997,7 @@ html.cam-open { overflow: hidden; }
 .camera[data-height="good"] .cam-wrap::after { box-shadow: inset 0 0 0 5px rgba(63, 174, 106, .9); }
 .camera[data-height="warn"] .cam-wrap::after { box-shadow: inset 0 0 0 5px rgba(232, 184, 74, .9); }
 .camera[data-height="bad"] .cam-wrap::after { box-shadow: inset 0 0 0 5px rgba(216, 69, 47, .95); }
-.cam-meter { position: absolute; right: calc(18px + env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); width: 14px; height: min(40vh, 300px); }
+.cam-meter { position: absolute; right: calc(18px + env(safe-area-inset-right, 0px)); top: 0; bottom: 0; margin: auto 0; width: 14px; height: min(40vh, 300px); }
 .cam-meter[hidden] { display: none; }
 .cam-meter .track { position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: 999px; background: linear-gradient(to top, #d8452f 0 25%, #e8b84a 25% 45%, #3fae6a 45% 80%, #c9a85a 80% 100%); box-shadow: 0 0 0 2px rgba(0, 0, 0, .35); }
 .cam-meter .mark { position: absolute; left: 50%; bottom: 60%; width: 24px; height: 24px; margin: 0 0 -12px -12px; border-radius: 50%; background: #fff; border: 3px solid #1c1b19; box-shadow: 0 1px 5px rgba(0, 0, 0, .5); transition: bottom 300ms var(--ease); }
@@ -1028,7 +1030,7 @@ html.cam-open { overflow: hidden; }
 @keyframes fadeOut { to { opacity: 0; } }
 @keyframes btnIn { from { opacity: 0; transform: scale(.92); } }
 @keyframes barIn { from { opacity: 0; transform: translateY(24px); } }
-@keyframes toastOut { to { opacity: 0; transform: translate(-50%, 12px); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(12px); } }
 @keyframes itemOut { to { opacity: 0; transform: translateX(18px); } }
 .modal.closing { animation: fadeOut 170ms ease forwards; pointer-events: none; }
 .modal.closing .modal-card { animation: popOut 170ms ease forwards; }
