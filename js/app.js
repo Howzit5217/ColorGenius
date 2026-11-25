@@ -24,7 +24,7 @@
     cal: { enabled: false, cct: 0, warmth: 0, brightness: 0, vividness: 0, ref: '' },
     theme: 'system', reduceMotion: false, lines: {}, collections: {}, audience: '', onboarded: false,
     jobs: { paint: true, stain: true }, stainBrands: {}, chain: '',
-    questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false, camTune: [],
+    questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false, camTune: [], prices: {},
   };
   function merge(base, over) {
     const out = clone(base);
@@ -2706,6 +2706,27 @@
   }
   const cartLine = c => CAN_SIZES.filter(([k]) => c[k]).map(([k, one, many]) => `${c[k]} ${(c[k] === 1 ? one : many).toLowerCase()}`).join(' + ');
   const cartEmpty = c => !CAN_SIZES.some(([k]) => c[k]);
+  // ---- prices: the store types them once (Settings → Prices), for each paint line and size of can. Anything else
+  // (a stain, a line not listed) can be priced on its own line. Totals are before tax. ----
+  const money = v => '$' + (Math.round(v * 100) / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const priceSet = p => !!p && CAN_SIZES.some(([k]) => +p[k] > 0);
+  // the price list for an item: the store's for its paint, else the item's own
+  const pricesOf = x => (x.product && priceSet(settings.prices[x.product]) ? settings.prices[x.product] : priceSet(x.prices) ? x.prices : null);
+  // what an item costs: { total, priced, missing } (missing: it has cans with no price)
+  function costOf(x) {
+    const c = cartOf(x), p = pricesOf(x) || {};
+    let total = 0, missing = false;
+    for (const [k] of CAN_SIZES) if (c[k]) { if (+p[k] > 0) total += c[k] * +p[k]; else missing = true; }
+    return { total, priced: total > 0, missing: missing || cartEmpty(c) };
+  }
+  // the whole list: the total of what's priced, and how many lines have no price yet
+  function costsOf(items) {
+    let total = 0, unpriced = 0;
+    for (const x of items) { const k = costOf(x); total += k.total; if (k.missing) unpriced++; }
+    return { total, unpriced, any: total > 0 };
+  }
+  const anyPrices = () => Object.values(settings.prices || {}).some(priceSet);
+  const costNote = (items, short) => { const k = costsOf(items); if (!k.any) return ''; return `About ${money(k.total)} before tax${k.unpriced ? `, ${short ? '+' : 'plus'} ${k.unpriced} line${k.unpriced === 1 ? '' : 's'} without a price` : ''}`; };
   // what a paint item still needs before it can be mixed
   const needsInfo = x => { const c = cartOf(x), onlySamples = c.sample && !c.quart && !c.gallon && !c.bucket; return cartEmpty(c) || (x.kind !== 'stain' && !x.finish && !onlySamples); };
   // the paint lines a color can be mixed in, for inside or outside
@@ -2715,6 +2736,22 @@
     const lines = (E.PAINT_LINES[lb] || []).filter(l => settings.lines[l.id] !== false && (!use || l.use === use || l.use === 'both'));
     return { lb, lines };
   }
+  // prices in the editor: a paint's go on the store's price list (every project uses them); anything else's on
+  // that line only
+  function iePriceHtml(x) {
+    const store = !!x.product, p = (store ? settings.prices[x.product] : x.prices) || {};
+    return `<h3>Price${store ? '' : ' of This'}</h3><p class="muted small" style="margin:0">${store ? `For ${esc(x.product)}, each can. Saved for every project on this device (Settings → Prices).` : 'Each can, for this line only.'} Leave a size empty if it isn’t sold.</p>
+      <div class="price-row">${CAN_SIZES.map(([k, one]) => `<label class="price-in"><span>${one}</span><span class="pfx">$</span><input type="number" inputmode="decimal" min="0" step="0.01" value="${+p[k] > 0 ? (+p[k]).toFixed(2) : ''}" data-ie-price="${k}" aria-label="Price of a ${one.toLowerCase()}${store ? ' of ' + esc(x.product) : ''}"></label>`).join('')}</div>`;
+  }
+  document.addEventListener('input', e => {
+    const k = e.target.dataset && e.target.dataset.iePrice; if (!k || !itemEdit) return;
+    const x = session.items.find(i => i.id === itemEdit); if (!x) return;
+    const v = Math.max(0, Math.round(parseFloat(e.target.value) * 100) / 100);
+    const p = x.product ? (settings.prices[x.product] = settings.prices[x.product] || {}) : (x.prices = x.prices || {});
+    if (v > 0) p[k] = v; else delete p[k];
+    if (x.product) saveSettings(); else saveSession();
+    if (state.view === 'list') refreshCosts();
+  });
   let itemEdit = null;
   function openItemEdit(id) {
     const x = session.items.find(i => i.id === id); if (!x) return;
@@ -2730,6 +2767,7 @@
       })}</div>` : ''}
       <div class="setup-group"><h3>How Much</h3><div class="ie-steps">${CAN_SIZES.map(([k, one, many]) => `<div class="ie-step"><span>${many}</span><button type="button" class="ie-pm" data-ie-minus="${k}" aria-label="One less ${one.toLowerCase()}">−</button><b id="ie-${k}" aria-live="polite">${c[k]}</b><button type="button" class="ie-pm" data-ie-plus="${k}" aria-label="One more ${one.toLowerCase()}">+</button></div>`).join('')}</div>
         ${x.kind === 'plan' || x.space ? '' : '<p class="muted small" style="margin:0">Not sure how much? Which Paint to Buy works it out from the room’s size.</p>'}</div>
+      ${isKiosk() ? '' : `<div class="setup-group" id="iePrice">${iePriceHtml(x)}</div>`}
       <div class="modal-foot"><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`);
   }
   document.addEventListener('click', e => {
@@ -2903,8 +2941,9 @@
       <div class="list-head"><label class="field">What’s this project for?<input type="text" class="input" id="listName" value="${esc(session.name || '')}" placeholder="Smith kitchen, Mom’s porch..." maxlength="60" autocomplete="off"></label>
         <label class="field">Notes for the printout<input type="text" class="input" id="listNotes" value="${esc(session.notes || '')}" placeholder="Phone number, due date..." maxlength="160" autocomplete="off"></label></div>
       ${items.length ? `<ol class="items">${items.map((x, i) => `<li class="item"><span class="n">${i + 1}</span><button type="button" class="sw" ${x.hex ? swStyle(x.hex) : 'style="background:var(--surface-2)"'} data-open-item="${esc(x.ref)}" aria-label="Open ${esc(x.name)}"></button>
-          <span class="what"><input type="text" class="area" data-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><b>${esc([x.brand, x.name, x.code].filter(Boolean).join(' '))}</b><span>${esc([x.finish, x.product, x.amount].filter(Boolean).join(' · '))}</span><button type="button" class="ie-btn${needsInfo(x) ? ' need' : ''}" data-item-edit="${esc(x.id)}">${needsInfo(x) ? (x.kind === 'stain' ? 'Add how much' : 'Add sheen & amount') : (x.kind === 'stain' ? 'Change how much' : 'Change sheen & amount')}</button></span>
+          <span class="what"><input type="text" class="area" data-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><b>${esc([x.brand, x.name, x.code].filter(Boolean).join(' '))}</b><span>${esc([x.finish, x.product, x.amount].filter(Boolean).join(' · '))}<span class="item-cost" data-cost="${esc(x.id)}">${costOf(x).priced ? ' · ' + money(costOf(x).total) : ''}</span></span><button type="button" class="ie-btn${needsInfo(x) ? ' need' : ''}" data-item-edit="${esc(x.id)}">${needsInfo(x) ? (x.kind === 'stain' ? 'Add how much' : 'Add sheen & amount') : (x.kind === 'stain' ? 'Change how much' : 'Change sheen & amount')}</button></span>
           <button type="button" class="icon-btn" data-del-item="${esc(x.id)}" aria-label="Remove ${esc(x.name)}">${xIcon}</button></li>`).join('')}</ol>
+        <p class="proj-cost" id="projCost"${costNote(items) ? '' : ' hidden'}>${esc(costNote(items))}</p>
         <button type="button" class="tg-cta" data-go="together"><span class="tg-cta-sws" aria-hidden="true">${items.slice(0, 4).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span class="tg-cta-txt"><b>See It All Together</b><span>Every color in this project at once, each where it goes${items.some(x => x.kind === 'stain') ? ', the stain too' : ''}</span></span>${chev('right', 22)}</button>
         <button type="button" class="ticket-cta" data-list="ticket">${QR_IC}<span><b>Paint Desk Ticket</b><span>A code the paint desk scans to see exactly what to mix</span></span>${chev('right', 22)}</button>
         <div class="actions stack"><button type="button" class="btn big primary" data-list="print">${ic('print', 22)}Print</button><button type="button" class="btn big primary" data-list="email">${mailIcon}Email It</button><button type="button" class="btn big" data-go="home">${plusIcon}Add More</button></div>
@@ -2917,6 +2956,11 @@
     $('#listName').addEventListener('input', e => { session.name = e.target.value; saveSession(); $('.page-head h1').textContent = sessionTitle(); updateListBtn(); });
     $('#listNotes').addEventListener('input', e => { session.notes = e.target.value; saveSession(); });
     $$('[data-area]').forEach(inp => inp.addEventListener('input', () => { const x = session.items.find(i => i.id === inp.dataset.area); if (x) { x.area = inp.value; saveSession(); } }));
+  }
+  // prices changed while the project is showing
+  function refreshCosts() {
+    for (const el of $$('[data-cost]')) { const x = session.items.find(i => i.id === el.dataset.cost); const k = x && costOf(x); el.textContent = k && k.priced ? ' · ' + money(k.total) : ''; }
+    const n = $('#projCost'); if (n) { const t = costNote(session.items); n.textContent = t; n.hidden = !t; }
   }
   view().addEventListener('click', e => {
     if (state.view !== 'list') return;
@@ -3075,12 +3119,13 @@
         <span class="tk-what"><span class="tk-code">${esc(code2)}</span><b>${esc([x.brand, x.name].filter(Boolean).join(' '))}</b>
           <span class="tk-facts">${[x.area, x.product, stain ? '' : x.finish || '<i class="tk-ask">Sheen: ask</i>'].filter(Boolean).map(v => v.startsWith('<i') ? v : esc(v)).join(' · ')}</span>
           ${x.primer ? `<span class="tk-facts">Primer: ${esc(x.primer)}</span>` : ''}${x.tools ? `<span class="tk-facts">Also: ${esc(x.tools)}</span>` : ''}</span>
-        <span class="tk-amt">${cartEmpty(c) ? '<i class="tk-ask">How much: ask</i>' : esc(cartLine(c))}</span></li>`;
+        <span class="tk-amt">${cartEmpty(c) ? '<i class="tk-ask">How much: ask</i>' : esc(cartLine(c))}${costOf(x).priced ? `<small>${money(costOf(x).total)}</small>` : ''}</span></li>`;
     };
     const left = P.items.length - ticks.filter(i => i < P.items.length).length;
     view().innerHTML = `<div class="page narrow ticket-page">
       <div class="page-head"><p class="eyebrow">Paint Desk Ticket</p><h1>${esc(P.name || 'Paint and Stain List')}</h1><p>${from ? esc(from) + ' · ' : ''}${P.items.length} to mix${left && left < P.items.length ? `, ${left} left` : !left ? ', all done' : ''}</p>${P.notes ? `<p class="tk-notes"><b>Notes</b> ${esc(P.notes)}</p>` : ''}</div>
       <ol class="tk-list">${P.items.map(row).join('')}</ol>
+      ${costNote(P.items) ? `<p class="proj-cost">${esc(costNote(P.items))}</p>` : ''}
       <div class="actions stack"><button type="button" class="btn big primary" data-tk="all">${left ? 'Mark All Mixed' : 'Clear the Checks'}</button><button type="button" class="btn big" data-tk="print">${ic('print', 22)}Print</button><button type="button" class="btn big" data-tk="open">Open as a Project</button></div>
       <p class="muted small">Colors on a screen are a guide. Mix by the code, and check the sheen and size with the customer.</p></div>`;
   }
@@ -3288,8 +3333,8 @@
   });
 
   // ---- the printout: one page, black and white, letters and numbers only, one line per item ----
-  const PR_COLS = [['#', 'n'], ['Area', 'area'], ['Brand', 'brand'], ['Color', 'name'], ['Code', 'code'], ['Hex', 'hex'], ['Finish', 'finish'], ['Product', 'product'], ['Primer', 'primer'], ['Amount', 'amount'], ['Roller & Brush', 'tools'], ['Find It', 'loc']];
-  const prCell = (x, k, i) => k === 'n' ? String(i + 1) : k === 'hex' ? (x.hex ? '#' + x.hex.toUpperCase() : '') : (x[k] || '');
+  const PR_COLS = [['#', 'n'], ['Area', 'area'], ['Brand', 'brand'], ['Color', 'name'], ['Code', 'code'], ['Hex', 'hex'], ['Finish', 'finish'], ['Product', 'product'], ['Primer', 'primer'], ['Amount', 'amount'], ['Roller & Brush', 'tools'], ['Find It', 'loc'], ['Price', 'price']];
+  const prCell = (x, k, i) => k === 'n' ? String(i + 1) : k === 'hex' ? (x.hex ? '#' + x.hex.toUpperCase() : '') : k === 'price' ? (costOf(x).priced ? money(costOf(x).total) : '') : (x[k] || '');
   const storeName = () => settings.chain && CHAINS[settings.chain] && !CHAINS[settings.chain].other ? CHAINS[settings.chain].label.replace(/ Store$/, '') : '';
   function sheetOf(s, qr) {
     const cols = PR_COLS.filter(([, k]) => ['n', 'area', 'name'].includes(k) || s.items.some((x, i) => prCell(x, k, i)));
@@ -3301,6 +3346,7 @@
       <div class="pr-meta">${[storeName(), date, n + (n === 1 ? ' item' : ' items')].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</div>${qr ? `<div class="pr-qr">${qr}<span>Paint desk: scan to mix</span></div>` : ''}</div>
       ${(s.notes || '').trim() ? `<p class="pr-notes"><b>Notes</b> ${esc(s.notes.trim())}</p>` : ''}
       <table><thead><tr>${cols.map(([h, k]) => `<th class="c-${k}">${h}</th>`).join('')}</tr></thead><tbody>${s.items.map((x, i) => `<tr>${cols.map(([, k]) => `<td class="c-${k}">${esc(prCell(x, k, i))}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      ${costNote(s.items) ? `<p class="pr-total">${esc(costNote(s.items))}</p>` : ''}
       <div class="pr-foot"><span>Colors look different on screens and paper. Check a real chip or sample before buying.</span><span>ColorGenius</span></div></div>`;
     return { html, landscape };
   }
@@ -3308,7 +3354,8 @@
     const lines = [titleOf(s), [storeName(), new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })].filter(Boolean).join(', ')];
     if ((s.notes || '').trim()) lines.push('Notes: ' + s.notes.trim());
     lines.push('');
-    s.items.forEach((x, i) => lines.push(`${i + 1}. ${[x.area, [x.brand, x.name, x.code].filter(Boolean).join(' '), x.hex ? '#' + x.hex.toUpperCase() : '', x.finish, x.product, x.primer ? 'Primer: ' + x.primer : '', x.amount, x.tools, x.loc ? 'Find it: ' + x.loc : ''].filter(Boolean).join(' - ')}`));
+    s.items.forEach((x, i) => lines.push(`${i + 1}. ${[costOf(x).priced ? money(costOf(x).total) : '', x.area, [x.brand, x.name, x.code].filter(Boolean).join(' '), x.hex ? '#' + x.hex.toUpperCase() : '', x.finish, x.product, x.primer ? 'Primer: ' + x.primer : '', x.amount, x.tools, x.loc ? 'Find it: ' + x.loc : ''].filter(Boolean).join(' - ')}`));
+    { const cn = costNote(s.items); if (cn) lines.push('', cn); }
     return lines.join('\n');
   }
   function printSheet(s) { const sh = sheetOf(s, previewQr); printHtml(sh.html, sh.landscape); }
@@ -3546,6 +3593,7 @@
         ${S.brands().length ? `<details class="set-card"><summary>Stain Brands <span class="muted on-count" id="stainOn" aria-live="polite">${stainOnText()}</span></summary>${S.brands().slice().sort((a, b) => azCmp(a.name, b.name)).map(b => `<div class="set-row brand-row">${stainMark(b.id, b.name)}<div class="set-text"><b id="lbl-s-${esc(b.id)}">${esc(b.name)}</b><span>${b.use === 'exterior' ? 'Outside' : 'Inside'}${b.note ? ' · ' + esc(b.note) : ''}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.stainBrands[b.id] !== false}" aria-labelledby="lbl-s-${esc(b.id)}" data-sbrand="${esc(b.id)}"></button></div>`).join('')}</details>` : ''}
         <details class="set-card"><summary>Color Collections</summary><div class="set-note" style="border-top:0">Turn off fan decks or collections the store doesn’t carry.</div>${brandsAZ().filter(b => en[b.id] && E.collectionsFor(b.id).length > 1).map(b => E.collectionsFor(b.id).slice().sort((p, q) => azCmp(p.label, q.label)).map(x => `<div class="set-row"><div class="set-text"><b id="lbl-c-${esc(b.id)}-${x.id}">${esc(b.name)}: ${esc(x.label)}</b><span>${fmt(x.count)} colors${x.note ? ' · ' + esc(x.note) : ''}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.collections[b.id + ':' + x.id] !== false}" aria-labelledby="lbl-c-${esc(b.id)}-${x.id}" data-coll="${esc(b.id + ':' + x.id)}"></button></div>`).join('')).join('')}</details>
         <details class="set-card"><summary>Paint Lines ${home() ? 'I’d Buy' : 'the Store Carries'}</summary><div class="set-note" style="border-top:0">Which Paint to Buy suggests a line for each job. Turn off lines ${home() ? 'you don’t want' : 'the store doesn’t stock'}.</div>${Object.keys(E.PAINT_LINES).filter(id => E.getIndex().brandById[id] && (en[id] || id === settings.storeBrand)).sort((a, b) => azCmp(brandName(a), brandName(b))).map(id => E.PAINT_LINES[id].map(l => `<div class="set-row"><div class="set-text"><b id="lbl-l-${esc(l.id)}">${esc(brandName(id))} ${esc(l.name)}</b><span>${esc(E.TIERS[l.tier])} · ${l.use === 'interior' ? 'Inside' : l.use === 'both' ? 'Floors' : 'Outside'} · ${esc(l.note)}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.lines[l.id] !== false}" aria-labelledby="lbl-l-${esc(l.id)}" data-line="${esc(l.id)}"></button></div>`).join('')).join('')}</details>
+        ${priceSettingsHtml(en)}
         <p class="muted small brand-none" hidden>No brand matches that search.</p>
       </div>
       <div class="set-group"><h2>Add Your Own Colors</h2><div class="set-card">
@@ -3567,6 +3615,25 @@
     });
   }
   // re-draw the settings page without jumping back to the top, keeping open sections open
+  // Settings → Prices: each paint line the store carries, a price for each size of can
+  function priceSettingsHtml(en) {
+    const ids = Object.keys(E.PAINT_LINES).filter(id => E.getIndex().brandById[id] && (en[id] || id === settings.storeBrand)).sort((a, b) => azCmp(brandName(a), brandName(b)));
+    const lines = ids.flatMap(id => E.PAINT_LINES[id].filter(l => settings.lines[l.id] !== false).map(l => lineLabel(id, l)));
+    const n = lines.filter(l => priceSet(settings.prices[l])).length;
+    return `<details class="set-card" id="setPrices"><summary>Prices <span class="muted on-count" id="priceCount">${n ? `${n} priced` : 'None yet'}</span></summary>
+      <div class="set-note" style="border-top:0">Type ${home() ? 'what the paint costs' : 'the store’s prices'} for each can, and every project, paint desk ticket and printout shows what it costs, before tax. Leave a size empty if it isn’t sold. A stain or anything not listed can be priced on its own line in a project (Sheen & amount).</div>
+      ${lines.map(lab => { const p = settings.prices[lab] || {}; return `<div class="set-row price-set"><div class="set-text"><b>${esc(lab)}</b></div><div class="price-row">${CAN_SIZES.map(([k, one]) => `<label class="price-in"><span>${one}</span><span class="pfx">$</span><input type="number" inputmode="decimal" min="0" step="0.01" value="${+p[k] > 0 ? (+p[k]).toFixed(2) : ''}" data-price-line="${esc(lab)}" data-size="${k}" aria-label="${esc(lab)}, price of a ${one.toLowerCase()}"></label>`).join('')}</div></div>`; }).join('')}
+      ${lines.length ? '' : '<div class="set-note">Turn on a paint brand (Settings → Brands) to price its lines.</div>'}</details>`;
+  }
+  document.addEventListener('input', e => {
+    const lab = e.target.dataset && e.target.dataset.priceLine; if (!lab) return;
+    const k = e.target.dataset.size, v = Math.max(0, Math.round(parseFloat(e.target.value) * 100) / 100);
+    const p = settings.prices[lab] = settings.prices[lab] || {};
+    if (v > 0) p[k] = v; else delete p[k];
+    if (!priceSet(p)) delete settings.prices[lab];
+    saveSettings();
+    const c = $('#priceCount'); if (c) { const n = $$('#setPrices .price-set').filter(r => priceSet(settings.prices[$('b', r).textContent])).length; c.textContent = n ? `${n} priced` : 'None yet'; }
+  });
   function renderKeep() {
     const y = window.scrollY, open = $$('#view details').map(d => d.open);
     renderSettings();
