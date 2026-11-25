@@ -964,20 +964,6 @@ html.gate-open { overflow: hidden; }
 @media (max-width: 560px) { .tk-row { grid-template-columns: 46px 44px minmax(0, 1fr); } .tk-check { width: 46px; height: 46px; } .tk-sw { width: 44px; height: 44px; } .tk-amt { grid-column: 3; text-align: left; } .tk-code { font-size: 1.3rem; } }
 .pr-qr { flex: none; display: grid; justify-items: center; gap: 2pt; width: 0.95in; font-size: 7pt; text-align: center; }
 .pr-qr svg { width: 0.95in; height: 0.95in; display: block; }
-/* prices: a price for each size of can (Settings → Prices, and a project line's own) */
-.price-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; }
-.price-set .price-row { flex: 1 1 100%; max-width: 560px; }
-.price-in { position: relative; display: grid; gap: 3px; min-width: 0; }
-.price-in > span:first-child { font-size: .78rem; font-weight: 750; color: var(--ink-2); }
-.price-in .pfx { position: absolute; left: 10px; bottom: 12px; font-weight: 700; color: var(--ink-3); pointer-events: none; }
-.price-in input { width: 100%; min-height: 44px; padding: 0 8px 0 22px; border-radius: 10px; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-variant-numeric: tabular-nums; }
-.price-in input:focus { outline: none; border-color: var(--ink); }
-@media (max-width: 420px) { .price-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.item-cost { font-weight: 800; color: var(--ink); }
-.proj-cost { margin: 12px 2px 0; font-size: 1.1rem; font-weight: 800; }
-.proj-cost[hidden] { display: none; }
-.tk-amt small { display: block; font-size: .9rem; color: var(--ink-2); font-weight: 700; }
-.pr-total { margin: 8pt 0 0; font-size: 10pt; font-weight: 700; text-align: right; }
 .together .tg-zone { display: grid; gap: 10px; margin-top: 22px; }
 .together .tg-zone > h2 { font-size: 1.3rem; }
 .tg-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; }
