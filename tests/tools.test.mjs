@@ -154,3 +154,44 @@ test('stain plan: tools, supplies and amount for every stain job', () => {
     assert.ok(p.amount.buy && p.supplies.length, target);
   }
 });
+
+// ---------------- the weather for outside jobs ----------------
+// a made-up hourly forecast: 7 days from midnight, with changes to some hours
+function forecast(change) {
+  const start = new Date(2026, 5, 1, 0, 0, 0), out = [];
+  for (let i = 0; i < 24 * 7; i++) {
+    const t = new Date(start.getTime() + i * 3600e3), h = t.getHours();
+    const x = { t, temp: 58 + 12 * Math.sin(Math.PI * Math.max(0, Math.min(1, (h - 6) / 14))), rain: 5, wind: 6 };
+    if (change) change(x, Math.floor(i / 24), h);
+    out.push(x);
+  }
+  return out;
+}
+const verdicts = days => days.map(d => d.verdict).join(' ');
+test('weather: a dry, mild week is good to paint; the last day is too far out to be sure', () => {
+  const days = T.weatherDays(forecast(), T.WEATHER_RULES.paint);
+  assert.equal(days.length, 7);
+  assert.equal(verdicts(days.slice(0, 6)), 'good good good good good good');
+  assert.equal(days[6].verdict, 'okay');
+  assert.ok(days[6].why.includes('Too far out to be sure'));
+});
+test('weather: rain on the day, rain before it dries, cold, heat and wind', () => {
+  // rain midday on day 2: day 2 is out, and so is day 1 (it would rain on wet paint)
+  let days = T.weatherDays(forecast((x, d, h) => { if (d === 2 && h >= 11 && h <= 14) x.rain = 80; }), T.WEATHER_RULES.paint);
+  assert.equal(days[2].verdict, 'bad'); assert.ok(days[2].why.includes('Rain likely'));
+  assert.equal(days[1].verdict, 'bad'); assert.ok(days[1].why.includes('Rain before it dries'));
+  assert.equal(days[0].verdict, 'good');
+  // a cold day and a hot day
+  days = T.weatherDays(forecast((x, d) => { if (d === 3) x.temp -= 20; if (d === 4) x.temp += 30; }), T.WEATHER_RULES.paint);
+  assert.ok(days[3].why.some(w => w.startsWith('Too cold')), days[3].why.join());
+  assert.ok(days[4].why.some(w => w.startsWith('Too hot')), days[4].why.join());
+  // a windy day is okay, with why
+  days = T.weatherDays(forecast((x, d) => { if (d === 1) x.wind = 25; }), T.WEATHER_RULES.paint);
+  assert.equal(days[1].verdict, 'okay'); assert.ok(days[1].why.some(w => w.startsWith('Windy')));
+});
+test('weather: stain also needs the wood dry from the day before; paint doesn’t', () => {
+  const wetNight = forecast((x, d, h) => { if (d === 2 && h >= 19) x.rain = 70; });
+  const stain = T.weatherDays(wetNight, T.WEATHER_RULES.stain), paint = T.weatherDays(wetNight, T.WEATHER_RULES.paint);
+  assert.equal(stain[3].verdict, 'bad'); assert.ok(stain[3].why.includes('Wet wood from rain the day before'));
+  assert.notEqual(paint[3].verdict, 'bad');
+});

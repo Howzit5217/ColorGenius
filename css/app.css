@@ -1199,3 +1199,21 @@ html.cam-open { overflow: hidden; }
 .sp-pick[aria-pressed="true"] .sp-box::after { content: ''; width: 10px; height: 6px; margin-top: -3px; border: solid var(--bg); border-width: 0 0 2.5px 2.5px; transform: rotate(-45deg); }
 .sp-how { margin-top: 12px; }
 .sp-how .fix-steps { margin-top: 8px; }
+/* ---------------- when to do it: the weather for outside jobs ---------------- */
+.wx-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin: 10px 0; }
+.wx-zip { flex: 0 1 180px; }
+.wx-zip .input { font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.wx-msg { margin: 6px 0; font-weight: 650; }
+.wx-sum { margin: 6px 0 10px; line-height: 1.45; }
+.wx-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 118px), 1fr)); gap: 8px; }
+.wx-day { display: grid; gap: 2px; align-content: start; padding: 10px 12px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); }
+.wx-day b { font-size: 1.05rem; }
+.wx-date { color: var(--ink-3); font-size: .85rem; font-weight: 650; }
+.wx-t { font-size: 1.2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.wx-t small { color: var(--ink-3); font-size: .9rem; font-weight: 700; }
+.wx-v { justify-self: start; margin-top: 2px; padding: 1px 8px; border-radius: 999px; font-size: .82rem; font-weight: 800; background: var(--surface-2); }
+.wx-day.good { border-color: var(--good); }
+.wx-day.good .wx-v { background: var(--good-soft); }
+.wx-day.okay .wx-v { background: var(--caution-soft); }
+.wx-day.bad { opacity: .78; }
+.wx-why { color: var(--ink-2); font-size: .8rem; line-height: 1.3; }

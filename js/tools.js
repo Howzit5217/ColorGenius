@@ -414,7 +414,41 @@
     return { tools: applicators(job), supplies: supplies(job), amount: amount(job, size || a.size || 'medium'), safety: safety(job), cls: classOf(job), products: products || [] };
   }
 
-  const api = { CLASSES, TEXTURES, PRODUCTS, NAP, SIZES, GOING, PRIORITIES, classOf, textureFor, productFor, applicators, supplies, safety, sizeKind, containers, cartText, areaFor, coverageFor, amount, finishFor, linesFor, paintPlan, stainPlan };
+  // ---- the weather for outside jobs: hours of forecast -> which days are good to paint or stain ----
+  const WEATHER_RULES = {
+    paint: { lo: 50, hi: 90, after: 24, before: 0, what: 'paint' },
+    stain: { lo: 50, hi: 90, after: 24, before: 24, what: 'stain' },
+  };
+  // Each day: the temperatures while working (9 to 5), the chance of rain then and for the drying time after (and
+  // the day before, for stain), the night after, and the wind. Good, okay (and why), or not good (and why).
+  // hours: [{ t: Date, temp (°F), rain (% chance), wind (mph) }], in order
+  function weatherDays(hours, rule) {
+    const H = 3600e3, days = new Map();
+    for (const h of hours) { const k = h.t.toDateString(); if (!days.has(k)) days.set(k, []); days.get(k).push(h); }
+    const last = hours.length ? hours[hours.length - 1].t.getTime() : 0, out = [];
+    for (const hs of days.values()) {
+      const work = hs.filter(h => h.t.getHours() >= 9 && h.t.getHours() < 17); if (work.length < 5) continue;
+      const a = work[0].t.getTime(), b = work[work.length - 1].t.getTime() + H;
+      const span = (from, to) => hours.filter(h => h.t.getTime() >= from && h.t.getTime() < to);
+      const max = (list, k) => list.reduce((m, h) => Math.max(m, h[k]), 0);
+      const lo = Math.min(...work.map(h => h.temp)), hi = Math.max(...work.map(h => h.temp));
+      const rainNow = max(work, 'rain'), rainAfter = max(span(b, b + rule.after * H), 'rain'), rainBefore = rule.before ? max(span(a - rule.before * H, a), 'rain') : 0;
+      const night = span(b, b + 14 * H), nightLo = night.length ? Math.min(...night.map(h => h.temp)) : lo, wind = max(work, 'wind');
+      const bad = [], meh = [];
+      if (rainNow >= 50) bad.push('Rain likely'); else if (rainNow >= 25) meh.push(`${Math.round(rainNow)}% chance of rain`);
+      if (lo < rule.lo) bad.push(`Too cold (${Math.round(lo)}°)`);
+      if (hi > rule.hi) bad.push(`Too hot (${Math.round(hi)}°)`);
+      if (rainAfter >= 50) bad.push('Rain before it dries'); else if (rainAfter >= 25) meh.push('Some chance of rain after');
+      if (rainBefore >= 50) bad.push('Wet wood from rain the day before'); else if (rainBefore >= 30) meh.push('Maybe rain the day before');
+      if (!bad.length && nightLo < rule.lo - 15) meh.push(`Cold night after (${Math.round(nightLo)}°)`);
+      if (wind >= 20) meh.push(`Windy (${wind} mph)`);
+      if (!bad.length && b + rule.after * H > last) meh.push('Too far out to be sure');
+      out.push({ day: work[0].t, lo, hi, rain: Math.max(rainNow, rainAfter), verdict: bad.length ? 'bad' : meh.length ? 'okay' : 'good', why: bad.concat(meh) });
+    }
+    return out.slice(0, 7);
+  }
+
+  const api = { CLASSES, TEXTURES, PRODUCTS, NAP, SIZES, GOING, PRIORITIES, WEATHER_RULES, weatherDays, classOf, textureFor, productFor, applicators, supplies, safety, sizeKind, containers, cartText, areaFor, coverageFor, amount, finishFor, linesFor, paintPlan, stainPlan };
   root.CG = root.CG || {};
   root.CG.tools = api;
   if (isNode) module.exports = api;

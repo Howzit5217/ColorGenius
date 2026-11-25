@@ -1840,7 +1840,7 @@
           <div class="actions">${list.length > 1 ? `<button type="button" class="btn big" data-duel="${kind}">${ic('sparkle', 22)}Help Me Pick One</button>` : ''}<button type="button" class="btn big ghost" data-restart="${kind}">Start Over</button></div>
         </div>
       </div>
-      ${stain ? '' : samplePlanHtml(list.map(x => x.color))}
+      ${stain ? ((S.JOBS[R.answers.target] || {}).kind === 'interior' ? '' : wxHtml('stain', true)) : samplePlanHtml(list.map(x => x.color))}
       ${tips.length || (stain && R.products.length) ? `<section class="section" aria-labelledby="gtk"><h2 id="gtk">Good to Know</h2><div class="home-tips">${(stain ? R.products.slice(0, 3).map(p => ({ title: p.name, text: p.why })) : []).concat(tips).slice(0, 6).map(t => `<div class="tipcard"><b>${esc(t.title)}</b><span>${esc(t.text)}</span></div>`).join('')}</div></section>` : ''}
     </div>`;
     SC.paintWoods(view(), 'none');
@@ -2193,6 +2193,7 @@
         <div class="block"><h2><span class="ic">${ic('roller', 24)}</span>Roller &amp; Brush</h2>${P.tools.roller ? rollerArt(P.tools.roller.napId) : ''}<div class="need">${toolRows(P.tools)}</div>${P.tools.tips.map(t => `<div class="q-note">${ic('ok', 22)}<span>${esc(t)}</span></div>`).join('')}</div>
         <div class="block wide"><h2><span class="ic">${ic('list', 24)}</span>How Much to Buy</h2><div class="calc" id="calc">${calcInputs(kind, a, P)}<div class="calc-out"><span class="can">${ic('can', 44)}</span><span><b id="calcBuy">${esc(P.amount.buy)}</b><span id="calcWhat">${esc(amountLine(P.amount))}</span></span></div><p class="muted small">Coverage is about ${P.amount.coverage} sq ft per gallon for this job. Rough or porous surfaces soak up more.</p></div></div>
         <div class="block"><h2><span class="ic">${ic('basket', 24)}</span>Also Grab</h2><p class="muted">Check things off as you go.</p>${checklistHtml(P.supplies)}</div>
+        ${(P.space || {}).kind === 'exterior' ? wxHtml('paint') : ''}
         ${P.primer.tips.length || P.safety.length ? `<div class="block"><h2><span class="ic">${ic('ok', 24)}</span>Good to Know</h2><ul class="why">${P.primer.tips.concat(P.safety).map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
       </div>
     </div>`;
@@ -2836,6 +2837,51 @@
     }
     if (t.dataset.sampleOne) { const c = E.findColor(t.dataset.sampleOne); if (c) { addSample(c); saveSession(); updateListBtn(true); toast(`Added a sample of ${c.name} to ${sessionTitle()}`); } }
   });
+  // ---- the weather check for outside jobs: which days this week are good to paint or stain ----
+  // The forecast is the U.S. National Weather Service's (free, public, no account), found from a ZIP code (by
+  // zippopotam.us). Only the ZIP code is sent. A kiosk doesn't keep it for the next shopper.
+  const WX_RULES = T.WEATHER_RULES;
+  function wxHtml(kind, section) {
+    const zip = isKiosk() ? '' : store.get('wxZip', '');
+    const r = WX_RULES[kind];
+    const body = `<p class="muted">Outside ${r.what} needs a dry day between ${r.lo} and ${r.hi}°F, with no rain for a day after${r.before ? ', and none the day before, so the wood is dry' : ''}. See which days this week work.</p>
+      <div class="wx-form"><label class="field wx-zip">ZIP code<input type="text" class="input" id="wxZip" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="12345" value="${esc(zip)}"></label><button type="button" class="btn big primary" data-wx="${kind}">${ic('sun', 22)}Check the Weather</button></div>
+      <div class="wx-out" id="wxOut" aria-live="polite"></div>
+      <p class="muted small">Forecast from the U.S. National Weather Service. Only the ZIP code is sent. The can has its own temperature limits; go by those.</p>`;
+    return section ? `<section class="section wx" aria-labelledby="wxH"><h2 id="wxH">When to Do It</h2>${body}</section>` : `<div class="block wide wx"><h2><span class="ic">${ic('sun', 24)}</span>When to Do It</h2>${body}</div>`;
+  }
+  async function wxFetch(zip) {
+    const get = async (url, what) => { const res = await fetch(url, { headers: { Accept: 'application/geo+json, application/json' } }); if (!res.ok) throw new Error(what); return res.json(); };
+    const z = await get('https://api.zippopotam.us/us/' + zip, 'zip'), pl = z.places && z.places[0];
+    if (!pl) throw new Error('zip');
+    const pt = await get(`https://api.weather.gov/points/${(+pl.latitude).toFixed(4)},${(+pl.longitude).toFixed(4)}`, 'place');
+    const url = pt.properties && pt.properties.forecastHourly; if (!url) throw new Error('place');
+    const fc = await get(url, 'forecast');
+    const hours = ((fc.properties || {}).periods || []).map(p => ({ t: new Date(p.startTime), temp: p.temperatureUnit === 'C' ? p.temperature * 9 / 5 + 32 : p.temperature, rain: ((p.probabilityOfPrecipitation || {}).value) || 0, wind: parseInt(p.windSpeed, 10) || 0 })).filter(h => !isNaN(h.t));
+    return { place: `${pl['place name']}, ${pl['state abbreviation']}`, hours };
+  }
+  async function wxCheck(kind) {
+    const inp = $('#wxZip'), outEl = $('#wxOut'); if (!inp || !outEl) return;
+    const zip = (inp.value || '').replace(/\D/g, '').slice(0, 5);
+    if (zip.length !== 5) { outEl.innerHTML = '<p class="wx-msg">Type a 5-number ZIP code.</p>'; inp.focus(); return; }
+    if (!isKiosk()) store.set('wxZip', zip);
+    outEl.innerHTML = '<p class="wx-msg">Getting the forecast…</p>';
+    let fc;
+    try { fc = await wxFetch(zip); } catch (e) {
+      outEl.innerHTML = `<p class="wx-msg">${e && e.message === 'zip' ? 'That ZIP code wasn’t found. Check it and try again.' : navigator.onLine === false ? 'This device is offline, so the forecast can’t be checked.' : 'The forecast couldn’t be reached just now. Try again in a minute.'}</p>`;
+      return;
+    }
+    if (!$('#wxOut')) return;   // moved on while it loaded
+    const days = T.weatherDays(fc.hours, WX_RULES[kind]);
+    if (!days.length) { outEl.innerHTML = '<p class="wx-msg">No forecast came back for there. Try again later.</p>'; return; }
+    const good = days.filter(d => d.verdict === 'good');
+    const word = { good: 'Good', okay: 'Okay', bad: 'Not good' };
+    const fmtDay = d => d.toLocaleDateString('en-US', { weekday: 'short' }), fmtDate = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    outEl.innerHTML = `<p class="wx-sum"><b>${esc(fc.place)}:</b> ${good.length ? `best ${good.length === 1 ? 'day' : 'days'} ${good.map(d => d.day.toLocaleDateString('en-US', { weekday: 'long' })).join(', ')}` : 'no great days this week. Okay days are marked with why.'}</p>
+      <div class="wx-days">${days.map(d => `<div class="wx-day ${d.verdict}"><b>${fmtDay(d.day)}</b><span class="wx-date">${fmtDate(d.day)}</span><span class="wx-t">${Math.round(d.hi)}° <small>${Math.round(d.lo)}°</small></span><span class="wx-v">${word[d.verdict]}</span>${d.why.length ? `<small class="wx-why">${esc(d.why.join('. '))}</small>` : ''}</div>`).join('')}</div>`;
+  }
+  document.addEventListener('click', e => { const t = e.target.closest('[data-wx]'); if (t) wxCheck(t.dataset.wx); });
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'wxZip') { e.preventDefault(); const b = $('[data-wx]'); if (b) wxCheck(b.dataset.wx); } });
   function addToList(item) {
     if (!item) return;
     session.items.push(Object.assign({ id: newId() }, item));
