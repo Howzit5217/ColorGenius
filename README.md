@@ -39,6 +39,8 @@ The quick questions (about six):
 
 **Results:** the room picture sits on top, with the colors right under it. Tap a color and the room repaints, rolling the new color across the walls like a paint roller. On phones the colors are one swipeable row so the room stays in view. **Help Me Pick One** plays a few "Which do you like better?" rounds and marks your pick.
 
+**Try Before You Buy** (under the results): the top three colors (your pick from Help Me Pick One first), each with a box to tick, and **Add Samples to Project**, which puts a sample of each on the project (or adds a sample to a color already on it). **How to Test a Sample** says how: two coats on a big poster board or the wall, dry first, every wall at every time of day, next to what's staying, away from the old color, and a day or two to decide. Every color's own page has **Add a Sample** too. A line that's only samples doesn't need a sheen for the paint desk ticket.
+
 Colors come from about 45,000 colors across 23 brands from the US, Canada, Australia and New Zealand, the UK, South Africa and India, spread out so you don't get six versions of the same beige. Each has reasons it fits and its Light Reflectance (LRV: how much light the color bounces back, from 0 for black to 100 for white).
 
 ## Stain Colors

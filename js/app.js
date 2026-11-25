@@ -1840,6 +1840,7 @@
           <div class="actions">${list.length > 1 ? `<button type="button" class="btn big" data-duel="${kind}">${ic('sparkle', 22)}Help Me Pick One</button>` : ''}<button type="button" class="btn big ghost" data-restart="${kind}">Start Over</button></div>
         </div>
       </div>
+      ${stain ? '' : samplePlanHtml(list.map(x => x.color))}
       ${tips.length || (stain && R.products.length) ? `<section class="section" aria-labelledby="gtk"><h2 id="gtk">Good to Know</h2><div class="home-tips">${(stain ? R.products.slice(0, 3).map(p => ({ title: p.name, text: p.why })) : []).concat(tips).slice(0, 6).map(t => `<div class="tipcard"><b>${esc(t.title)}</b><span>${esc(t.text)}</span></div>`).join('')}</div></section>` : ''}
     </div>`;
     SC.paintWoods(view(), 'none');
@@ -1987,7 +1988,7 @@
           <div class="badges">${popBadge(c)}<span class="badge">${esc(d.familyName)}</span><span class="badge">${esc(d.undertone === 'neutral' ? 'True neutral' : cap(d.undertone) + ' undertone')}</span>${c.flags & E.F.DISC ? '<span class="badge">Discontinued</span>' : ''}</div>
           ${popWhyLine(c)}
           ${settings.showLrv ? `<div class="lrv-box"><div class="lrv-top"><span>Light Reflectance (LRV)</span><span class="mono">${c.lrv} of 100</span></div><div class="lrv-bar"><i style="left:${Math.max(0, Math.min(100, c.lrv))}%"></i></div><p>${esc(lrvWords(c.lrv))}.</p></div>` : ''}
-          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
+          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-sample-one="${esc(c.id)}">${ic('swatch', 22)}Add a Sample</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
           ${sampleNote(c)}
         </div>
       </div>
@@ -2794,6 +2795,46 @@
       const b = $('#ie-' + k); if (b) b.textContent = c[k];
     }
     if (d.ieFinish || d.iePlus || d.ieMinus) { saveSession(); if (state.view === 'list') { const y = window.scrollY; renderList(); window.scrollTo(0, y); } }
+  });
+  // ---- samples: test the top colors at home before buying gallons ----
+  const SAMPLE_STEPS = [
+    'Paint two coats on a big piece of white poster board, about 2 feet square, or right on the wall. A chip is too small to judge.',
+    'Let it dry for a few hours. Wet paint looks darker than it will be.',
+    'Look at it on each wall, in the morning, the afternoon and at night with the lights on. Color changes a lot with the light.',
+    'Hold it next to what’s staying: the trim, floor, counters, cabinets and furniture.',
+    'Keep it away from the old wall color, with white paper around it, so the old color doesn’t fool your eye.',
+    'Live with it a day or two before you choose.',
+  ];
+  let samplePicks = null;
+  function samplePlanHtml(colors) {
+    const top = colors.slice(0, 3);
+    if (!top.length) return '';
+    if (state.duelPick) { const i = top.findIndex(c => c.id === state.duelPick); if (i > 0) top.unshift(top.splice(i, 1)[0]); }
+    samplePicks = new Set(top.map(c => c.id));
+    return `<section class="section sample-plan" aria-labelledby="spH"><h2 id="spH">Try Before You Buy</h2>
+      <p>Not sure yet? Get a sample of your top ${top.length === 1 ? 'color' : top.length === 2 ? 'two' : 'three'} and test ${top.length === 1 ? 'it' : 'them'} at home. A few samples cost a lot less than painting a room twice.</p>
+      <div class="sp-picks">${top.map(c => `<button type="button" class="sp-pick" data-sp="${esc(c.id)}" aria-pressed="true"><span class="sw" ${swStyle(c.hex)}></span><span class="sp-txt"><b>${esc(c.name)}</b><small>${esc(brandName(c.brand))} ${esc(E.codeLabel(c))}</small></span><span class="sp-box" aria-hidden="true"></span></button>`).join('')}</div>
+      <div class="actions"><button type="button" class="btn big primary" data-sp-add="1">${plusIcon}Add Samples to Project</button></div>
+      <details class="more sp-how"><summary>How to Test a Sample</summary><ol class="fix-steps">${SAMPLE_STEPS.map(x => `<li>${esc(x)}</li>`).join('')}</ol></details></section>`;
+  }
+  // a sample of a color on the project: one more on its line if it's there, or a line of its own
+  function addSample(c) {
+    const x = session.items.find(i => i.ref === c.id);
+    if (x) { const k = cartOf(x); k.sample = Math.max(1, k.sample + (k.sample ? 0 : 1)); x.cart = k; x.amount = cartLine(k); return false; }
+    const it = paintItem(c); it.cart = { sample: 1, quart: 0, gallon: 0, bucket: 0 }; it.amount = cartLine(it.cart);
+    session.items.push(Object.assign({ id: newId() }, it));
+    return true;
+  }
+  document.addEventListener('click', e => {
+    const t = e.target.closest('button'); if (!t || !state.ready) return;
+    if (t.dataset.sp && samplePicks) { const id = t.dataset.sp, on = !samplePicks.has(id); if (on) samplePicks.add(id); else samplePicks.delete(id); t.setAttribute('aria-pressed', String(on)); }
+    if (t.dataset.spAdd && samplePicks) {
+      const cs = [...samplePicks].map(id => E.findColor(id)).filter(Boolean);
+      if (!cs.length) { toast('Tap the colors to sample first'); return; }
+      cs.forEach(addSample); saveSession(); updateListBtn(true);
+      toast(`Added ${cs.length === 1 ? 'a sample' : cs.length + ' samples'} to ${sessionTitle()}`);
+    }
+    if (t.dataset.sampleOne) { const c = E.findColor(t.dataset.sampleOne); if (c) { addSample(c); saveSession(); updateListBtn(true); toast(`Added a sample of ${c.name} to ${sessionTitle()}`); } }
   });
   function addToList(item) {
     if (!item) return;
