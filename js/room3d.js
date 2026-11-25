@@ -480,7 +480,7 @@
   // a color as linear light, with the same light shift and screen tuning as the chips
   function linOf(hex, lightObj, cal) {
     let l = C.hexToLinear(String(hex || 'FFFFFF').replace('#', ''));
-    if (lightObj) l = C.applyLight(l, lightObj);
+    if (lightObj) l = C.applyLight(l, lightObj, cal);
     if (cal && cal.enabled) l = C.applyCalibration(l, cal);
     return l.map(v => Math.max(0, Math.min(1.2, v)));
   }

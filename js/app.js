@@ -21,7 +21,7 @@
     brands: {}, storeBrand: '', storeOnly: false, resultCount: 6,
     inStoreSamples: true, showDiscontinued: false,
     askBulbs: true, askFixed: true, showWarnings: true, showLrv: true, showMatches: true, lightPreview: true,
-    cal: { enabled: false, warmth: 0, brightness: 0, vividness: 0, ref: '' },
+    cal: { enabled: false, cct: 0, warmth: 0, brightness: 0, vividness: 0, ref: '' },
     theme: 'system', reduceMotion: false, lines: {}, collections: {}, audience: '', onboarded: false,
     jobs: { paint: true, stain: true }, stainBrands: {}, chain: '',
     questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false, camTune: [],
@@ -1282,9 +1282,9 @@
   // [light, big word, small word, the bulb's own glow]
   const BULB_TILES = [['warm', 'Warm', '2700K', '#ffd48f'], ['soft', 'Soft White', '3000K', '#ffe4b8'], ['bright', 'Bright White', '4000K', '#fff4e2'], ['cool', 'Daylight', '5000K', '#e8f0ff']];
   const DAY_TILES = [['daylight', 'Daytime', 'Sun from windows', '#dcebfa'], ['north', 'North Light', 'Soft and cool', '#d9e1ea'], ['sun', 'Afternoon Sun', 'Strong and warm', '#ffeccb'], ['golden', 'Golden Hour', 'Low orange sun', '#ffcf94'], ['dim', 'Dim Corner', 'Away from windows', '#c9cdd2'], ['none', 'Chip Color', 'No light at all', '#ffffff']];
-  function lightTile([id, word, small, glow], yours) {
+  function lightTile([id, word, small, glow], yours, attr, on) {
     const bulb = BULB_TILES.some(t => t[0] === id);
-    return `<button type="button" class="lt-tile" data-light-set="${id}" aria-pressed="${state.light === id}"><span class="lt-ic" style="background:${glow}">${ic(bulb ? 'bulb' : id === 'none' ? 'swatch' : 'sun', 22)}</span><b>${esc(word)}</b><small>${esc(small)}</small>${yours === id ? '<span class="lt-yours">Yours</span>' : ''}</button>`;
+    return `<button type="button" class="lt-tile" ${attr || 'data-light-set'}="${id}" aria-pressed="${on == null ? state.light === id : !!on}"><span class="lt-ic" style="background:${glow}">${ic(bulb ? 'bulb' : id === 'none' ? 'swatch' : id === '' ? 'unsure' : 'sun', 22)}</span><b>${esc(word)}</b><small>${esc(small)}</small>${yours && yours === id ? '<span class="lt-yours">Yours</span>' : ''}</button>`;
   }
   // the short row inside the color adjuster: daytime and the four bulbs (and whatever else is picked now)
   function lightRowHtml(yours) {
@@ -3375,8 +3375,9 @@
       </div></div>
       <div class="set-group"><h2>Screen Color</h2><div class="set-card">
         <div class="set-note" style="border-top:0">Screens show colors differently. Matching this screen to white paper and a real chip makes every color truer.</div>
-        ${sw('calEnabled', settings.cal.enabled, 'Use my screen tuning', settings.cal.enabled ? `Warmth ${settings.cal.warmth}, brightness ${settings.cal.brightness}, vividness ${settings.cal.vividness}` : 'Not tuned yet')}
-        <div class="set-row"><button type="button" class="btn primary" data-act="calibrate">Tune This Screen</button>${settings.cal.warmth || settings.cal.brightness || settings.cal.vividness ? '<button type="button" class="btn ghost" data-act="reset-cal">Undo Tuning</button>' : ''}</div>
+        ${sw('calEnabled', settings.cal.enabled, 'Use my screen tuning', settings.cal.enabled ? `${settings.cal.cct ? `For ${calLightName(settings.cal.cct)}. W` : 'W'}armth ${settings.cal.warmth}, brightness ${settings.cal.brightness}, vividness ${settings.cal.vividness}` : 'Not tuned yet')}
+        ${settings.cal.enabled ? `<div class="set-row cal-here"><div class="set-text"><b>Light where this screen is</b><span>In a room with other bulbs now? Tap them, and the tuning moves with them. No need to tune again.</span></div>${calTiles('data-cal-here', settings.cal.cct)}</div>` : ''}
+        <div class="set-row"><button type="button" class="btn primary" data-act="calibrate">Tune This Screen</button>${settings.cal.cct || settings.cal.warmth || settings.cal.brightness || settings.cal.vividness ? '<button type="button" class="btn ghost" data-act="reset-cal">Undo Tuning</button>' : ''}</div>
       </div></div>
       <div class="set-group" id="setBrands"><h2>Brands</h2>
         <details class="set-card"><summary>Paint Brands <span class="muted on-count" id="paintOn" aria-live="polite">${paintOnText()}</span></summary>
@@ -3515,17 +3516,29 @@
   // SCREEN TUNING: match the screen to white paper, then to a real chip
   // ================================================================
   let cal = null;
+  // the light where the screen is tuned: daytime or the bulbs, by the number on the bulb or its box
+  const CAL_DAY = ['daylight', 'Daytime', 'Window light', '#dcebfa'], CAL_UNSURE = ['', 'Not Sure', 'Use the slider', '#ece9e3'];
+  const calCct = id => (E.LIGHTS.find(l => l.id === id) || {}).cct || 0;
+  const calTile = cct => [CAL_DAY].concat(BULB_TILES).find(t => calCct(t[0]) === cct) || null;
+  const calLightName = cct => { const t = calTile(cct); return !t ? '' : t === CAL_DAY ? 'daylight' : `${t[1]} ${t[2]} bulbs`; };
+  const calTiles = (attr, cct) => `<div class="lt-stack"><div class="lt-grid bulbs">${BULB_TILES.map(t => lightTile(t, '', attr, calCct(t[0]) === cct)).join('')}</div><div class="lt-grid bulbs">${[CAL_DAY, CAL_UNSURE].map(t => lightTile(t, '', attr, t[0] ? calCct(t[0]) === cct : !cct)).join('')}</div></div>`;
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-cal-here]'); if (!t) return;
+    settings.cal.cct = calCct(t.dataset.calHere); saveSettings(); afterSettingsChange('calEnabled'); renderKeep();
+    toast(settings.cal.cct ? 'Screen tuning set for ' + calLightName(settings.cal.cct) : 'Screen tuning set for any light');
+  });
   function openCal() { cal = { draft: Object.assign({}, settings.cal, { enabled: true }), step: 0, ref: settings.cal.ref ? E.findColor(settings.cal.ref) : (E.search('Agreeable Gray')[0] || {}).color || E.getIndex().colors[0] }; drawCal(); }
   const calSlider = (key, label, min, max, left, right) => `<label class="field">${label} <span class="mono" id="calv-${key}">${cal.draft[key] > 0 ? '+' : ''}${cal.draft[key]}</span><input type="range" min="${min}" max="${max}" step="1" value="${cal.draft[key]}" data-cal="${key}" style="width:100%;min-height:44px;accent-color:var(--accent)"><span class="muted small" style="display:flex;justify-content:space-between"><span>${left}</span><span>${right}</span></span></label>`;
   function drawCal() {
     const st = cal.step;
     const panels = (a, b) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${a}${b}</div>`;
     const panel = (id, text) => `<div id="${id}" style="min-height:130px;border-radius:16px;display:grid;place-items:end start;padding:10px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)"><span class="badge">${text}</span></div>`;
-    const body = st === 0 ? `<p style="font-size:1.1rem">This takes about a minute. You’ll need a sheet of plain white paper and any paint chip.</p><ul class="why"><li>Turn off Night Light, True Tone or any blue-light filter.</li><li>Use your normal screen brightness.</li><li>Do it where colors get picked, in that light.</li></ul>`
-      : st === 1 ? `<p style="font-size:1.1rem">Hold the white paper against the screen. Slide until the left box looks like the paper.</p>${panels(panel('calWhite', 'Tuned white'), panel('calOff', 'Untouched'))}${calSlider('warmth', 'Warmth', -100, 100, 'Box looks too yellow', 'Box looks too blue')}${calSlider('brightness', 'Brightness', -50, 20, 'Box glows brighter', 'Box looks dimmer')}`
-      : st === 2 ? `<p style="font-size:1.1rem">Find the chip in your hand, then slide until the left box looks like it.</p><div class="search"><input type="search" id="calSearch" placeholder="Name or code of your chip" aria-label="Find your chip" autocomplete="off"></div><div class="rows" id="calHits"></div>${panels(panel('calChip', esc(cal.ref ? cal.ref.name : '')), panel('calChipOff', 'Untouched'))}${calSlider('vividness', 'Vividness', -50, 50, 'Too strong', 'Too dull')}${calSlider('warmth', 'Warmth', -100, 100, 'Too yellow', 'Too blue')}${calSlider('brightness', 'Brightness', -50, 20, 'Too bright', 'Too dark')}`
-      : `<p style="font-size:1.1rem">All done. You can turn screen tuning off or on in Settings any time.</p>`;
-    openModal(['Tune This Screen', 'Match White Paper', 'Match a Real Chip', 'Done'][st], `${body}<div class="modal-foot">${st ? '<button type="button" class="btn big ghost" data-cal-act="back">Back</button>' : '<button type="button" class="btn big ghost" data-modal-close="1">Cancel</button>'}<span class="grow"></span>${st === 2 ? '<button type="button" class="btn big ghost" data-cal-act="next">Skip</button>' : ''}<button type="button" class="btn big primary" data-cal-act="${st === 3 ? 'save' : 'next'}">${st === 3 ? 'Save' : st === 0 ? 'Start' : 'Next'}</button></div>`);
+    const body = st === 0 ? `<p style="font-size:1.1rem">This takes about a minute. You’ll need a sheet of plain white paper and any paint chip.</p><ul class="why"><li>Turn off Night Light, True Tone or any blue-light filter.</li><li>Use your normal screen brightness.</li><li>Do it where colors get picked, in that light. You’ll pick that light first.</li></ul>`
+      : st === 1 ? `<p style="font-size:1.1rem">What light is on the paper where you are? The number is on the bulb or its box.</p>${calTiles('data-cal-light', cal.draft.cct)}<p class="muted" style="margin:0">This gets the screen close before you fine-tune it. Most stores use 4000K or 5000K lights.</p>`
+      : st === 2 ? `<p style="font-size:1.1rem">Hold the white paper against the screen. Slide until the left box looks like the paper.${cal.draft.cct && cal.draft.cct < 6000 ? ` It starts warmer, for ${esc(calLightName(cal.draft.cct))}.` : ''}</p>${panels(panel('calWhite', 'Tuned white'), panel('calOff', 'Untouched'))}${calSlider('warmth', 'Warmth', -100, 100, 'Box looks too yellow', 'Box looks too blue')}${calSlider('brightness', 'Brightness', -50, 20, 'Box glows brighter', 'Box looks dimmer')}`
+      : st === 3 ? `<p style="font-size:1.1rem">Find the chip in your hand, then slide until the left box looks like it.</p><div class="search"><input type="search" id="calSearch" placeholder="Name or code of your chip" aria-label="Find your chip" autocomplete="off"></div><div class="rows" id="calHits"></div>${panels(panel('calChip', esc(cal.ref ? cal.ref.name : '')), panel('calChipOff', 'Untouched'))}${calSlider('vividness', 'Vividness', -50, 50, 'Too strong', 'Too dull')}${calSlider('warmth', 'Warmth', -100, 100, 'Too yellow', 'Too blue')}${calSlider('brightness', 'Brightness', -50, 20, 'Too bright', 'Too dark')}`
+      : `<p style="font-size:1.1rem">All done${cal.draft.cct ? `, tuned for ${esc(calLightName(cal.draft.cct))}` : ''}. You can turn screen tuning off or on in Settings any time.</p><p class="muted" style="margin:0">In a room with other bulbs later? Pick them in Settings, under Screen Color. There’s no need to tune again.</p>`;
+    openModal(['Tune This Screen', 'The Light Here', 'Match White Paper', 'Match a Real Chip', 'Done'][st], `${body}<div class="modal-foot">${st ? '<button type="button" class="btn big ghost" data-cal-act="back">Back</button>' : '<button type="button" class="btn big ghost" data-modal-close="1">Cancel</button>'}<span class="grow"></span>${st === 3 ? '<button type="button" class="btn big ghost" data-cal-act="next">Skip</button>' : ''}<button type="button" class="btn big primary" data-cal-act="${st === 4 ? 'save' : 'next'}">${st === 4 ? 'Save' : st === 0 ? 'Start' : 'Next'}</button></div>`);
     paintCal();
     const s = $('#calSearch');
     if (s) s.addEventListener('input', () => { $('#calHits').innerHTML = E.search(s.value, { limit: 5, brands: brandsEnabled() }).map(r => `<button type="button" class="row" data-cal-pick="${esc(r.color.id)}"><span class="sw" style="background:#${r.color.hex}"></span><span><span class="nm">${esc(r.color.name)}</span><span class="sub">${esc(brandName(r.color.brand))} ${esc(E.codeLabel(r.color))}</span></span><span></span></button>`).join(''); });
@@ -3538,6 +3551,7 @@
   $('#modal').addEventListener('input', e => { const k = e.target.dataset.cal; if (!k || !cal) return; cal.draft[k] = +e.target.value; $$(`[data-cal="${k}"]`).forEach(i => { if (i !== e.target) i.value = cal.draft[k]; }); const v = $('#calv-' + k); if (v) v.textContent = (cal.draft[k] > 0 ? '+' : '') + cal.draft[k]; paintCal(); });
   $('#modal').addEventListener('click', e => {
     const t = e.target.closest('button'); if (!t || !cal) return;
+    if (t.dataset.calLight != null) { cal.draft.cct = calCct(t.dataset.calLight); $$('#modal [data-cal-light]').forEach(b => b.setAttribute('aria-pressed', String(b === t))); return; }
     if (t.dataset.calPick) { cal.ref = E.findColor(t.dataset.calPick); $('#calChip .badge').textContent = cal.ref.name; $('#calHits').innerHTML = ''; paintCal(); return; }
     const a = t.dataset.calAct;
     if (a === 'back') { cal.step--; drawCal(); }

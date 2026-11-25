@@ -732,3 +732,28 @@ test('light bulbs: 2700K to 5000K, from the answers to the room picture', () => 
     assert.ok(sc.includes(' ' + l.id + ": ['#"), 'sky for ' + l.id);
   }
 });
+test('screen tuning: the bulbs where the screen is set where its white starts, and other light is shown from there', () => {
+  // the white starts less than half way (in mireds) toward the bulbs
+  assert.equal(C.roomWhite(0), 6504);
+  assert.ok(Math.abs(C.roomWhite(6504) - 6504) < 1);
+  const ts = [2700, 3000, 4000, 5000].map(C.roomWhite);
+  assert.ok(ts.every((t, i) => i === 0 || t > ts[i - 1]), 'warmer bulbs, warmer white: ' + ts.map(Math.round));
+  assert.ok(ts[0] > 3700 && ts[0] < 4300, '2700K bulbs start the white near 4000K: ' + Math.round(ts[0]));
+  const redBlue = v => v[0] / v[2];
+  const white = [1, 1, 1];
+  const tuned = cct => C.applyCalibration(white, { enabled: true, cct, warmth: 0, brightness: 0, vividness: 0 });
+  assert.ok(redBlue(tuned(2700)) > redBlue(tuned(4000)) && redBlue(tuned(4000)) > redBlue(tuned(0)) * 1.02);
+  assert.ok(Math.abs(redBlue(tuned(6500)) - 1) < 0.01, 'daylight barely moves it');
+  assert.deepEqual(C.applyCalibration(white, { enabled: false, cct: 2700 }), white);
+  // the warmth slider still fine-tunes on top
+  assert.ok(redBlue(C.applyCalibration(white, { enabled: true, cct: 2700, warmth: 30 })) > redBlue(tuned(2700)));
+  // tuned under warm bulbs: the same bulbs show the chip as it is there; daylight is cooler than that
+  const cal = { enabled: true, cct: 2700 };
+  const warm = E.LIGHTS.find(l => l.id === 'warm'), day = E.LIGHTS.find(l => l.id === 'daylight');
+  const same = C.applyLight(white, warm, cal);
+  assert.ok(Math.abs(redBlue(same) - 1) < 0.005, 'same bulbs: no extra tint ' + redBlue(same));
+  assert.ok(redBlue(C.applyLight(white, day, cal)) < 0.97, 'daylight looks cooler than the warm room');
+  // not tuned for a light: as before
+  assert.deepEqual(C.applyLight(white, warm, { enabled: true }), C.applyLight(white, warm));
+  assert.ok(redBlue(C.applyLight(white, warm)) > 1.05);
+});

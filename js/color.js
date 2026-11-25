@@ -181,19 +181,43 @@
     return g.map(v => v / m);
   }
   // Eyes adapt to most of a light's tint; `adapt` is how much tint is left over (0 = none, 1 = full camera-like tint)
-  function applyLight(lin, light) {
+  // On a screen tuned under the room's own bulbs (cal.cct), the screen's white already looks like white paper in
+  // that light, so another light is shown compared with those bulbs: the same bulbs show the chip as it looks
+  // there, and daylight looks cooler than it.
+  function applyLight(lin, light, cal) {
     if (!light) return lin;
-    const gain = illuminantGain(light.cct || 6504);
+    let gain = illuminantGain(light.cct || 6504);
+    const here = cal && cal.enabled && cal.cct;
+    if (here) {
+      const h = illuminantGain(here);
+      gain = gain.map((v, i) => v / h[i]);
+      const m = 0.2126 * gain[0] + 0.7152 * gain[1] + 0.0722 * gain[2];
+      gain = gain.map(v => v / m);
+    }
     const left = light.adapt == null ? 0.3 : light.adapt;
     const k = light.intensity == null ? 1 : light.intensity;
     return lin.map((v, i) => v * (1 + left * (gain[i] - 1)) * k);
   }
 
   // ---------- screen calibration ----------
-  // cal = { warmth: -100..100, brightness: -50..50, vividness: -50..50, enabled: bool }
+  // cal = { cct: the bulbs where the screen is (0 not known), warmth: -100..100, brightness: -50..50,
+  //         vividness: -50..50, enabled: bool }
+  // The bulbs set where the screen's white starts: white paper under warm bulbs looks warm, so the screen's white
+  // has to be warmer to look like it. Eyes count a screen partly as a light of its own, so it moves less than
+  // half way (in mireds) toward the bulbs' color; the warmth slider then fine-tunes from there.
+  const ROOM_SHARE = 0.4;
+  function roomWhite(cct) {
+    if (!cct) return 6504;
+    const m0 = 1e6 / 6504;
+    return 1e6 / (m0 + ROOM_SHARE * (1e6 / cct - m0));
+  }
   function applyCalibration(lin, cal) {
     if (!cal || !cal.enabled) return lin;
     let out = lin;
+    if (cal.cct && Math.abs(cal.cct - 6504) > 50) {
+      const g = illuminantGain(roomWhite(cal.cct));
+      out = out.map((v, i) => v * g[i]);
+    }
     if (cal.warmth) {
       // Positive warmth: the screen looks too blue, so warm the swatches (lower temperature); negative: the reverse
       const T = cal.warmth > 0 ? 6504 - cal.warmth * 22 : 6504 - cal.warmth * 60;
@@ -233,7 +257,7 @@
     opts = opts || {};
     if (!opts.light && !(opts.cal && opts.cal.enabled)) return '#' + hex;
     let lin = hexToLinear(hex);
-    lin = applyLight(lin, opts.light);
+    lin = applyLight(lin, opts.light, opts.cal);
     lin = applyCalibration(lin, opts.cal);
     if (inGamut(lin)) return '#' + linearToHex(lin);
     if (opts.p3) {
@@ -248,7 +272,7 @@
   const api = {
     hexToRgb, rgbToHex, toLinear, fromLinear, hexToLinear, linearToHex, linToXyz, xyzToLin, xyzToLab, hexToLab, labToLch,
     lrvFromHex, linToOklab, oklabToLin, deltaE2000, matchLabel, family, undertone, temperature, depthLabel, describe, FAMILY_NAMES,
-    cctToXy, illuminantGain, applyLight, applyCalibration, linToP3, displayCss, inkOn,
+    cctToXy, illuminantGain, applyLight, applyCalibration, roomWhite, linToP3, displayCss, inkOn,
   };
   root.CG = root.CG || {};
   root.CG.color = api;

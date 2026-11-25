@@ -356,7 +356,7 @@
   const SRGB_LUT = (() => { const t = new Uint8ClampedArray(4096); for (let i = 0; i < 4096; i++) t[i] = Math.round(C.fromLinear(i / 4095)); return t; })();
   // light + calibration as three channel multipliers (close enough for textures)
   function gainFor(light, cal) {
-    let g = C.applyLight([1, 1, 1], light);
+    let g = C.applyLight([1, 1, 1], light, cal);
     g = C.applyCalibration(g, cal);
     return g;
   }

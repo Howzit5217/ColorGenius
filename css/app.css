@@ -873,6 +873,10 @@ html.gate-open { overflow: hidden; }
 .lt-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 6px; }
 .lt-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .lt-grid.bulbs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* Settings: the light where the screen is tuned */
+.lt-stack { display: grid; gap: 8px; }
+.cal-here { gap: 12px; }
+.cal-here > .lt-stack { flex: 1 1 100%; max-width: 480px; }
 .lt-tile { position: relative; display: grid; justify-items: center; align-content: start; gap: 1px; min-width: 0; min-height: 78px; padding: 8px 3px 7px; border-radius: 14px; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--ink); text-align: center; transition: border-color var(--t1); }
 .lt-tile:hover { border-color: var(--ink-3); }
 .lt-tile[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 1.5px var(--ink) inset; }
