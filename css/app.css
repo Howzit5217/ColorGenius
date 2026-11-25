@@ -582,12 +582,6 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .search input::-ms-clear { display: none; width: 0; height: 0; }
 .search .clear { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; flex: none; }
 .exact { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); padding: 20px; border-radius: var(--r-xl); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
-/* after a camera reading: pick the real chip, and the camera learns from it */
-.cam-teach { display: flex; gap: 14px; align-items: flex-start; margin-top: 14px; padding: 16px 18px; border-radius: var(--r-lg); background: var(--surface-2); border: 1px solid var(--line); }
-.cam-teach > svg { flex: none; margin-top: 2px; color: var(--ink-2); }
-.cam-teach-in { flex: 1; min-width: 0; display: grid; gap: 10px; }
-.cam-teach-in p { margin: 0; line-height: 1.45; }
-.cam-teach .rows:empty { display: none; }
 @media (min-width: 700px) { .exact { grid-template-columns: 220px minmax(0, 1fr); } }
 .exact-sw { min-height: 150px; border-radius: 18px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
 .exact-info { display: grid; gap: 12px; align-content: start; }

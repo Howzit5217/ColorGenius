@@ -38,6 +38,8 @@ export function shoot(o) {
     let e = 1 + (o.gx || 0) * (x - W / 2) / W + (o.gy || 0) * (y - H / 2) / H;
     if (torch) { const d = Math.hypot(x - torch.x, y - torch.y) / torch.r0; e *= (1 - torch.share) + torch.share * 2 / Math.pow(1 + d * d, 1.5); }
     if (o.shadow && x < W / 2 - cs * 0.9) e *= o.shadow;
+    // the phone's own shadow: darker past a line (at sx from the middle, angled by sa), with a soft edge sw wide
+    if (o.phoneShadow) { const p = o.phoneShadow, d = ((x - W / 2) * Math.cos(p.sa || 0) + (y - H / 2) * Math.sin(p.sa || 0)) - p.sx; e *= 1 - (1 - p.k) / (1 + Math.exp(-d / (p.sw || 4))); }
     return e;
   };
   // the camera's white balance gets most (not all) of the way to neutral; its exposure puts the paper at the

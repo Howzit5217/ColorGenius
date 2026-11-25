@@ -176,3 +176,9 @@ test('a picture with no size yet (the screen turning) is skipped, not an error',
   const frame = { data: new Uint8ClampedArray(16), width: 2, height: 2 };
   assert.equal(M.analyze(frame, { mode: 'paper', color: { x0: NaN, y0: NaN, x1: NaN, y1: NaN } }).problem, 'small');
 });
+test('without the phone’s light: its shadow over part of the paper doesn’t throw the reading off', () => {
+  for (const hex of ['6BC0CE', 'D1CBC1', '22303F', 'C8553D', 'EDEAE0']) for (const phoneShadow of [{ sx: 50, k: 0.6 }, { sx: 70, k: 0.5, sa: 0.6 }, { sx: 48, k: 0.4, sw: 2 }]) {
+    const { c, problems } = read({ hex, phoneShadow });
+    assert.ok(c ? err(c.hex, hex) < 2.2 : problems.length, `${hex} ${JSON.stringify(phoneShadow)} read ${c && c.hex}`);
+  }
+});

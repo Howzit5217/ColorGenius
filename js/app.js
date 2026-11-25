@@ -2300,7 +2300,8 @@
       <div class="cam-tips" id="camTips" hidden>
         <span><b>On Paper:</b> lay the chip or sample on plain white copy paper and fit the box inside it. The paper all around it is read too, so the light is the same.</span>
         <span><b>On a Wall:</b> hold plain white paper flat on the wall right beside the color, and put the Paper box on it.</span>
-        <span>Green edge: a good height. Yellow or red: move the phone back a little.</span>
+        <span>Hold the phone a little to one side, so its shadow doesn’t fall on the paper.</span>
+        <span>Too dark? The light button turns on the phone’s light. Then a green edge means a good height; yellow or red, move the phone back a little.</span>
         <span>Drag a box to move it. Drag its corner to resize it.</span>
         <span>Shiny paint? Hold the phone at a slight angle, not flat over it. A circle marks any shiny spot.</span>
         <span class="cam-tune-row" id="camTuneRow">${camTuneRow()}</span>
@@ -2333,7 +2334,7 @@
     try { await video.play(); } catch (e) { /* plays once it can */ }
     cam = { stream, video, canvas: document.createElement('canvas'), timer: 0, busy: false, torch: false, light: false };
     try { const tr = stream.getVideoTracks()[0], caps = tr && tr.getCapabilities ? tr.getCapabilities() : {}; cam.torch = !!caps.torch; cam.focus = !!caps.focusDistance; const ec = caps.exposureCompensation; if (ec && ec.max > ec.min) cam.ev = { min: ec.min, max: ec.max, step: Math.max(ec.step || 0, 1 / 3), now: 0 }; } catch (e) { cam.torch = false; }
-    if (cam.torch) { const lb = $('[data-cam-light]'); if (lb) lb.hidden = false; await camSetLight(true); }
+    if (cam.torch) { const lb = $('[data-cam-light]'); if (lb) lb.hidden = false; }   // the light starts off; its button turns it on
     const w = $('#camWait'); if (w) w.hidden = true;
     cam.timer = setInterval(camLive, 250);
   }
@@ -2422,7 +2423,7 @@
     bright: () => (cam && cam.ev && cam.ev.now > cam.ev.min ? 'Too bright. Adjusting the camera…' : cam && cam.light ? 'Too bright for the camera. Turn the light off, or move the phone back.' : 'Too bright for the camera. Move out of direct light, or move the phone back.'),
     glare: () => 'Shine on the color (circled). Hold the phone at a slight angle, not flat over it, until the circle is out of the box.',
     mixed: () => (camMode === 'wall' ? 'Fill the Color box with one color.' : 'Make the box smaller, so it’s all the color.'),
-    uneven: () => (camMode === 'wall' ? 'The light is uneven. Move the boxes closer together.' : 'Too close. Move the phone back a little.'),
+    uneven: () => (camMode === 'wall' ? 'The light is uneven. Move the boxes closer together.' : cam && cam.light ? 'Too close. Move the phone back a little.' : 'Uneven light. Keep the phone’s shadow off the paper.'),
     brighter: () => 'Use plain white copy paper. The color looks brighter than the paper.',
     small: () => 'Make the box bigger.',
   };
@@ -2441,7 +2442,7 @@
     const top = r.white && r.white.top, ev = cam.ev;
     let want = ev.now;
     if (r.problem === 'bright' || (top && top > 238)) want = Math.max(ev.min, ev.now - ev.step);
-    else if (top && top < 160 && ev.now < 0) want = Math.min(0, ev.now + ev.step);
+    else if (top && top < 165) want = Math.min(Math.min(ev.max, 1), ev.now + ev.step);   // (a white page makes a camera expose it gray: up to one stop brighter)
     if (want === ev.now) return;
     cam.evBusy = true;
     try { await cam.stream.getVideoTracks()[0].applyConstraints({ advanced: [{ exposureCompensation: want }] }); ev.now = want; } catch (e) { cam.ev = null; }
@@ -2479,7 +2480,9 @@
     if (!r) { if (cam && !document.contains(cam.video)) camStop(); return; }
     camExposure(r);
     const screen = $('#camera'), meter = $('#camMeter');
-    if (r.white && r.white.ok) {
+    // the height guide is for the phone's light (its bright spot gets uneven up close); without it, uneven light
+    // is the phone's shadow, and the line at the top says so
+    if (r.white && r.white.ok && cam.light) {
       const h = camHeight(r);
       if (screen) screen.dataset.height = h.level;
       if (meter) { meter.hidden = false; $('.mark', meter).style.bottom = (h.pos * 100) + '%'; $('.lbl', meter).textContent = h.text; meter.dataset.level = h.level; }
@@ -2567,18 +2570,25 @@
       return;
     }
     if (d.camRead && cam && !cam.busy) {
-      // a second of pictures, each read on its own; the color is the middle of them, and only if they agree
+      // Pictures, each read on its own, until the camera has settled: a camera keeps nudging its brightness and
+      // warmth for a moment, so the color is the middle of the first ten in a row that agree closely (or, after
+      // about three seconds, of the steadiest ten). Only if they agree.
       cam.busy = true; t.disabled = true; t.classList.add('busy');
+      camNote('Hold still…', 'ready');
       const got = [];
-      for (let i = 0; i < 14; i++) { const r = camSample(); if (r) got.push(r); await new Promise(res => setTimeout(res, 70)); }
-      if (!cam) return;
+      let c = null;
+      for (let i = 0; i < 40; i++) {
+        const r = camSample(); if (r) got.push(r);
+        if (got.length >= 10) { const run = CM.combine(got.slice(-10)); if (run && run.n >= 8 && (!c || run.spread < c.spread)) c = run; if (c && c.spread <= 1.2) break; }
+        await new Promise(res => setTimeout(res, 70));
+        if (!cam) return;
+      }
       cam.busy = false; t.classList.remove('busy');
-      const c = CM.combine(got), bad = got.find(g => g.problem);
-      if (!c || c.n < 6) { t.disabled = false; camNote(bad ? camSay(bad.problem) : 'Hold still and try again.', bad && bad.problem === 'glare' ? 'glare' : ''); return; }
+      const bad = got.slice(-10).find(g => g.problem);
+      if (!c) { t.disabled = false; camNote(bad ? camSay(bad.problem) : 'Hold still and try again.', bad && bad.problem === 'glare' ? 'glare' : ''); return; }
       if (c.spread > 2.5) { t.disabled = false; camNote('The color kept changing. Hold the phone still and try again.'); return; }
       if (cam.tuning) { t.disabled = false; camTunePick(c); return; }
       closeCamera();
-      state.camLast = { raw: c.raw, hex: c.hex, taught: '' };
       state.query = '#' + c.hex; state.lookupHex = c.hex;
       if (state.view === 'lookup') renderLookup(); else go('lookup');
       const lit = C.hexToLab(c.hex)[0], k = tuneKinds();
@@ -2587,35 +2597,6 @@
     }
   });
   let lookTimer = 0;
-  // Right after a camera reading: if it isn't the chip in hand and the chip is known, pick it. The camera learns
-  // from that one reading (the same as tuning with it), so that color and the ones near it read closer next time.
-  // Not on a kiosk, where one shopper's pick would change it for everyone.
-  function camTeachCard(hex) {
-    const last = state.camLast;
-    if (!last || last.hex !== hex || isKiosk()) return '';
-    const was = last.taught ? E.findColor(last.taught) : null;
-    return `<div class="cam-teach">${ic('camera', 26)}<div class="cam-teach-in">
-      <p>${was ? `<b>Learned from ${esc(was.name)}.</b> This reading is now worked out with it. Still not right? Pick the chip again, or another.` : '<b>Read with the camera.</b> Not the chip in your hand? If you know which chip it is, find it here. The camera learns from it, so that color and the ones near it read closer next time.'}</p>
-      <label class="search"><input type="search" id="camTeachQ" placeholder="The chip’s name or number, like 759" aria-label="The chip’s name or number" autocomplete="off"></label>
-      <div class="rows" id="camTeachList"></div></div></div>`;
-  }
-  document.addEventListener('input', e => {
-    if (e.target.id !== 'camTeachQ') return;
-    const q = e.target.value.trim(), list = $('#camTeachList'); if (!list) return;
-    list.innerHTML = q ? E.search(q, { brands: brandsEnabled(), limit: 5 }).map(r => `<button type="button" class="row" data-cam-teach="${esc(r.color.id)}"><span class="sw" ${swStyle(r.color.hex)}></span><span><span class="nm">${esc(r.color.name)}</span><span class="sub">${esc(brandName(r.color.brand))} ${esc(E.codeLabel(r.color))}</span></span><span></span></button>`).join('') : '';
-  });
-  document.addEventListener('click', e => {
-    const t = e.target.closest('[data-cam-teach]'); if (!t || !state.camLast) return;
-    const chip = E.findColor(t.dataset.camTeach); if (!chip) return;
-    settings.camTune = (settings.camTune || []).concat([{ m: state.camLast.raw, t: CM.linOf(chip.hex).map(v => v / CM.PAPER) }]).slice(-TUNE_MAX); saveSettings();
-    // the same reading, worked out again with what was just learned
-    const hex = CM.hexOf(CM.applyTune(state.camLast.raw, camTune()).map(v => v * CM.PAPER));
-    state.camLast = { raw: state.camLast.raw, hex, taught: chip.id };
-    state.query = '#' + hex; state.lookupHex = hex;
-    const inp = $('#lookupInput'); if (inp) inp.value = state.query;
-    showLookup();
-    toast(`Learned from ${chip.name}. Colors like it now read closer on this phone.`, 4500);
-  });
   function exactCard(hex, c) {
     const rgb = C.hexToRgb(hex).map(v => Math.round(v)), lrv = c ? c.lrv : C.lrvFromHex(hex), ref = c ? c.id : '#' + hex, on = session.items.some(x => x.ref === ref);
     return `<div class="exact"><span class="exact-sw" ${swStyle(hex)}></span><div class="exact-info">
@@ -2641,7 +2622,7 @@
       state.lookupHex = hex;
       const pick = $('#lookupColor'); if (pick) { COLORS.lookupColor.hex = hex; $('.sw', pick).style.background = '#' + hex; $('.mono', pick).textContent = '#' + hex; }
       const near = jobOn('stain') ? S.search('', { hex, stainBrands: settings.stainBrands, limit: 6 }) : [];
-      host.innerHTML = exactCard(hex) + camTeachCard(hex) + nearLists(E.closestByBrand(hex, { showDiscontinued: settings.showDiscontinued, collections: settings.collections }), 'Closest in Each Brand')
+      host.innerHTML = exactCard(hex) + nearLists(E.closestByBrand(hex, { showDiscontinued: settings.showDiscontinued, collections: settings.collections }), 'Closest in Each Brand')
         + (near.length ? `<h2>Closest Stains</h2><div class="rows">${near.map(r => stainRow(r.stain, r.dE)).join('')}</div>` : '');
       return;
     }
