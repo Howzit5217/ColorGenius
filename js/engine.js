@@ -98,7 +98,7 @@
   const DEPTHS = { light: 'Light & Airy', mid: 'In Between', deep: 'Deep & Moody', any: 'Not Sure' };
   const FACING = { north: 'North', south: 'South', east: 'East', west: 'West', unsure: 'Not Sure', none: 'No Windows' };
   const AMOUNTS = { low: 'Dim', medium: 'Some Light', high: 'Bright' };
-  const BULBS = { warm: 'Warm (2700K)', soft: 'Soft White (3000K)', daylight: 'Daylight (5000K)', unsure: 'Not Sure' };
+  const BULBS = { warm: 'Warm (2700K)', soft: 'Soft White (3000K)', bright: 'Bright White (4000K)', daylight: 'Daylight (5000K)', unsure: 'Not Sure' };
   const SIDING = { vinyl: 'Vinyl', wood: 'Wood Lap', fiber: 'Fiber Cement', shake: 'Shingle or Shake', board: 'Board & Batten', stucco: 'Stucco', brick: 'Brick or Masonry' };
   // Things that stay: floors and carpet, trim and molding, counters, cabinets, furniture, fixtures, walls, and for
   // exteriors the roof, masonry, siding, trim and windows. Each has a typical color so the logic can compare undertones,
@@ -274,9 +274,10 @@
     { id: 'north', label: 'North Light', cct: 7600, intensity: 0.86 },
     { id: 'sun', label: 'Afternoon Sun', cct: 4900, intensity: 1.07 },
     { id: 'golden', label: 'Golden Hour', cct: 3100, intensity: 0.92 },
-    { id: 'warm', label: 'Warm Bulbs', cct: 2700, intensity: 0.82 },
-    { id: 'soft', label: 'Soft White Bulbs', cct: 3000, intensity: 0.86 },
-    { id: 'cool', label: 'Daylight Bulbs', cct: 5000, intensity: 0.92 },
+    { id: 'warm', label: 'Warm Bulbs (2700K)', cct: 2700, intensity: 0.82, bulb: true },
+    { id: 'soft', label: 'Soft White Bulbs (3000K)', cct: 3000, intensity: 0.86, bulb: true },
+    { id: 'bright', label: 'Bright White Bulbs (4000K)', cct: 4000, intensity: 0.9, bulb: true },
+    { id: 'cool', label: 'Daylight Bulbs (5000K)', cct: 5000, intensity: 0.92, bulb: true },
     { id: 'dim', label: 'Dim Corner', cct: 3600, intensity: 0.55 },
   ];
 
@@ -1429,13 +1430,63 @@
     return scoredList.slice(0, opts.limit || 60).map(x => ({ color: x.c }));
   }
 
+  // the light for the bulbs answer ('' when not known)
+  const bulbLight = a => ({ warm: 'warm', soft: 'soft', bright: 'bright', daylight: 'cool' })[(a || {}).bulbs] || '';
   function lightForAnswers(a) {
     a = a || {};
-    if (noWindows(a)) return a.bulbs === 'daylight' ? 'cool' : a.bulbs === 'soft' ? 'soft' : 'warm';
+    if (noWindows(a)) return bulbLight(a) || 'warm';
     if (hasDir(a, 'south') || hasDir(a, 'west')) return 'sun';
     if (onlyNorth(a)) return 'north';
     if (a.amount === 'low') return 'dim';
     return 'daylight';
+  }
+
+  // ---- the color adjuster: one step lighter, deeper, warmer, cooler, softer or richer ----
+  // From any color (a Lab value), the nearest real color of a brand one small step that way: a little more
+  // than a just-seen difference, so a few taps walk along a fan deck. A lighter or deeper step keeps the hue;
+  // a warmer or cooler one keeps how light it is. null when the brand has nothing further that way.
+  const ADJUST = ['lighter', 'deeper', 'warmer', 'cooler', 'softer', 'richer'];
+  const warmthOf = lab => lab[2] + 0.35 * lab[1];   // toward yellow and red, away from blue and green
+  function hueGap(h1, h2) { const d = Math.abs(h1 - h2) % 360; return d > 180 ? 360 - d : d; }
+  function adjustStep(lab, brand, dir, opts) {
+    opts = opts || {};
+    const [L, a, b] = lab, Cc = Math.hypot(a, b), h = (Math.atan2(b, a) * 180 / Math.PI + 360) % 360, W = warmthOf(lab);
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    // a hue that holds (only for colors with enough color to have one)
+    const sameHue = (x, lim) => Cc < 4 || x.C < 4 || hueGap(x.h, h) <= lim;
+    const flat = x => Math.abs(x.lab[0] - L) <= 4;
+    // and a lighter or deeper step keeps about as much color (a deep red doesn't turn brown)
+    const keepsColor = x => Math.abs(x.C - Cc) <= Math.max(4, Cc * 0.4);
+    let target, ok;
+    if (dir === 'lighter') {
+      if (L >= 97) return null;
+      const s = clamp((100 - L) * 0.35, 2.5, 7);
+      target = [L + s, a * 0.92, b * 0.92]; ok = x => x.lab[0] >= L + Math.min(2, s * 0.6) && x.lab[0] <= L + s * 2.4 && sameHue(x, 25) && keepsColor(x);
+    } else if (dir === 'deeper') {
+      if (L <= 12) return null;
+      const s = clamp(L * 0.12, 3, 9);
+      target = [L - s, a * 1.03, b * 1.03]; ok = x => x.lab[0] <= L - Math.min(2, s * 0.6) && x.lab[0] >= L - s * 2.4 && sameHue(x, 25) && keepsColor(x);
+    } else if (dir === 'warmer') {
+      target = [L, a + 1.2, b + 4]; ok = x => warmthOf(x.lab) >= W + 1.5 && flat(x);
+    } else if (dir === 'cooler') {
+      target = [L, a - 1, b - 4]; ok = x => warmthOf(x.lab) <= W - 1.5 && flat(x);
+    } else if (dir === 'softer') {
+      if (Cc < 2) return null;
+      const k = Math.max(0, 1 - Math.max(2.5, Cc * 0.35) / Cc);
+      target = [L, a * k, b * k]; ok = x => x.C <= Cc - 1.2 && flat(x) && (x.C < 3 || sameHue(x, 30));
+    } else if (dir === 'richer') {
+      if (Cc < 1.5) return null;   // a true gray has no color to add more of
+      const k = (Cc + Math.max(3, Cc * 0.35)) / Cc;
+      target = [L, a * k, b * k]; ok = x => x.C >= Cc + 1.5 && flat(x) && sameHue(x, 22);
+    } else return null;
+    let best = null, bd = Infinity;
+    for (const x of INDEX.byBrand[brand] || []) {
+      if ((x.flags & F.DISC) || (opts.skip && opts.skip.has(x.id)) || (opts.ok && !opts.ok(x))) continue;
+      const dL = x.lab[0] - target[0]; if (dL > 22 || dL < -22) continue;   // far off: skip the slower math
+      if (!ok(x)) continue;
+      const d = C.deltaE2000(target, x.lab); if (d < bd) { bd = d; best = x; }
+    }
+    return best;
   }
 
   // Parse a CSV/TSV of custom colors: brand,name,code,hex[,lrv]
@@ -1464,7 +1515,7 @@
 
   const api = { WHO_FOR, popularity, isPopular, popularList, popularWhy, colorsOfYear, popularInfo, setPopular, parseColorValue, closestByBrand, F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
     init, addBrand, getIndex, findColor, codeLabel, target, familyMatch, styleMatch, scoreColor, warningsFor, roomTips, recommend,
-    matchesFor, pairings, search, lightForAnswers, parseCustomCsv, allowedColor, facingsOf, facingPhrase, noWindows, DIRS,
+    matchesFor, pairings, search, lightForAnswers, bulbLight, ADJUST, adjustStep, parseCustomCsv, allowedColor, facingsOf, facingPhrase, noWindows, DIRS,
     MOODS, UNDERTONES, NOW_COLORS, NOW_HEX, SURFACES, surfacesFor, ISSUES, PRIMERS, primerFor, nowHexOf,
     COLLECTIONS, collectionOf, collectionsFor, collectionLabel, collectionOn };
   root.CG = root.CG || {};

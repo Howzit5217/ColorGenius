@@ -180,6 +180,12 @@
     sparkle: '<path d="M14 4l2 7 7 2-7 2-2 7-2-7-7-2 7-2zM25 18l1 3.5 3.5 1-3.5 1-1 3.5-1-3.5-3.5-1 3.5-1z"/>',
     cube: '<path d="M16 3l12 6.5v13L16 29 4 22.5v-13z"/><path d="M4 9.5L16 16l12-6.5M16 16v13"/>',
     camera: '<path d="M4 11a2 2 0 012-2h4.5l2-3h7l2 3H26a2 2 0 012 2v13a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><circle cx="16" cy="17" r="5"/>',
+    moon: '<path d="M26.5 19.5A11 11 0 0112.5 5.5a11 11 0 1014 14z"/>',
+    flame: '<path d="M16 3c.8 5.5 8 8.2 8 15.5a8 8 0 01-16 0c0-4 1.8-6.4 3.3-8.2.5 3 2.6 4.6 2.6 4.6S12.6 8.6 16 3z"/>',
+    snow: '<path d="M16 3v26M4.7 9.5l22.6 13M4.7 22.5l22.6-13"/><path d="M12.5 5.5L16 8l3.5-2.5M12.5 26.5L16 24l3.5 2.5M4.5 14l3.8-1.7-.4-4.3M27.5 18l-3.8 1.7.4 4.3M4.5 18l3.8 1.7-.4 4.3M27.5 14l-3.8-1.7.4-4.3"/>',
+    drop: '<path d="M16 4s-8.5 9.3-8.5 15.5a8.5 8.5 0 0017 0C24.5 13.3 16 4 16 4z"/>',
+    dropFull: '<path d="M16 4s-8.5 9.3-8.5 15.5a8.5 8.5 0 0017 0C24.5 13.3 16 4 16 4z" fill="currentColor"/>',
+    undo: '<path d="M8 12.5h13a6.5 6.5 0 010 13h-6"/><path d="M13 7l-5.5 5.5L13 18"/>',
   };
   const ic = (name, size) => `<svg viewBox="0 0 32 32" width="${size || 32}" height="${size || 32}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || P.unsure}</svg>`;
   const ICON_OF = { living: 'living', bedroom: 'bedroom', kitchen: 'kitchen', bathroom: 'bathroom', powder: 'powder', dining: 'dining', office: 'office', kids: 'kids', nursery: 'nursery', entry: 'entry', stairs: 'stairs', laundry: 'laundry', closet: 'closet', sunroom: 'sunroom', basement: 'basement', attic: 'attic', media: 'media', garage: 'garage', accent: 'accent', ceiling: 'ceiling', trim: 'trim', doors: 'doors', wainscot: 'wainscot', fireplace: 'fireplace', cabinets: 'cabinets', builtins: 'builtins', furniture: 'furniture', floor_paint: 'floor_paint', ext_body: 'ext_body', ext_trim: 'ext_trim', front_door: 'front_door', shutters: 'shutters', garage_door: 'garage_door', porch_floor: 'porch_floor', shed: 'shed' };
@@ -772,7 +778,7 @@
     },
     bulbs: {
       title: () => 'What light bulbs are in the room?', sub: () => 'Look on the bulb or its box. Not sure is fine.', auto: true,
-      html: a => `<div class="choices">${Object.entries(E.BULBS).map(([k, v]) => choice(`data-v="${k}"`, a.bulbs === k, v, { warm: 'Cozy, yellow light', soft: 'The most common bulb', daylight: 'Crisp, white light', unsure: 'We’ll plan for any bulb' }[k], k === 'unsure' ? ic('unsure') : `<span style="display:grid;place-items:center;width:100%;height:100%;background:${{ warm: '#ffd69a', soft: '#ffe6bf', daylight: '#eef4ff' }[k]};color:#3a3632">${ic('bulb')}</span>`)).join('')}</div>`,
+      html: a => `<div class="choices">${Object.entries(E.BULBS).map(([k, v]) => choice(`data-v="${k}"`, a.bulbs === k, v, { warm: 'Cozy, yellow light', soft: 'The most common bulb', bright: 'Clean, white light', daylight: 'Crisp, a little blue', unsure: 'We’ll plan for any bulb' }[k], k === 'unsure' ? ic('unsure') : `<span style="display:grid;place-items:center;width:100%;height:100%;background:${{ warm: '#ffd69a', soft: '#ffe6bf', bright: '#fff4e2', daylight: '#eef4ff' }[k]};color:#3a3632">${ic('bulb')}</span>`)).join('')}</div>`,
       pick: (a, v) => { a.bulbs = v; },
     },
     now: {
@@ -1270,7 +1276,43 @@
   }
   const STAIN_ROLES = { wall: 'E7E2D8', side: 'E7E2D8', ceil: 'F4F2ED', trim: 'F2F1EC', door: 'F2F1EC', art: '5E6B73', art2: 'D9CFC0', cab: 'F2F1EC', counter: 'ECEAE5', tile: 'F6F5F1', hood: 'B9BDBF', rug: 'D6CDBE', curtain: 'ECE7DD', floor: 'A98661', body: 'D8D2C6', xtrim: 'F2F1EC', glass: '33404B', xdoor: '3E4A52', roof: '45484C', lawn: '6E8A4F', shrub: '4E6A3B', tree: '5D7649', walk: 'CFCAC0', step: 'BEB9B0' };
   const LIGHT_OPTS = () => [['none', 'Chip Color']].concat(E.LIGHTS.map(l => [l.id, l.label]));
-  const LIGHT_SHORT = { none: 'Chip color', daylight: 'Daylight', north: 'North light', sun: 'Afternoon sun', golden: 'Golden hour', warm: 'Warm bulbs at night', soft: 'Soft white bulbs', cool: 'Daylight bulbs', dim: 'A dim corner' };
+  const LIGHT_SHORT = { none: 'Chip color', daylight: 'Daylight', north: 'North light', sun: 'Afternoon sun', golden: 'Golden hour', warm: 'Warm bulbs, 2700K', soft: 'Soft white bulbs, 3000K', bright: 'Bright white bulbs, 4000K', cool: 'Daylight bulbs, 5000K', dim: 'A dim corner' };
+  const lightLabel = id => (LIGHT_OPTS().find(o => o[0] === id) || [0, 'Daylight'])[1].replace(/ \(\d+K\)$/, '');
+  // The light picker: the bulbs that are in the room (by the number on the bulb or its box), or the daylight.
+  // [light, big word, small word, the bulb's own glow]
+  const BULB_TILES = [['warm', 'Warm', '2700K', '#ffd48f'], ['soft', 'Soft White', '3000K', '#ffe4b8'], ['bright', 'Bright White', '4000K', '#fff4e2'], ['cool', 'Daylight', '5000K', '#e8f0ff']];
+  const DAY_TILES = [['daylight', 'Daytime', 'Sun from windows', '#dcebfa'], ['north', 'North Light', 'Soft and cool', '#d9e1ea'], ['sun', 'Afternoon Sun', 'Strong and warm', '#ffeccb'], ['golden', 'Golden Hour', 'Low orange sun', '#ffcf94'], ['dim', 'Dim Corner', 'Away from windows', '#c9cdd2'], ['none', 'Chip Color', 'No light at all', '#ffffff']];
+  function lightTile([id, word, small, glow], yours) {
+    const bulb = BULB_TILES.some(t => t[0] === id);
+    return `<button type="button" class="lt-tile" data-light-set="${id}" aria-pressed="${state.light === id}"><span class="lt-ic" style="background:${glow}">${ic(bulb ? 'bulb' : id === 'none' ? 'swatch' : 'sun', 22)}</span><b>${esc(word)}</b><small>${esc(small)}</small>${yours === id ? '<span class="lt-yours">Yours</span>' : ''}</button>`;
+  }
+  // the short row inside the color adjuster: daytime and the four bulbs (and whatever else is picked now)
+  function lightRowHtml(yours) {
+    const tiles = [DAY_TILES[0]].concat(BULB_TILES);
+    if (!tiles.some(t => t[0] === state.light)) tiles.push(DAY_TILES.find(t => t[0] === state.light) || DAY_TILES[0]);
+    return `<div class="lt-row">${tiles.map(t => lightTile(t, yours)).join('')}</div>`;
+  }
+  // the bulbs the answers say are in the room
+  const yourBulbs = id => { const L = id && live[id]; return L && L.spec.answers && !L.spec.stain ? E.bulbLight(L.spec.answers) : ''; };
+  function openLight(id) {
+    const L = live[id]; if (!L) return;
+    partPick = null; furnPick = null;
+    const house = (SCN[state.sceneFor[L.spec.key]] || {}).kind === 'house', yours = yourBulbs(id);
+    openModal(house ? 'Light on the House' : 'Light in the Room', `<p class="part-lead">${house ? 'Pick the light: the sun in the day, or the porch light’s bulbs at night.' : 'What light bulbs are in the room? The number is on the bulb or its box.'} The picture and its colors change right away.</p>
+      <div class="setup-group"><h3>${house ? 'Porch Light at Night' : 'Light Bulbs'}</h3><div class="lt-grid bulbs">${BULB_TILES.map(t => lightTile(t, yours)).join('')}</div></div>
+      <div class="setup-group"><h3>Daylight</h3><div class="lt-grid">${DAY_TILES.map(t => lightTile(t, yours)).join('')}</div></div>
+      <div class="modal-foot"><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`, peekFor(id));
+  }
+  function setLight(v) {
+    if (!LIGHT_OPTS().some(o => o[0] === v)) return;
+    state.light = v;
+    for (const k of Object.keys(live)) relight(k);
+    $$('[data-light-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lightSet === v)));
+  }
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-light-set], [data-light-open]'); if (!t) return;
+    if (t.dataset.lightOpen) openLight(t.dataset.lightOpen); else setLight(t.dataset.lightSet);
+  });
 
   // the flat drawing for a scene (used where 3D can't run)
   function svgScene(spec, sceneId, roles) {
@@ -1309,7 +1351,7 @@
     live[id] = { spec, viewer: null };
     $('#' + id + '-tools').innerHTML = [
       spec.ids.length > 1 ? selectHtml(id + '-scene', spec.ids.map(s => [s, SCN[s].label]), state.sceneFor[key], 'Scene', v => { state.sceneFor[key] = v; drawScene(id); }) : '',
-      settings.lightPreview ? selectHtml(id + '-light', LIGHT_OPTS(), state.light, 'Light', v => { state.light = v; for (const k of Object.keys(live)) relight(k); }) : '',
+      settings.lightPreview ? `<button type="button" class="cg-select" id="${id}-light" data-light-open="${id}" aria-haspopup="dialog" aria-label="Light: ${esc(lightLabel(state.light))}"><span class="k">Light</span><span class="v">${esc(lightLabel(state.light))}</span>${chev('down', 18)}</button>` : '',
     ].join('');
     drawScene(id);
   }
@@ -1411,18 +1453,8 @@
     const pairs = E.pairings(c, { collections: settings.collections });
     const pair = role => (pairs.find(p => p.role === role) || {}).color;
     const near = (lab, why, filter) => add(nearestIn(c.brand, lab, skip, x => C.deltaE2000(x.lab, c.lab) > 2.5 && (!filter || filter(x))), why);
-    if (isTarget) {
-      // the part showing the color itself: it first, then the closest colors a step away in each direction
-      out.push({ hex: c.hex, name: c.name, code: E.codeLabel(c), id: c.id, why: 'The color you’re looking at' }); skip.add(c.id);
-      const [L, a, b] = c.lab;
-      near([Math.min(98, L + 7), a, b], 'A little lighter');
-      near([Math.max(8, L - 8), a, b], 'A little deeper');
-      near([L, a + 1.5, b + 5], 'A little warmer');
-      near([L, a - 1, b - 5], 'A little cooler');
-      near([L, a * 0.55, b * 0.55], 'Softer, less color');
-      if (c.C > 5) near([L, a * 1.4, b * 1.4], 'Richer, more color');
-      return out;
-    }
+    // the part showing the color itself has no list: the adjuster steps it lighter, deeper, warmer and so on
+    if (isTarget) return out;
     const whites = () => {
       add(pair('Trim & ceiling'), 'Made to go with ' + c.name);
       const warm = c.temp === 'warm';
@@ -1452,34 +1484,91 @@
     return out.slice(0, 8);
   }
   let partPick = null;
+  // ---- the color adjuster: step the color on a part lighter, deeper, warmer, cooler, softer or richer ----
+  // Each button shows the real color it goes to (the nearest one in the brand a small step that way), so there's
+  // no guessing; tapping again keeps going. Undo steps back one change at a time.
+  const ADJ_WORDS = { lighter: 'Lighter', deeper: 'Deeper', warmer: 'Warmer', cooler: 'Cooler', softer: 'Softer', richer: 'Richer' };
+  const ADJ_IC = { lighter: 'sun', deeper: 'moon', warmer: 'flame', cooler: 'snow', softer: 'drop', richer: 'dropFull' };
+  const ADJ_END = { lighter: 'As light as it goes', deeper: 'As deep as it goes', warmer: 'As warm as it goes', cooler: 'As cool as it goes', softer: 'As soft as it goes', richer: 'No color to add' };
+  const collOk = x => !(x.coll && settings.collections[x.brand + ':' + x.coll] === false);
+  // the brand a plain color (not a paint color) steps through: the color being looked at, else the store's
+  function adjBrand() {
+    const idx = E.getIndex().byBrand, c = partPick.c, en = brandsEnabled();
+    if (c && idx[c.brand]) return c.brand;
+    if (settings.storeBrand && idx[settings.storeBrand]) return settings.storeBrand;
+    return Object.keys(idx).find(b => en[b] && idx[b].length) || Object.keys(idx)[0];
+  }
+  // what's on the part now: its hex, and the brand color it is (if it is one)
+  function partNow() {
+    const pp = partPick, own = (state.parts[pp.key] || {})[pp.group];
+    const hex = ((own && own.hex) || pp.baseHex || 'F2F1EC').toUpperCase();
+    let color = own ? (own.id ? E.findColor(own.id) : null) : pp.isTarget ? pp.c : null;
+    // the scene's own trim white or door color is usually a real color of the same brand: name it
+    if (!color && !own && pp.c) color = (E.getIndex().byBrand[pp.c.brand] || []).find(x => x.hex.toUpperCase() === hex) || null;
+    return { hex, color, own };
+  }
+  function adjSteps() {
+    const n = partNow(), lab = n.color ? n.color.lab : C.hexToLab(n.hex), brand = n.color ? n.color.brand : adjBrand();
+    const skip = new Set(n.color ? [n.color.id] : []), out = {};
+    for (const d of E.ADJUST) out[d] = E.adjustStep(lab, brand, d, { skip, ok: collOk });
+    return out;
+  }
+  function adjNowHtml() {
+    const n = partNow(), pp = partPick, c = n.color;
+    const mine = c && pp.c && c.id === pp.c.id;
+    const note = mine ? 'The color you’re looking at' : `On the ${PARTS[pp.group].label.toLowerCase()} now`;
+    return `<span class="adj-sw" ${swStyle(n.hex)}></span><span class="adj-tx"><em>${esc(note)}</em><b>${esc(c ? c.name : (n.own && n.own.name) || '#' + n.hex)}</b>${c ? `<small>${esc(brandName(c.brand))} ${esc(E.codeLabel(c))}</small>` : ''}</span><button type="button" class="btn small ghost adj-undo" data-adj-undo="1" aria-label="Undo"${pp.hist.length ? '' : ' disabled'}>${ic('undo', 18)}<span class="adj-undo-w">Undo</span></button>`;
+  }
+  // a brand color that isn't the one being looked at can go on the project, or be opened on its own
+  function adjActHtml() {
+    const c = partNow().color, pp = partPick;
+    if (!c || (pp.c && c.id === pp.c.id)) return '';
+    const on = session.items.some(x => x.ref === c.id);
+    return (`<span class="adj-act"><button type="button" class="btn small" data-part-add="1">${on ? 'On Your Project' : 'Add to Project'}</button><button type="button" class="btn small ghost" data-go="color/${encodeURIComponent(c.id)}">See This Color</button></span>`);
+  }
+  function adjGridHtml() {
+    const steps = partPick.steps = adjSteps();
+    return E.ADJUST.map(d => {
+      const x = steps[d];
+      return `<button type="button" class="adj" data-adj="${d}"${x ? ` aria-label="${ADJ_WORDS[d]}: ${esc(x.name)}"` : ' disabled'}><span class="adj-to"${x ? ' ' + swStyle(x.hex) : ''}></span><span class="adj-w"><b>${ic(ADJ_IC[d], 18)}${ADJ_WORDS[d]}</b><small>${esc(x ? x.name : ADJ_END[d])}</small></span></button>`;
+    }).join('');
+  }
+  // redraws the adjuster for the color on the part now (keeping the keyboard on the same button)
+  function drawAdj() {
+    if (!partPick) return;
+    const focus = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.adj : '';
+    const now = $('#adjNow'); if (now) now.innerHTML = adjNowHtml();
+    const grid = $('#adjGrid'); if (grid) grid.innerHTML = adjGridHtml();
+    const act = $('#adjAct'); if (act) act.innerHTML = adjActHtml();
+    const u = $('#modal [data-adj-undo]');
+    const hex = partNow().hex;
+    $$('#modal [data-part-i]').forEach(b => b.setAttribute('aria-pressed', String(partPick.choices[+b.dataset.partI].hex.toUpperCase() === hex)));
+    if (COLORS.partColor) { COLORS.partColor.hex = hex; const pk = $('#partColor'); if (pk) { $('.sw', pk).style.background = '#' + hex; $('.mono', pk).textContent = '#' + hex; } }
+    if (focus) { const b = $(`#modal [data-adj="${focus}"]`); if (b && !b.disabled) b.focus({ preventScroll: true }); else if (u && !u.disabled) u.focus({ preventScroll: true }); }
+  }
   function openPart(id, group) {
     const L = live[id]; if (!L) return;
     furnPick = null;
     const spec = L.spec, sceneId = state.sceneFor[spec.key], key = partKey(spec), P = PARTS[group];
     const base = spec.roles(sceneId), c = spec.color || null;
-    const isTarget = !!c && String(base[P.roles[0]] || '').toUpperCase() === c.hex.toUpperCase();
-    const now = (((state.parts[key] || {})[group] || {}).hex || base[P.roles[0]] || '').toUpperCase();
+    const baseHex = String(base[P.roles[0]] || '').toUpperCase();
+    const isTarget = !!c && baseHex === c.hex.toUpperCase();
+    // a roof or a floor isn't paint: pick the one that's really there
+    const paint = !(P.kind === 'roof' || (P.kind === 'floor' && !isTarget));
     const choices = partChoices(group, c, isTarget);
-    partPick = { id, key, group, choices };
-    const what = P.label.toLowerCase();
-    const lead = P.kind === 'roof' ? 'What color is your roof? Tap the closest one, so you see the paint with it.'
-      : P.kind === 'floor' && !isTarget ? 'What floor do you have? Tap the closest one, so you see the paint with it.'
-      : isTarget ? `This is ${c.name}, the color you’re looking at. Tap a close color to try it on the ${what} instead.`
-      : c ? `Tap a color to try it on the ${what}. These go with ${c.name}. It changes in the picture right away.` : `Tap a color to try it on the ${what}. It changes in the picture right away.`;
+    partPick = { id, key, group, choices, c, isTarget, baseHex, paint, hist: [], steps: {}, pickAt: 0 };
+    const what = P.label.toLowerCase(), house = (SCN[sceneId] || {}).kind === 'house';
+    const lead = !paint ? (P.kind === 'roof' ? 'What color is your roof? Tap the closest one, so you see the paint with it.' : 'What floor do you have? Tap the closest one, so you see the paint with it.')
+      : `Make the ${what} a little lighter, deeper, warmer and more. Each button shows the color you’ll get.`;
+    const listHead = !paint ? '' : c ? `Colors That Go With ${c.name}` : 'Other Colors';
+    const list = choices.length ? `<section class="adj-sec">${listHead ? `<div class="adj-head"><h3>${esc(listHead)}</h3></div>` : ''}<div class="part-sws">${choices.map((x, i) => `<button type="button" class="part-sw" data-part-i="${i}" aria-pressed="false"><span class="psw" ${swStyle(x.hex)}></span><span class="ptx"><b>${esc(x.name)}</b>${x.code ? `<small>${esc(x.code)}</small>` : ''}${x.why ? `<em>${esc(x.why)}</em>` : ''}</span></button>`).join('')}</div></section>` : '';
+    const light = settings.lightPreview ? `<section class="adj-sec"><div class="adj-head"><h3>${house ? 'Light on the House' : 'Light in the Room'}</h3><button type="button" class="link" data-light-open="${id}">More Light</button></div><p class="adj-note">${house ? 'Daytime, or the porch light’s bulbs at night.' : 'Pick the bulbs in the room. The number is on the bulb or its box.'}</p>${lightRowHtml(yourBulbs(id))}</section>` : '';
     openModal(P.label, `<p class="part-lead">${esc(lead)}</p>
-      <div class="part-sws">${choices.map((x, i) => `<button type="button" class="part-sw" data-part-i="${i}" aria-pressed="${x.hex.toUpperCase() === now}"><span class="psw" ${swStyle(x.hex)}></span><span class="ptx"><b>${esc(x.name)}</b>${x.code ? `<small>${esc(x.code)}</small>` : ''}${x.why ? `<em>${esc(x.why)}</em>` : ''}</span></button>`).join('')}</div>
-      <div class="actions"><span class="muted">or any color:</span>${colorHtml('partColor', now || 'F2F1EC', 'Pick any color', hex => partSet({ hex: hex.toUpperCase(), name: '#' + hex.toUpperCase(), id: '' }))}</div>
-      <div class="part-picked" id="partPicked"></div>
+      ${paint ? `<div class="adj-now" id="adjNow"></div>
+      <div class="adj-grid" id="adjGrid" role="group" aria-label="Adjust the color"></div><div class="adj-acts" id="adjAct"></div>${light}${list}
+      <div class="actions"><span class="muted">or any color:</span>${colorHtml('partColor', baseHex || 'F2F1EC', 'Pick any color', hex => { const recent = Date.now() - partPick.pickAt < 2500; partPick.pickAt = Date.now(); partSet({ hex: hex.toUpperCase(), name: '#' + hex.toUpperCase(), id: '' }, recent); })}</div>` : `${list}${light}`}
       <div class="modal-foot"><button type="button" class="btn big ghost" data-part-reset="1">Put It Back</button><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`, peekFor(id));
-    showPartPicked();
-  }
-  // what's on the part now: a brand color can go on the project, or be opened on its own
-  function showPartPicked() {
-    const el = $('#partPicked'); if (!el || !partPick) return;
-    const cur = (state.parts[partPick.key] || {})[partPick.group], c = cur && cur.id ? E.findColor(cur.id) : null;
-    if (!c) { el.innerHTML = ''; return; }
-    const on = session.items.some(x => x.ref === c.id);
-    el.innerHTML = `<span>On the ${esc(PARTS[partPick.group].label.toLowerCase())}: <b>${esc(c.name)}</b> ${esc(E.codeLabel(c))}</span><span class="grow"></span><button type="button" class="btn small" data-part-add="1">${on ? 'On Your Project' : 'Add to Project'}</button><button type="button" class="btn small ghost" data-go="color/${encodeURIComponent(c.id)}">See This Color</button>`;
+    drawAdj();
   }
   // a change shows on every picture of the same color, rolled on like paint
   function refreshParts(key) {
@@ -1489,20 +1578,26 @@
       if (L.viewer && L.viewer.setLook) L.viewer.setLook({ roles: rolesFor(L.spec, sceneId), tex: L.spec.tex || null, texParts: L.spec.texParts || null }); else drawScene(k);
     }
   }
-  function partSet(choice) {
+  // choice null puts the part back to the scene's own color; noHist doesn't add an Undo step (Undo itself, or the
+  // any-color picker still being dragged)
+  function partSet(choice, noHist) {
     if (!partPick) return;
-    state.parts[partPick.key] = Object.assign({}, state.parts[partPick.key], { [partPick.group]: choice });
+    const own = Object.assign({}, state.parts[partPick.key]), was = own[partPick.group] || null;
+    if (choice && was && was.hex.toUpperCase() === choice.hex.toUpperCase()) return;
+    if (!noHist) partPick.hist.push(was);
+    if (choice) own[partPick.group] = choice; else delete own[partPick.group];
+    state.parts[partPick.key] = own;
     refreshParts(partPick.key);
-    $$('#modal [data-part-i]').forEach(b => b.setAttribute('aria-pressed', String(partPick.choices[+b.dataset.partI].hex.toUpperCase() === choice.hex.toUpperCase())));
-    if (COLORS.partColor) { COLORS.partColor.hex = choice.hex; const pk = $('#partColor'); if (pk) { $('.sw', pk).style.background = '#' + choice.hex; $('.mono', pk).textContent = '#' + choice.hex; } }
-    showPartPicked();
+    drawAdj();
   }
   document.addEventListener('click', e => {
     const t = e.target.closest('#modal button'); if (!t || !partPick) return;
     if (t.dataset.partI != null) { const x = partPick.choices[+t.dataset.partI]; if (x) partSet({ hex: x.hex.toUpperCase(), name: x.name, id: x.id }); }
+    if (t.dataset.adj) { const x = partPick.steps[t.dataset.adj]; if (x) partSet({ hex: x.hex.toUpperCase(), name: x.name, id: x.id }); }
+    if (t.dataset.adjUndo && partPick.hist.length) partSet(partPick.hist.pop(), true);
     if (t.dataset.partAdd) {
-      const cur = (state.parts[partPick.key] || {})[partPick.group], c = cur && cur.id ? E.findColor(cur.id) : null;
-      if (c && !session.items.some(x => x.ref === c.id)) { addToList(Object.assign(paintItem(c), { area: PARTS[partPick.group].label, part: partPick.group, space: '' })); showPartPicked(); }
+      const c = partNow().color;
+      if (c && !session.items.some(x => x.ref === c.id)) { addToList(Object.assign(paintItem(c), { area: PARTS[partPick.group].label, part: partPick.group, space: '' })); drawAdj(); }
     }
     if (t.dataset.partReset) {
       const own = state.parts[partPick.key]; if (own) delete own[partPick.group];
@@ -1513,6 +1608,8 @@
     tapTried();
     if (what.stained) { toast('That shows the stain you’re looking at. Tap anything else to change its color.'); return; }
     if (what.part) { openFurniture(what, id); return; }
+    // a lamp (or the porch light): pick the bulbs that are in the room
+    if (what.role === 'shade' && settings.lightPreview) { openLight(id); return; }
     const group = PART_OF_ROLE[what.role];
     if (group) { openPart(id, group); return; }
     toast(NOT_PAINTED[what.role] || 'Tap the walls, trim, doors or furniture to change their color.');
@@ -1597,7 +1694,7 @@
   }
   function relight(id) {
     const L = live[id]; if (!L) return;
-    const sel = SELECTS[id + '-light']; if (sel && sel.value !== state.light) { sel.value = state.light; const b = document.getElementById(id + '-light'); if (b) $('.v', b).textContent = (LIGHT_OPTS().find(o => o[0] === state.light) || [])[1]; }
+    const b = document.getElementById(id + '-light'); if (b) { $('.v', b).textContent = lightLabel(state.light); b.setAttribute('aria-label', 'Light: ' + lightLabel(state.light)); }
     if (L.viewer && L.viewer.setLight) { L.viewer.setLight(state.light); setTag(id); return; }
     setTag(id, SC.paintScene($('#' + id + ' .pic'), state.light));
   }
@@ -3265,7 +3362,7 @@
         ${sw('bigText', settings.bigText, 'Bigger text', 'Makes all the words and buttons larger')}
         ${R3().supported() ? sw('view3d', settings.view3d, 'Turn rooms in 3D', 'Drag the room pictures to look around, and pinch or scroll to zoom') : '<div class="set-note">3D rooms need a newer browser with WebGL. The flat pictures are shown instead.</div>'}
         ${segRow('theme', 'Light or dark screen', 'Light is best for judging color', { system: 'Automatic', light: 'Light', dark: 'Dark' }, settings.theme)}
-        ${sw('lightPreview', settings.lightPreview, 'Show the light picker', 'See colors in daylight, at night, under bulbs and more')}
+        ${sw('lightPreview', settings.lightPreview, 'Show the light picker', 'See colors under the room’s own light bulbs, in daylight and more')}
         ${sw('reduceMotion', settings.reduceMotion, 'Less motion', 'Turns off sliding and fading')}
       </div></div>
       <div class="set-group"><h2>Color Advice</h2><div class="set-card">

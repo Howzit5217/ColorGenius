@@ -664,3 +664,71 @@ test('brands from other countries: searchable by name, number and brand word', (
   assert.equal(vivid.lrv, 94);
   assert.ok(!(vivid.flags & E.F.LRV_EST));
 });
+
+// ---------------- the color adjuster and the light bulbs ----------------
+const warmthOf = lab => lab[2] + 0.35 * lab[1];
+const hueGap = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+test('adjuster: each step goes the way it says, a small visible step, to a real color of the same brand', () => {
+  const idx = E.getIndex();
+  // a spread of colors: every 97th color of a few brands, from whites to deep colors
+  const sample = ['sw', 'bm', 'behr', 'ppg'].flatMap(b => (idx.byBrand[b] || []).filter((x, i) => i % 97 === 0 && !(x.flags & E.F.DISC)));
+  assert.ok(sample.length > 80, 'sample size ' + sample.length);
+  let steps = 0;
+  for (const c of sample) {
+    for (const dir of E.ADJUST) {
+      const n = E.adjustStep(c.lab, c.brand, dir, { skip: new Set([c.id]) });
+      if (!n) continue;
+      steps++;
+      const where = `${c.name} ${dir} -> ${n.name}`;
+      assert.equal(n.brand, c.brand, where);
+      assert.ok(!(n.flags & E.F.DISC), where);
+      const d = C.deltaE2000(c.lab, n.lab);
+      assert.ok(d >= 0.8 && d <= 14, `${where}: step of ${d.toFixed(1)}`);
+      if (dir === 'lighter') assert.ok(n.lab[0] > c.lab[0] + 1, where);
+      if (dir === 'deeper') assert.ok(n.lab[0] < c.lab[0] - 1, where);
+      if (dir === 'warmer') assert.ok(warmthOf(n.lab) > warmthOf(c.lab) + 1, where);
+      if (dir === 'cooler') assert.ok(warmthOf(n.lab) < warmthOf(c.lab) - 1, where);
+      if (dir === 'softer') assert.ok(n.C < c.C - 1, where);
+      if (dir === 'richer') assert.ok(n.C > c.C + 1, where);
+      // lighter and deeper keep the hue of a color that has one; warmer and cooler keep how light it is
+      if ((dir === 'lighter' || dir === 'deeper') && c.C >= 8 && n.C >= 8) assert.ok(hueGap(c.h, n.h) <= 25, where);
+      if (dir !== 'lighter' && dir !== 'deeper') assert.ok(Math.abs(n.lab[0] - c.lab[0]) <= 4, where);
+    }
+  }
+  assert.ok(steps > sample.length * 4, 'most colors can step most ways: ' + steps);
+});
+test('adjuster: tapping again keeps going, and stops at the end', () => {
+  const start = E.search('Agreeable Gray')[0].color;
+  let c = start, n = 0;
+  const seen = new Set([c.id]);
+  for (; n < 40; n++) { const x = E.adjustStep(c.lab, c.brand, 'lighter', { skip: seen }); if (!x) break; assert.ok(x.lab[0] > c.lab[0], 'keeps getting lighter'); seen.add(x.id); c = x; }
+  assert.ok(n >= 3 && n < 40, 'steps before the end: ' + n);
+  assert.equal(E.adjustStep([99, 0, 0], 'sw', 'lighter'), null);         // nothing is lighter than white
+  assert.equal(E.adjustStep([50, 0.2, 0.3], 'sw', 'richer'), null);      // a true gray has no color to add more of
+  // a filter (collections switched off) is kept to
+  const first = E.adjustStep(start.lab, start.brand, 'deeper');
+  const only = x => x.id !== first.id;
+  const x = E.adjustStep(start.lab, start.brand, 'deeper', { ok: only });
+  assert.ok(x && only(x) && x.lab[0] < start.lab[0]);
+});
+test('light bulbs: 2700K to 5000K, from the answers to the room picture', () => {
+  const bulbs = E.LIGHTS.filter(l => l.bulb).map(l => [l.id, l.cct]);
+  assert.deepEqual(bulbs, [['warm', 2700], ['soft', 3000], ['bright', 4000], ['cool', 5000]]);
+  // every bulb answer (but "not sure") is one of those lights
+  for (const k of Object.keys(E.BULBS)) {
+    const l = E.bulbLight({ bulbs: k });
+    if (k === 'unsure') assert.equal(l, ''); else assert.ok(bulbs.some(b => b[0] === l), k);
+  }
+  assert.equal(E.lightForAnswers({ facing: 'none', bulbs: 'bright' }), 'bright');
+  assert.equal(E.lightForAnswers({ facing: 'none', bulbs: 'unsure' }), 'warm');
+  // a bright white bulb shows colors between soft white and daylight bulbs
+  const L = id => C.applyLight(C.hexToLinear('D6D2C8'), Object.assign({}, E.LIGHTS.find(l => l.id === id), { adapt: 1 }));
+  const blueShare = id => { const v = L(id); return v[2] / (v[0] + v[1] + v[2]); };
+  assert.ok(blueShare('soft') < blueShare('bright') && blueShare('bright') < blueShare('cool'));
+  // the 3D rooms and the flat pictures know every light
+  const r3 = fs.readFileSync(path.join(ROOT, 'js/room3d.js'), 'utf8'), sc = fs.readFileSync(path.join(ROOT, 'js/scenes.js'), 'utf8');
+  for (const l of E.LIGHTS) {
+    assert.ok(r3.includes('\n    ' + l.id + ': { sun:'), '3D light ' + l.id);
+    assert.ok(sc.includes(' ' + l.id + ": ['#"), 'sky for ' + l.id);
+  }
+});

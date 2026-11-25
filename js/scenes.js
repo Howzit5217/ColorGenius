@@ -590,7 +590,7 @@
 
   const SKY = {
     none: ['#cfe1f3', '#eef4f8'], daylight: ['#bcd6ef', '#eaf2f8'], north: ['#b7c7d8', '#dfe7ee'], sun: ['#9cc6ef', '#fff2d9'],
-    golden: ['#f2a65a', '#ffd9a0'], warm: ['#141b26', '#2c3647'], soft: ['#141b26', '#2c3647'], cool: ['#141b26', '#2c3647'], dim: ['#8e979f', '#b9c0c5'],
+    golden: ['#f2a65a', '#ffd9a0'], warm: ['#141b26', '#2c3647'], soft: ['#141b26', '#2c3647'], bright: ['#141b26', '#2c3647'], cool: ['#141b26', '#2c3647'], dim: ['#8e979f', '#b9c0c5'],
   };
   const FIXED_FILL = { wain: 'F2F1EC', fire: 'A65A44', shut: '2F3B4C', gdoor: 'F2F1EC', rug: 'CFC6B8', curtain: 'ECE7DD', counter: 'ECEAE5', cab: 'F2F1EC', body: 'CFC8BC', xtrim: 'F2F1EC', glass: '33404B', lawn: '6E8A4F', tree: '5D7649', shrub: '4E6A3B', roof: '45484C', floor: 'A9784B', frame: '2B2926', sofa: '8A857E', 'sofa-d': '77726B', 'sofa-l': '9A958E', shade: 'ECE6DA', duvet: 'F1F0EC', wood: 'A27B55' };
 
@@ -771,7 +771,7 @@
     }
     const sky = SKY[id] || SKY.daylight;
     set('.r-sky-top', 'stop-color', sky[0]); set('.r-sky-bot', 'stop-color', sky[1]);
-    const night = ['warm', 'soft', 'cool'].includes(id);
+    const night = !!(lt && lt.bulb);
     const lampColor = lt ? C.displayCss('FFFFFF', { light: Object.assign({}, lt, { adapt: 0.85, intensity: 1 }) }) : '#fff4dc';
     set('.r-lamp-c', 'stop-color', lampColor);
     set('.r-lamp-glow', 'opacity', night ? 1 : id === 'dim' ? 0.45 : 0);
