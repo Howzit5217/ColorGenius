@@ -12,6 +12,8 @@ const CURVES = {
   scurve: v => { const x = sEnc(v), p = 1.3; return Math.pow(x, p) / (Math.pow(x, p) + Math.pow(1 - x, p)); },
   // highlights eased off before the top, as many phones do
   shoulder: v => sEnc(v < 0.7 ? v : 0.7 + 0.3 * Math.tanh((v - 0.7) / 0.3)),
+  // a video-style curve (BT.709) read as if it were the usual one: dark colors come out darker
+  rec709: v => (v < 0.018 ? 4.5 * v : 1.099 * Math.pow(v, 0.45) - 0.099),
 };
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 function gauss(r) { return Math.sqrt(-2 * Math.log(r() + 1e-12)) * Math.cos(2 * Math.PI * r()); }
@@ -37,20 +39,42 @@ export function shoot(o) {
   const data = new Uint8ClampedArray(W * H * 4);
   const wall = o.mode === 'wall';
   const sheet = wall ? { x0: 24, y0: H / 2 - 60, x1: 24 + 110, y1: H / 2 + 60 } : null;
+  // the light reaching the sensor, before the camera's curve
+  const rad = new Float64Array(W * H * 3);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     let refl;
     if (wall) refl = x >= sheet.x0 && x < sheet.x1 && y >= sheet.y0 && y < sheet.y1 ? paperRef : chip;
     else refl = Math.abs(x - cx) < cs / 2 && Math.abs(y - cy) < cs / 2 ? chip : paperRef;
     const fiber = 1 + (r() - 0.5) * 0.02;
-    let e = E(x, y);
-    const i = (y * W + x) * 4;
+    const e = E(x, y);
     for (let c = 0; c < 3; c++) {
       let v = refl[c] * fiber * light[c] * awb[c] * e * k;
       if (o.glare && Math.hypot(x - cx, y - cy) < o.glare) v += 0.9;
-      const g = curve(Math.max(0, v)) * 255 + gauss(r) * (o.noise == null ? 1.2 : o.noise);
-      data[i + c] = Math.max(0, Math.min(255, Math.round(g)));
+      rad[(y * W + x) * 3 + c] = v;
     }
-    data[i + 3] = 255;
+  }
+  // lens flare: a share of the picture's light spread over everything, half evenly and half from close by (so a
+  // dark chip in white paper gets lighter, most at its edges)
+  if (o.flare) {
+    const R = 24, flare = new Float64Array(W * H * 3);
+    for (let c = 0; c < 3; c++) {
+      let mean = 0; for (let p = 0; p < W * H; p++) mean += rad[p * 3 + c]; mean /= W * H;
+      const I = new Float64Array((W + 1) * (H + 1));
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) I[(y + 1) * (W + 1) + x + 1] = rad[(y * W + x) * 3 + c] + I[y * (W + 1) + x + 1] + I[(y + 1) * (W + 1) + x] - I[y * (W + 1) + x];
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const xa = Math.max(0, x - R), xb = Math.min(W, x + R + 1), ya = Math.max(0, y - R), yb = Math.min(H, y + R + 1);
+        const local = (I[yb * (W + 1) + xb] - I[ya * (W + 1) + xb] - I[yb * (W + 1) + xa] + I[ya * (W + 1) + xa]) / ((xb - xa) * (yb - ya));
+        flare[(y * W + x) * 3 + c] = o.flare * (0.5 * mean + 0.5 * local);
+      }
+    }
+    for (let p = 0; p < rad.length; p++) rad[p] = rad[p] * (1 - o.flare) + flare[p];
+  }
+  for (let p = 0; p < W * H; p++) {
+    for (let c = 0; c < 3; c++) {
+      const g = curve(Math.max(0, rad[p * 3 + c])) * 255 + (o.black || 0) + gauss(r) * (o.noise == null ? 1.2 : o.noise);
+      data[p * 4 + c] = Math.max(0, Math.min(255, Math.round(g)));
+    }
+    data[p * 4 + 3] = 255;
   }
   const bs = o.box || 56;
   const layout = wall ? { mode: 'wall', color: { x0: W / 2 + 40, y0: cy - bs / 2, x1: W / 2 + 40 + bs, y1: cy + bs / 2 }, paper: { x0: sheet.x0 + 12, y0: sheet.y0 + 12, x1: sheet.x1 - 12, y1: sheet.y1 - 12 } }

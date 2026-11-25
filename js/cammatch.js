@@ -89,23 +89,40 @@
   function ringWhite(f, box, col) {
     const cx = (box.x0 + box.x1) / 2, cy = (box.y0 + box.y1) / 2, hw = (box.x1 - box.x0) / 2, hh = (box.y1 - box.y0) / 2;
     const m = Math.min(hw, hh) * 2, t = Math.max(3, m * 0.26), reach = m * 1.6, step = Math.max(1, m / 40);
-    const cc = chroma(col.avg), Lc = col.L, out = [];
+    const cc = chroma(col.avg), Lc = col.L, out = [], sr = Math.max(1, m * 0.04);
+    // Follow a line out from inside the box in each of eight directions. Each step is a small spot, smoothed with
+    // the two before it so one grainy spot can't look like an edge. At each step: how far its tint is from the
+    // color's, and how far its brightness breaks from the steady change it had just before (so the light's smooth
+    // fall-off across the color isn't taken for an edge, but a soft real edge is).
+    const rays = [];
     for (let a = 0; a < 8; a++) {
       const ang = a * Math.PI / 4, ux = Math.round(Math.cos(ang) * 1e6) / 1e6, uy = Math.round(Math.sin(ang) * 1e6) / 1e6;
       const s0 = Math.min(ux ? hw / Math.abs(ux) : Infinity, uy ? hh / Math.abs(uy) : Infinity);
-      // follow the line out from inside the box; the color's edge is where the tint stops being the color's, or the
-      // brightness breaks from the steady change it had just before (so the light's smooth fall-off across the
-      // color isn't taken for an edge, but a soft real edge is)
-      const back = [];
-      let edge = -1;
-      for (let s = s0 * 0.5; s < s0 + reach; s += step) {
-        const c = spot(f, cx + ux * s, cy + uy * s, Math.max(1, m * 0.04)); if (!c) break;
-        const lc = Math.log(Math.max(1e-6, lum(c)));
-        let jump = 0;
-        if (back.length >= 8) { const a = back[back.length - 8], b = back[back.length - 4]; jump = lc - (2 * b - a); }
-        if (chromaGap(chroma(c), cc) > 0.03 || Math.abs(jump) > 0.045) { edge = s; break; }
-        back.push(lc);
+      const pts = [];
+      for (let s = s0 * 0.3; s < s0 + reach; s += step) {
+        const c = spot(f, cx + ux * s, cy + uy * s, sr); if (!c) break;
+        pts.push({ s, lc: Math.log(Math.max(1e-6, lum(c))), ch: chroma(c) });
       }
+      pts.forEach((p, i) => {
+        const w = pts.slice(Math.max(0, i - 2), i + 1);
+        p.ml = w.reduce((q, x) => q + x.lc, 0) / w.length;
+        p.gap = chromaGap([0, 1, 2].map(k => w.reduce((q, x) => q + x.ch[k], 0) / w.length), cc);
+        p.jump = i >= 6 ? p.ml - (2 * pts[i - 3].ml - pts[i - 6].ml) : 0;
+      });
+      rays.push({ ux, uy, s0, pts });
+    }
+    // How much the color's own spots vary (paper grain, texture, and the camera noise that grows in dark colors),
+    // measured inside the box. A change has to stand clear of that to be the edge: a near-white beside the paper
+    // is found by a small change in a clean picture, and a dark, grainy color isn't cut short by its own noise.
+    const inG = [], inJ = [];
+    for (const r of rays) r.pts.forEach((p, i) => { if (i >= 2 && p.s <= r.s0 * 0.95) { inG.push(p.gap); if (i >= 6) inJ.push(Math.abs(p.jump)); } });
+    const mid = a => (a.length ? a.slice().sort((x, y) => x - y)[a.length >> 1] : 0);
+    const thC = Math.max(0.008, 4 * mid(inG)), thJ = Math.max(0.03, 9 * mid(inJ));
+    const hit = p => p.gap > thC || Math.abs(p.jump) > thJ;
+    for (const { ux, uy, s0, pts } of rays) {
+      // the edge: the first place past the middle of the box where the change holds for two steps in a row
+      let edge = -1;
+      for (let i = 6; i < pts.length - 1; i++) if (pts[i].s >= s0 * 0.5 && hit(pts[i]) && hit(pts[i + 1])) { edge = pts[i].s; break; }
       const found = edge > 0;
       // two readings each way, one just past the edge and one farther out: how the light changes with distance
       // tells how much it curves toward the middle
@@ -121,7 +138,8 @@
     if (out.filter(s => s.clip > 0.35).length * 2 >= out.length) return { ok: false, clipped: true, sectors: out, top: 255, clip: 1 };
     // paper: different from the color (brighter, or another tint). Past an edge that was found, a little is enough;
     // where no edge turned up, it has to be clearly different, or it may just be more of the color.
-    let cand = out.filter(s => s.clip <= 0.35 && (s.L > Lc * (s.found ? 1.03 : 1.07) || chromaGap(chroma(s.avg), cc) > (s.found ? 0.03 : 0.05)));
+    // (brighter or dimmer: a white can be brighter than copy paper)
+    let cand = out.filter(s => s.clip <= 0.35 && (s.found ? Math.abs(Math.log(s.L / Lc)) > 0.02 || chromaGap(chroma(s.avg), cc) > thC : s.L > Lc * 1.07 || chromaGap(chroma(s.avg), cc) > Math.max(0.05, thC * 2)));
     if (cand.length < 4) return { ok: false, sectors: out };
     // and all one tint (paper doesn't change color; a shadow only makes it dimmer)
     const ch = [0, 1, 2].map(i => cand.map(s => chroma(s.avg)[i]).sort((a, b) => a - b)[cand.length >> 1]);
@@ -174,18 +192,29 @@
     return { ok: P.spread < 0.12, W: P.avg.map(v => v * (1 + D)), L: P.L * (1 + D), n: use.length, even: Math.abs(D) + (Ls.length ? (Math.max(...Ls) - Math.min(...Ls)) / P.L : 0), fit: 0, top: P.top, clip: P.clip, spread: P.spread, D };
   }
 
-  // a phone's own contrast, tuned with known chips: each channel's reading (as a share of the paper) raised to a
-  // power found from the chips, through the paper's own point (paper stays paper)
+  // Tuned with chips whose color is known: for each channel, the true share of the paper = a × reading^g.
+  //  a is the paper itself: it isn't exactly the neutral 0.86 assumed (copy paper is often a little blue, which
+  //    turns off-whites yellow, or a little cream). Light chips set it: near the paper the curve hardly matters.
+  //  g is the phone's own curve: its contrast, and lens flare or lifted shadows in dark colors. Middle and dark
+  //    chips set it, measured from the paper that the light chips found.
+  // So a white chip can't bend the dark colors, and a dark chip doesn't move the whites. One of each is best.
   function fitTune(pairs) {
-    const g = [1, 1, 1];
+    const a = [1, 1, 1], g = [1, 1, 1], clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
     for (let i = 0; i < 3; i++) {
-      let sxy = 0, sxx = 0;
-      for (const p of pairs || []) { const m = p.m[i], t = p.t[i]; if (!(m > 0.02 && m < 0.92 && t > 0.01 && t < 1)) continue; const x = Math.log(m), y = Math.log(t); sxy += x * y; sxx += x * x; }
-      if (sxx > 1e-4) g[i] = Math.max(0.55, Math.min(1.8, sxy / sxx));
+      const pts = [];
+      for (const p of pairs || []) { const m = p.m[i], t = p.t[i]; if (m > 0.004 && m < 1.3 && t > 0.003 && t < 1.25) pts.push({ x: Math.log(m), y: Math.log(t) }); }
+      const light = pts.filter(p => p.x > -0.45), deep = pts.filter(p => p.x <= -0.45);
+      let la = 0, gi = 1;
+      for (let it = 0; it < 4; it++) {
+        if (light.length) la = clamp(light.reduce((q, p) => q + p.y - gi * p.x, 0) / light.length, -0.2, 0.2);
+        if (deep.length) { let sxy = 0.1, sxx = 0.1; for (const p of deep) { sxy += p.x * (p.y - la); sxx += p.x * p.x; } gi = clamp(sxy / sxx, 0.55, 1.8); }
+      }
+      a[i] = Math.exp(la); g[i] = gi;
     }
-    return g;
+    return { a, g };
   }
-  const applyTune = (rel, g) => rel.map((v, i) => Math.pow(Math.max(1e-5, v), g ? g[i] : 1));
+  // (a tuning saved before the paper's tint was part of it is a plain list of powers)
+  const applyTune = (rel, tn) => (!tn ? rel : rel.map((v, i) => (tn.a ? tn.a[i] : 1) * Math.pow(Math.max(1e-5, v), tn.g ? tn.g[i] : Array.isArray(tn) ? tn[i] : 1)));
 
   // One reading of one picture. layout: { mode: 'paper' | 'wall', color: rect, paper: rect (wall only) } in the
   // picture's own pixels. opts.tune: powers from fitTune. Returns the color and anything that needs fixing first.
@@ -205,7 +234,7 @@
     else if (col.hot > 0.18) res.problem = 'glare';
     else if (col.spread > 0.16) res.problem = 'mixed';
     else if (white.fit > 0.1 || white.even > (layout.mode === 'wall' ? 0.45 : 1.15)) res.problem = 'uneven';   // (past 1.15 the phone is too close: its light falls off too fast to follow)
-    else if (col.L > white.L * 1.04) res.problem = 'brighter';
+    else if (col.L > white.L * 1.12) res.problem = 'brighter';   // (whites up to about LRV 95 are brighter than copy paper)
     const raw = col.avg.map((v, i) => v / Math.max(1e-6, white.W[i]));
     res.raw = raw;
     res.rel = applyTune(raw, opts.tune);

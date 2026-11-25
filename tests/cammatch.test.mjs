@@ -106,3 +106,40 @@ test('on a wall, with a sheet of paper beside the color', () => {
     assert.ok(err(c.hex, hex) < 2.5, `${hex} ${JSON.stringify(o)} read ${c.hex} (${err(c.hex, hex).toFixed(2)})`);
   }
 });
+
+// ---------------- whites, off-whites and very dark colors ----------------
+test('whites: brighter than copy paper, a cool white almost the same as the paper, and off-whites all read', () => {
+  // (F7F5EE and F4F4F0 are brighter than copy paper; EEF0F0 and E9EBEA differ from it by a hair)
+  for (const hex of ['F7F5EE', 'F4F4F0', 'EEF0F0', 'E9EBEA', 'EDEAE0', 'E8E4DA']) for (const o of [{}, { chip: 150 }, { torch: { x: 185, y: 125, r0: 230, share: 0.85 } }]) {
+    const { c, problems } = read(Object.assign({ hex }, o));
+    assert.ok(c, `${hex} ${JSON.stringify(o)}: ${problems.join(',')}`);
+    assert.ok(err(c.hex, hex) < 1.5, `${hex} ${JSON.stringify(o)} read ${c.hex} (${err(c.hex, hex).toFixed(2)})`);
+  }
+});
+test('very dark colors: a grainy camera and a chip bigger than the box don’t cut the edge short', () => {
+  // (the camera's noise in a dark color used to look like its edge, so the "paper" read was the chip itself)
+  for (const hex of ['1F2124', '2B2C2E', '22303F', '233024', '3B2620', '2F3B4C']) for (const o of [{ noise: 3.5 }, { chip: 150 }, { chip: 150, noise: 3 }]) {
+    const { c, problems } = read(Object.assign({ hex }, o));
+    assert.ok(c, `${hex} ${JSON.stringify(o)}: ${problems.join(',')}`);
+    assert.ok(err(c.hex, hex) < 1.5, `${hex} ${JSON.stringify(o)} read ${c.hex} (${err(c.hex, hex).toFixed(2)})`);
+  }
+});
+test('tuning: a white chip sets the paper’s own tint, a dark chip the camera’s curve, and neither spoils the other', () => {
+  const pair = (hex, o) => ({ m: read(Object.assign({ hex }, o)).c.raw, t: M.linOf(hex).map(v => v / M.PAPER) });
+  const avg = (list, o, tune) => list.reduce((s, hex) => s + err(read(Object.assign({ hex }, o), { tune }).c.hex, hex), 0) / list.length;
+  const WH = ['F7F5EE', 'EDEAE0', 'E8E4DA'], DK = ['1F2124', '22303F', '3B2620'], MID = ['5D9A85', 'D1CBC1', 'B23C1C'];
+  // bluish copy paper turns whites yellow; one white chip puts that right, and doesn't move the dark colors
+  const blue = { paper: [0.84, 0.86, 0.92] };
+  const white = M.fitTune([pair('F0EDE4', blue)]);
+  assert.ok(avg(WH, blue) > 2.5, 'bluish paper throws whites off');
+  assert.ok(avg(WH, blue, white) < 0.8, 'a white chip fixes them');
+  assert.ok(avg(DK, blue, white) < 1.5 && avg(MID, blue, white) < 1.2, 'and the rest are fine too');
+  assert.ok(white.g.every(g => g === 1), 'a white chip leaves the curve alone');
+  // a contrasty camera with lens flare on bluish paper: a white and a dark chip together bring everything close
+  const hard = { paper: [0.84, 0.86, 0.92], flare: 0.01, curve: 'scurve' };
+  const both = M.fitTune([pair('F0EDE4', hard), pair('2E2F33', hard)]);
+  assert.ok(avg(DK, hard) > 5, 'untuned, dark colors are far off');
+  assert.ok(avg(WH, hard, both) < 1.2 && avg(DK, hard, both) < 2.2 && avg(MID, hard, both) < 2.5, 'tuned with both, all close');
+  // a tuning saved by an older version (powers only) still works
+  assert.deepEqual(M.applyTune([0.25, 0.5, 1], [2, 1, 1]), [0.0625, 0.5, 1]);
+});

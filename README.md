@@ -103,10 +103,17 @@ What it checks before it will read (the line at the top says what to fix, and tu
 - **Too close:** when the phone's light falls off faster than can be followed (about 4 cm away or closer), it asks to move back. The height guide on the right shows the same.
 - **Shine** on the color (circled), **too dark**, **not one color** in the box, and **no paper around it**.
 - A reading takes a second of pictures, each worked out on its own; the color is the middle of them, and only if they agree. Otherwise it asks to hold still.
+- **Whites, off-whites and very dark colors**, the hardest for a camera:
+  - The color's edge is found against how grainy the color itself looks inside the box. A near-white that differs from the paper by a hair is still found in a clean picture, and a dark color's camera noise isn't taken for its edge (which used to make the "paper" the chip itself, so a navy could read nearly white).
+  - Whites brighter than copy paper (up to about LRV 95, like the brightest trim whites) are read instead of refused.
+  - After reading a white or a dark color, if the camera isn't tuned with that kind of chip yet, the message says so.
 
-**Tune the Camera** (in the camera's **?** tips) makes it more exact for one phone: read a chip whose name is known (any chip in the app), pick it, and the app learns how that phone's camera bends colors. Up to six chips can be used, and **Undo Tuning** clears it.
+**Tune the Camera** (in the camera's **?** tips) makes it more exact for one phone: read a chip whose name is known (any chip in the app), pick it, and the app learns how that phone's camera bends colors. Up to six chips can be used, and **Undo Tuning** clears it. **One white chip and one dark chip is best**, and each does its own job:
+- A **white or off-white chip** sets the paper itself. Copy paper isn't exactly neutral: it's often a little blue (which turns off-whites yellow) or a little cream. Near the paper the camera's curve hardly matters, so this chip changes only the paper's tint, and can't bend the dark colors.
+- A **dark or middle chip** sets the phone's own curve: its contrast, and lens flare or lifted shadows in dark colors. It's measured from the paper the white chip found, and doesn't move the whites.
+- The tips say which kind is still missing.
 
-The math is in `js/cammatch.js`. `tests/cammatch.test.mjs` checks it on made-up camera pictures (`tests/camsim.mjs`): even light, the phone's light at different heights, warm and cool light, brighter and dimmer light on the same chip, washed-out paper, shine, chips bigger than the box and off-whites, no paper, a contrasty camera before and after tuning, and a wall. At normal heights readings land within about 1.5 Lab units of the chip (hard to see), and the same chip in brighter or dimmer light reads the same.
+The math is in `js/cammatch.js`. `tests/cammatch.test.mjs` checks it on made-up camera pictures (`tests/camsim.mjs`): even light, the phone's light at different heights, warm and cool light, brighter and dimmer light on the same chip, washed-out paper, shine, chips bigger than the box and off-whites, whites brighter than copy paper and ones a hair from it, very dark colors with a grainy camera, no paper, a contrasty camera before and after tuning, bluish copy paper fixed by a white chip, lens flare on a contrasty camera fixed by a white and a dark chip, and a wall. At normal heights readings land within about 1.5 Lab units of the chip (hard to see), and the same chip in brighter or dimmer light reads the same.
 
 ## Projects
 

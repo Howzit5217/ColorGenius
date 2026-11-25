@@ -2500,9 +2500,15 @@
     }
   }
   // ---- tuning: a chip whose color is known, read once, tells how this phone's camera bends the colors ----
+  // which kinds of chip the camera is tuned with: a light one sets the paper's own tint (for whites and off-whites),
+  // a dark one sets how the camera handles dark colors
+  const tuneLum = p => 0.2126 * p.t[0] + 0.7152 * p.t[1] + 0.0722 * p.t[2];
+  const tuneKinds = () => { const ps = settings.camTune || []; return { light: ps.some(p => tuneLum(p) > 0.64), dark: ps.some(p => tuneLum(p) < 0.15) }; };
   function camTuneRow() {
-    const n = (settings.camTune || []).length;
-    return `<b>Make it more exact:</b> tune the camera with a chip you know.<span class="cam-tune-btns"><button type="button" class="cam-chip" data-cam-tune="1">${n ? 'Tune With Another Chip' : 'Tune the Camera'}</button>${n ? `<button type="button" class="cam-chip ghost" data-cam-untune="1">Undo Tuning (${n} chip${n > 1 ? 's' : ''})</button>` : ''}</span>`;
+    const n = (settings.camTune || []).length, k = tuneKinds();
+    const say = !n ? 'One white chip and one dark chip is best: the white one sets the paper, for whites and off-whites, and the dark one sets dark colors.'
+      : !k.light ? 'Add a white or off-white chip too, for whites.' : !k.dark ? 'Add a dark chip too, for dark colors.' : 'It has a white chip and a dark chip.';
+    return `<b>Make it more exact:</b> tune the camera with chips you know. ${say}<span class="cam-tune-btns"><button type="button" class="cam-chip" data-cam-tune="1">${n ? 'Tune With Another Chip' : 'Tune the Camera'}</button>${n ? `<button type="button" class="cam-chip ghost" data-cam-untune="1">Undo Tuning (${n} chip${n > 1 ? 's' : ''})</button>` : ''}</span>`;
   }
   function camTunePick(c) {
     const box = $('#camTune'); if (!box) return;
@@ -2526,7 +2532,8 @@
     cam.tuning = false; cam.tuneRead = null;
     const box = $('#camTune'); if (box) { box.hidden = true; box.innerHTML = ''; }
     const row = $('#camTuneRow'); if (row) row.innerHTML = camTuneRow();
-    toast(`Tuned with ${chip.name}. Readings now fit this phone better.`);
+    const k = tuneKinds();
+    toast(`Tuned with ${chip.name}.` + (k.light && k.dark ? ' Readings now fit this phone.' : !k.light ? ' A white chip next makes whites closer too.' : ' A dark chip next makes dark colors closer too.'), 5000);
   }
   document.addEventListener('click', async e => {
     if (e.target.closest('[data-camera]')) { openCamera(); return; }
@@ -2571,7 +2578,9 @@
       closeCamera();
       state.query = '#' + c.hex; state.lookupHex = c.hex;
       if (state.view === 'lookup') renderLookup(); else go('lookup');
-      toast(`Read #${c.hex}. Check it against a real chip.`);
+      const lit = C.hexToLab(c.hex)[0], k = tuneKinds();
+      const tip = lit > 85 && !k.light ? ' Whites read closer once the camera is tuned with a white chip (in the camera’s ? tips).' : lit < 32 && !k.dark ? ' Dark colors read closer once the camera is tuned with a dark chip (in the camera’s ? tips).' : '';
+      toast(`Read #${c.hex}. Check it against a real chip.${tip}`, tip ? 6500 : 2800);
     }
   });
   let lookTimer = 0;
@@ -3281,7 +3290,7 @@
   }
   document.addEventListener('click', e => { const t = e.target.closest('[data-copy]'); if (t) copyText(t.dataset.copy, 'Copied ' + t.dataset.copy); });
   let toastTimer;
-  function toast(msg) { const el = $('#toast'); el.textContent = msg; el.hidden = false; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; clearTimeout(toastTimer); el.classList.remove('out'); toastTimer = setTimeout(() => { if (reduced()) { el.hidden = true; return; } el.classList.add('out'); toastTimer = setTimeout(() => { el.hidden = true; el.classList.remove('out'); }, 220); }, 2800); }
+  function toast(msg, ms) { const el = $('#toast'); el.textContent = msg; el.hidden = false; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; clearTimeout(toastTimer); el.classList.remove('out'); toastTimer = setTimeout(() => { if (reduced()) { el.hidden = true; return; } el.classList.add('out'); toastTimer = setTimeout(() => { el.hidden = true; el.classList.remove('out'); }, 220); }, ms || 2800); }
 
   // ================================================================
   // SETTINGS

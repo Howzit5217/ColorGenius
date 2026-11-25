@@ -1032,7 +1032,7 @@ html.cam-open { overflow: hidden; }
 @keyframes glarePulse { to { border-color: #fff; } }
 .cam-tips { position: absolute; right: 12px; top: calc(70px + env(safe-area-inset-top, 0px)); width: min(340px, calc(100% - 24px)); display: grid; gap: 8px; padding: 14px 16px; border-radius: 18px; background: rgba(20, 20, 19, .86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: .95rem; line-height: 1.35; animation: popIn var(--t2) var(--ease) both; }
 .cam-tips[hidden] { display: none; }
-.camera.tips-open .cam-hint { display: none; }
+.camera.tips-open .cam-hint, .camera.tips-open .cam-meter { display: none; }
 /* the height guide: a meter on the right (red too close, green good, amber far) and an edge to match */
 .cam-wrap::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; box-shadow: inset 0 0 0 0 transparent; transition: box-shadow 300ms ease; }
 .camera[data-height="good"] .cam-wrap::after { box-shadow: inset 0 0 0 5px rgba(63, 174, 106, .9); }
