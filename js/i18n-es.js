@@ -1341,7 +1341,7 @@ Small room	Habitación pequeña
 Some sun	Algo de sol
 Stain above 50 °F, out of midday sun, with 24–48 dry hours ahead.	Tiñe arriba de 50 °F, lejos del sol del mediodía, con 24–48 horas secas por delante.
 Stain on a scrap first	Primero tiñe un retazo
-The button at the top switches it too. On a kiosk, each shopper can switch, and it goes back to this after.	El botón de arriba también lo cambia. En un quiosco, cada cliente puede cambiarlo y después regresa a este.
+The words on every screen. Color, brand and product names stay as they are on the chips.	Las palabras de cada pantalla. Los nombres de colores, marcas y productos se quedan como están en las muestras.
 The same stain looks different on oak, pine and maple. Test it on a board.	El mismo tinte se ve distinto en roble, pino y maple. Pruébalo en una tabla.
 Turn in 3D	Girar en 3D
 Turn rooms in 3D	Girar las habitaciones en 3D
@@ -1393,6 +1393,9 @@ A new version is ready.	Hay una nueva versión lista.
 Press Update to start using it.	Presiona Actualizar para usarla.
 It was updated in another window.	Se actualizó en otra ventana.
 Press Update to load the new version here too.	Presiona Actualizar para cargar la nueva versión aquí también.
+The words on every screen.	Las palabras de cada pantalla.
+Color, brand and product names stay as they are on the chips.	Los nombres de colores, marcas y productos se quedan como están en las muestras.
+On a kiosk, shoppers also get a button at the top to switch.	En un quiosco, los clientes también tienen un botón arriba para cambiarlo.
 Spanish	Español
 English	English
 `;

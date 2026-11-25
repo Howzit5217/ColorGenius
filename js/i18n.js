@@ -2,7 +2,7 @@
    screen is translated as it appears: each line of text and each label read aloud (aria-label), placeholder and
    tooltip is looked up in js/i18n-es.js, and a few shapes of sentence with names or numbers in them ("Change:
    Bedroom", "2 gallons + 1 quart", "November 25, 2026") are put together from their parts. Colour, brand and
-   product names stay as they are printed on the chips and cans. Back to English reloads the page.
+   product names stay as they are printed on the chips and cans. Back to English puts the English back at once.
    CG.i18n.set('es' | 'en'), CG.i18n.lang, CG.i18n.tr(text). */
 (function (root, factory) {
   const api = factory(root);
@@ -101,8 +101,9 @@
     [/^Added a sample of (.+) to (.+)$/, m => `Se agregó una muestra de ${m[1]} a ${part(m[2])}`],
     [/^Added (.+) to (.+)$/, m => `Se agregó ${m[1]} a ${part(m[2])}`],
     [/^Took (.+) off (.+)$/, m => `Se quitó ${m[1]} de ${part(m[2])}`],
-    [/^(.+) in a (.+)$/, m => { const t = tr(m[2]); return t ? `${m[1]} en ${lower(t)}` : null; }],
-    [/^(.+) on (.+)$/, m => { const t = tr(m[2]); return t ? `${m[1]} sobre ${lower(t)}` : null; }],
+    // (only short labels like "Agreeable Gray in a Living Room", never a sentence)
+    [/^([^.!?]{1,60}) in a ([^.!?]{1,40})$/, m => { const t = tr(m[2]); return t ? `${m[1]} en ${lower(t)}` : null; }],
+    [/^([^.!?]{1,60}) on ([^.!?]{1,40})$/, m => { const t = tr(m[2]); return t ? `${m[1]} sobre ${lower(t)}` : null; }],
     [/^(.+)\. Like (.+)$/, m => { const t = tr(m[1]); return t ? `${t}. Como ${m[2]}` : null; }],
   ];
   // names that must never be translated (a color called "Navy" or "Blush" stays one), filled by the app
@@ -132,18 +133,27 @@
     const t = v.replace(/\s+/g, ' ').trim(); if (!t) return;
     const es = tr(t); if (es == null || es === t) return;
     const out = (v.match(/^\s*/) || [''])[0] + es + (v.match(/\s*$/) || [''])[0];
-    n.__es = out; n.nodeValue = out;
+    n.__en = v; n.__es = out; n.nodeValue = out;   // (the English is kept, to put back)
   }
   function doAttrs(el) {
     if (!el.getAttribute || el.closest('[translate="no"],.notranslate')) return;
     for (const a of ATTRS) {
       if (!el.hasAttribute(a)) continue;
       const v = el.getAttribute(a); if (!/[A-Za-z]/.test(v)) continue;
-      el.__esA = el.__esA || {};
+      el.__esA = el.__esA || {}; el.__enA = el.__enA || {};
       if (el.__esA[a] === v) continue;
       const es = tr(v.replace(/\s+/g, ' ').trim()); if (es == null) continue;
-      el.__esA[a] = es; el.setAttribute(a, es);
+      el.__enA[a] = v; el.__esA[a] = es; el.setAttribute(a, es);
     }
+  }
+  // back to English: every line and label still showing in Spanish gets its English back, at once
+  function restore() {
+    const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    let n = document.body;
+    do {
+      if (n.nodeType === 3) { if (n.__es != null && n.nodeValue === n.__es) n.nodeValue = n.__en; delete n.__es; delete n.__en; }
+      else if (n.__esA) { for (const a of Object.keys(n.__esA)) if (n.getAttribute(a) === n.__esA[a]) n.setAttribute(a, n.__enA[a]); delete n.__esA; delete n.__enA; }
+    } while ((n = tw.nextNode()));
   }
   function walk(node) {
     if (node.nodeType === 3) { doText(node); return; }
@@ -168,7 +178,12 @@
   function set(l) {
     l = l === 'es' ? 'es' : 'en';
     if (l === lang) return false;
-    if (l === 'en') { location.reload(); return true; }   // the page is written in English: start it fresh
+    if (l === 'en') {
+      if (obs) { obs.disconnect(); obs = null; }
+      lang = 'en'; document.documentElement.lang = 'en';
+      restore();
+      return true;
+    }
     lang = 'es'; document.documentElement.lang = 'es';
     start();
     return true;

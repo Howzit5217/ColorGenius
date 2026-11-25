@@ -3798,6 +3798,9 @@
     view().innerHTML = `<div class="set">
       ${backBtn()}
       <div class="page-head"><h1>Settings</h1><p>Everything here is saved on this device.</p></div>
+      <div class="set-group"><h2 translate="no">Language / Idioma</h2><div class="set-card">
+        ${segRow('lang', 'Language', 'The words on every screen. Color, brand and product names stay as they are on the chips. On a kiosk, shoppers also get a button at the top to switch.', { en: 'English', es: 'Español' }, settings.lang)}
+      </div></div>
       <div class="set-group"><h2>Who Uses This</h2><div class="set-card">
         ${segRow('audience', 'This device is for', settings.audience === 'kiosk' ? 'Kiosk: big buttons, and it starts over when nobody has touched it for 2 minutes. The Staff button at the top unlocks it with the PIN.' : home() ? 'Simple tips for buying and testing samples.' : 'Chip locations and paint lines for the paint desk.', { store: 'Store Staff', home: 'My Home', kiosk: 'Kiosk' }, settings.audience || 'store')}
         <div class="set-row"><span class="pin-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/><circle cx="12" cy="15.3" r="1.4" fill="currentColor" stroke="none"/></svg></span><div class="set-text"><b>Kiosk PIN</b><span>${hasPin() ? 'Set. Staff use it to unlock kiosk mode.' : 'Not made yet. You’ll make one (4 to 8 numbers) before kiosk mode turns on.'}</span></div><button type="button" class="btn" data-pin-change="1">${hasPin() ? 'Change PIN' : 'Make a PIN'}</button></div>
@@ -3822,7 +3825,6 @@
         ${sw('bigText', settings.bigText, 'Bigger text', 'Makes all the words and buttons larger')}
         ${R3().supported() ? sw('view3d', settings.view3d, 'Turn rooms in 3D', 'Drag the room pictures to look around, and pinch or scroll to zoom') : '<div class="set-note">3D rooms need a newer browser with WebGL. The flat pictures are shown instead.</div>'}
         ${segRow('theme', 'Light or dark screen', 'Light is best for judging color', { system: 'Automatic', light: 'Light', dark: 'Dark' }, settings.theme)}
-        ${segRow('lang', 'Language', 'The button at the top switches it too. On a kiosk, each shopper can switch, and it goes back to this after.', { en: 'English', es: 'Español' }, settings.lang)}
         ${sw('lightPreview', settings.lightPreview, 'Show the light picker', 'See colors under the room’s own light bulbs, in daylight and more')}
         ${sw('reduceMotion', settings.reduceMotion, 'Less motion', 'Turns off sliding and fading')}
       </div></div>
@@ -3896,7 +3898,7 @@
       settings[k] = k === 'resultCount' ? +v : v;
       if (k === 'audience') { settings.inStoreSamples = v !== 'home'; settings.kioskPhone = false; applyAudience(); }
       saveSettings(); applyTheme(); afterSettingsChange(k);
-      if (k === 'lang') { applyLang(); if (I18.lang === 'en' && v === 'en') return; }
+      if (k === 'lang') { kioskLang(null); applyLang(); }   // (a kiosk shopper's own pick gives way to the store's)
       renderKeep(); return;
     }
     if (t.dataset.brand) { const on = t.getAttribute('aria-checked') !== 'true'; t.setAttribute('aria-checked', on); settings.brands[t.dataset.brand] = on; saveSettings(); afterSettingsChange('brands'); bumpCount('paintOn', paintOnText()); return; }
@@ -4238,7 +4240,7 @@
   const KIOSK_IDLE = 120000, KIOSK_WARN = 15;
   let kioskTimer = 0, kioskTick = 0, kioskLeft = 0;
   // in a kiosk, the Settings button is swapped for a Staff button with a lock: it asks for the PIN
-  function applyAudience() { const k = isKiosk(); document.documentElement.classList.toggle('kiosk', k); document.documentElement.classList.toggle('kiosk-phone', k && !!settings.kioskPhone); $('#settingsBtn').hidden = k; $('#lockBtn').hidden = !k; kioskArm(); }
+  function applyAudience() { const k = isKiosk(); document.documentElement.classList.toggle('kiosk', k); document.documentElement.classList.toggle('kiosk-phone', k && !!settings.kioskPhone); $('#settingsBtn').hidden = k; $('#lockBtn').hidden = !k; langButton(); kioskArm(); }
   const kioskAtStart = () => state.view === 'home' && !session.items.length && $('#modal').hidden && $('#present').hidden;
   function kioskArm() { clearTimeout(kioskTimer); clearInterval(kioskTick); const w = $('#kioskIdle'); if (w) w.hidden = true; if (isKiosk() && !settings.kioskPhone) kioskTimer = setTimeout(kioskWarn, KIOSK_IDLE); }
   function kioskWarn() {
@@ -4249,30 +4251,34 @@
     $('[data-kiosk-stay]', w).focus({ preventScroll: true });
     kioskTick = setInterval(() => { kioskLeft--; const n = $('#kioskIdleN'); if (n) n.textContent = Math.max(0, kioskLeft); if (kioskLeft <= 0) kioskReset(); }, 1000);
   }
-  // ---- language: English, or Spanish (js/i18n.js translates each screen as it appears). A kiosk shopper's pick
-  // lasts until the kiosk starts over for the next person. ----
+  // ---- language: English, or Spanish (js/i18n.js translates each screen as it appears). It's set in Settings →
+  // Language. A kiosk, with Settings locked, also has a button at the top so each shopper can switch; their pick
+  // lasts until the kiosk starts over for the next person, then it's the store's language again. ----
   const I18 = window.CG.i18n;
   const kioskLang = v => { try { if (v === undefined) return sessionStorage.getItem('cg:kioskLang'); if (v) sessionStorage.setItem('cg:kioskLang', v); else sessionStorage.removeItem('cg:kioskLang'); } catch (e) { return null; } return null; };
-  const langNow = () => (isKiosk() && kioskLang()) || settings.lang || 'en';
+  const langNow = () => ((isKiosk() && kioskLang()) || settings.lang) === 'es' ? 'es' : 'en';
+  // the button: only on a kiosk, offering the other language in that language
   function langButton() {
     const b = $('#langBtn'); if (!b) return;
-    const es = I18.lang === 'es';
+    b.hidden = !isKiosk();
+    const es = window.CG.i18n.lang === 'es';
     b.setAttribute('lang', es ? 'en' : 'es');
     b.setAttribute('aria-label', es ? 'English: see the app in English' : 'Español: ver la app en español');
     $('.lang-ab', b).textContent = es ? 'EN' : 'ES'; $('.top-label', b).textContent = es ? 'English' : 'Español';
   }
   function applyLang() {
-    if (langNow() === 'es' && I18.lang !== 'es') {
+    const want = langNow();
+    if (want === 'es' && I18.lang !== 'es') {
       // color and stain names stay as they are on the chips (a color called "Navy" isn't translated)
       for (const x of E.getIndex().colors) I18.keep.add(x.name);
       for (const x of S.all()) I18.keep.add(x.name);
       I18.set('es');
-    } else if (langNow() !== 'es' && I18.lang === 'es') I18.set('en');   // (starts the page fresh, in English)
+    } else if (want === 'en' && I18.lang === 'es') I18.set('en');   // (the English goes straight back)
     langButton();
   }
   $('#langBtn').addEventListener('click', () => {
-    const next = I18.lang === 'es' ? 'en' : 'es';
-    if (isKiosk()) kioskLang(next); else { settings.lang = next; saveSettings(); }
+    if (!isKiosk()) return;
+    kioskLang(I18.lang === 'es' ? 'en' : 'es');
     applyLang();
   });
   function kioskReset() {
