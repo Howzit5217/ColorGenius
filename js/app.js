@@ -24,7 +24,7 @@
     cal: { enabled: false, cct: 0, warmth: 0, brightness: 0, vividness: 0, ref: '' },
     theme: 'system', reduceMotion: false, lines: {}, collections: {}, audience: '', onboarded: false,
     jobs: { paint: true, stain: true }, stainBrands: {}, chain: '',
-    questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false, camTune: [],
+    questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false, camTune: [], lang: 'en',
   };
   function merge(base, over) {
     const out = clone(base);
@@ -3822,6 +3822,7 @@
         ${sw('bigText', settings.bigText, 'Bigger text', 'Makes all the words and buttons larger')}
         ${R3().supported() ? sw('view3d', settings.view3d, 'Turn rooms in 3D', 'Drag the room pictures to look around, and pinch or scroll to zoom') : '<div class="set-note">3D rooms need a newer browser with WebGL. The flat pictures are shown instead.</div>'}
         ${segRow('theme', 'Light or dark screen', 'Light is best for judging color', { system: 'Automatic', light: 'Light', dark: 'Dark' }, settings.theme)}
+        ${segRow('lang', 'Language', 'The button at the top switches it too. On a kiosk, each shopper can switch, and it goes back to this after.', { en: 'English', es: 'Español' }, settings.lang)}
         ${sw('lightPreview', settings.lightPreview, 'Show the light picker', 'See colors under the room’s own light bulbs, in daylight and more')}
         ${sw('reduceMotion', settings.reduceMotion, 'Less motion', 'Turns off sliding and fading')}
       </div></div>
@@ -3894,7 +3895,9 @@
       if (k === 'audience' && v === 'kiosk') { if (!isKiosk()) turnOnKiosk(() => { afterSettingsChange('audience'); state.unlocked = false; go(''); }); return; }
       settings[k] = k === 'resultCount' ? +v : v;
       if (k === 'audience') { settings.inStoreSamples = v !== 'home'; settings.kioskPhone = false; applyAudience(); }
-      saveSettings(); applyTheme(); afterSettingsChange(k); renderKeep(); return;
+      saveSettings(); applyTheme(); afterSettingsChange(k);
+      if (k === 'lang') { applyLang(); if (I18.lang === 'en' && v === 'en') return; }
+      renderKeep(); return;
     }
     if (t.dataset.brand) { const on = t.getAttribute('aria-checked') !== 'true'; t.setAttribute('aria-checked', on); settings.brands[t.dataset.brand] = on; saveSettings(); afterSettingsChange('brands'); bumpCount('paintOn', paintOnText()); return; }
     if (t.dataset.sbrand) { const on = t.getAttribute('aria-checked') !== 'true'; t.setAttribute('aria-checked', on); if (on) delete settings.stainBrands[t.dataset.sbrand]; else settings.stainBrands[t.dataset.sbrand] = false; saveSettings(); afterSettingsChange('brands'); bumpCount('stainOn', stainOnText()); return; }
@@ -4246,6 +4249,32 @@
     $('[data-kiosk-stay]', w).focus({ preventScroll: true });
     kioskTick = setInterval(() => { kioskLeft--; const n = $('#kioskIdleN'); if (n) n.textContent = Math.max(0, kioskLeft); if (kioskLeft <= 0) kioskReset(); }, 1000);
   }
+  // ---- language: English, or Spanish (js/i18n.js translates each screen as it appears). A kiosk shopper's pick
+  // lasts until the kiosk starts over for the next person. ----
+  const I18 = window.CG.i18n;
+  const kioskLang = v => { try { if (v === undefined) return sessionStorage.getItem('cg:kioskLang'); if (v) sessionStorage.setItem('cg:kioskLang', v); else sessionStorage.removeItem('cg:kioskLang'); } catch (e) { return null; } return null; };
+  const langNow = () => (isKiosk() && kioskLang()) || settings.lang || 'en';
+  function langButton() {
+    const b = $('#langBtn'); if (!b) return;
+    const es = I18.lang === 'es';
+    b.setAttribute('lang', es ? 'en' : 'es');
+    b.setAttribute('aria-label', es ? 'English: see the app in English' : 'Español: ver la app en español');
+    $('.lang-ab', b).textContent = es ? 'EN' : 'ES'; $('.top-label', b).textContent = es ? 'English' : 'Español';
+  }
+  function applyLang() {
+    if (langNow() === 'es' && I18.lang !== 'es') {
+      // color and stain names stay as they are on the chips (a color called "Navy" isn't translated)
+      for (const x of E.getIndex().colors) I18.keep.add(x.name);
+      for (const x of S.all()) I18.keep.add(x.name);
+      I18.set('es');
+    } else if (langNow() !== 'es' && I18.lang === 'es') I18.set('en');   // (starts the page fresh, in English)
+    langButton();
+  }
+  $('#langBtn').addEventListener('click', () => {
+    const next = I18.lang === 'es' ? 'en' : 'es';
+    if (isKiosk()) kioskLang(next); else { settings.lang = next; saveSettings(); }
+    applyLang();
+  });
   function kioskReset() {
     clearInterval(kioskTick);
     closeModal(); closePresent(); closeCamera();
@@ -4257,6 +4286,8 @@
     tapDone = false;   // the next shopper sees the tap note too
     // a fresh start is when a waiting update goes in
     if (updateReady) openUpdateGate();
+    // and the next shopper starts in the store's language
+    if (kioskLang()) { kioskLang(null); applyLang(); }
   }
   ['pointerdown', 'keydown', 'wheel'].forEach(ev => document.addEventListener(ev, () => { if (isKiosk()) kioskArm(); }, { passive: true, capture: true }));
   $('#homeBtn').addEventListener('contextmenu', e => { if (isKiosk()) e.preventDefault(); });
@@ -4552,6 +4583,7 @@
       store.set('shortlist', []);
     }
     state.ready = true;
+    applyLang();
     updateListBtn();
     if (!history.state) history.replaceState({ d: 0 }, '', location.hash || '#/');
     // The page is drawn behind the loading screen, which only lifts once its words and first pictures are ready (a

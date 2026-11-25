@@ -2,9 +2,9 @@
    Each version's files are saved together. The app keeps running the version it has; a new version is
    downloaded in the background and waits until Update is pressed (the app shows an Update button, and a popup
    when it opens). Bump VERSION with every release so installed apps see it. */
-const VERSION = 'cg-2026-11-25-67';
+const VERSION = 'cg-2026-11-25-68';
 const SHELL = [
-  './', 'index.html', 'css/app.css', 'js/color.js', 'js/wood.js', 'js/stain.js', 'js/engine.js', 'js/tools.js', 'js/scenes.js', 'js/room3d.js', 'js/qr.js', 'js/inflate.js', 'js/cammatch.js', 'js/fixes.js', 'js/photopaint.js', 'js/config.js', 'js/app.js',
+  './', 'index.html', 'css/app.css', 'js/color.js', 'js/wood.js', 'js/stain.js', 'js/engine.js', 'js/tools.js', 'js/scenes.js', 'js/room3d.js', 'js/qr.js', 'js/inflate.js', 'js/cammatch.js', 'js/fixes.js', 'js/photopaint.js', 'js/i18n-es.js', 'js/i18n.js', 'js/config.js', 'js/app.js',
   'data/brands.js', 'data/stains.js', 'data/popular.js', 'data/files.json', 'manifest.webmanifest',
   'img/tile-paint.jpg', 'img/tile-stain.jpg', 'img/tile-buy.jpg', 'img/tile-lookup.jpg',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-64.png',
