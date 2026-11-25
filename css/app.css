@@ -927,6 +927,43 @@ html.gate-open { overflow: hidden; }
 .tg-cta-txt { flex: 1; display: grid; gap: 2px; min-width: 0; }
 .tg-cta-txt b { font-size: 1.12rem; }
 .tg-cta-txt span { color: var(--ink-2); font-size: .95rem; }
+/* a project line's sheen & amount, and the editor for them */
+.item .ie-btn { justify-self: start; min-height: 36px; margin-top: 2px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--line-2); background: transparent; color: var(--ink); font-weight: 750; font-size: .88rem; }
+.item .ie-btn.need { border-color: var(--caution); background: var(--caution-soft); }
+.item .ie-btn:hover { border-color: var(--ink); }
+.ie-steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 8px; }
+.ie-step { display: grid; grid-template-columns: minmax(0, 1fr) 48px 40px 48px; align-items: center; gap: 6px; padding: 6px 6px 6px 14px; border-radius: 14px; background: var(--surface-2); }
+.ie-step span { font-weight: 700; }
+.ie-step b { text-align: center; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.ie-pm { width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--ink); font-size: 1.5rem; font-weight: 700; line-height: 1; }
+.ie-pm:active { transform: scale(.94); }
+/* the paint desk ticket: the button, the code, and the ticket itself */
+.ticket-cta { display: flex; align-items: center; gap: 14px; width: 100%; margin: 10px 0 4px; padding: 14px 16px; border-radius: var(--r-lg); border: 1.5px solid var(--line-2); background: var(--surface); color: var(--ink); text-align: left; box-shadow: var(--shadow); transition: border-color var(--t1); }
+.ticket-cta:hover { border-color: var(--ink); }
+.ticket-cta > svg { flex: none; }
+.ticket-cta > span { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.ticket-cta b { font-size: 1.12rem; }
+.ticket-cta > span > span { color: var(--ink-2); font-size: .95rem; }
+.ticket-qr { justify-self: center; width: min(320px, 100%); padding: 14px; border-radius: 16px; background: #fff; }
+.ticket-qr svg { display: block; width: 100%; height: auto; }
+.ticket-miss { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--caution-soft); line-height: 1.4; }
+.tk-notes { margin: 6px 0 0; }
+.tk-list { display: grid; gap: 10px; margin: 0 0 18px; padding: 0; list-style: none; }
+.tk-row { display: grid; grid-template-columns: 52px 56px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px; border-radius: var(--r); background: var(--surface); border: 1.5px solid var(--line); }
+.tk-row.done { opacity: .55; }
+.tk-row.done .tk-code { text-decoration: line-through; }
+.tk-check { width: 52px; height: 52px; border-radius: 14px; border: 2px solid var(--line-2); background: transparent; color: transparent; display: grid; place-items: center; }
+.tk-check[aria-checked="true"] { background: var(--good); border-color: var(--good); color: #fff; }
+.tk-sw { width: 56px; height: 56px; border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.tk-what { display: grid; gap: 2px; min-width: 0; }
+.tk-code { font-family: var(--mono); font-size: 1.5rem; font-weight: 800; letter-spacing: .02em; line-height: 1.1; }
+.tk-what b { font-size: 1.02rem; }
+.tk-facts { color: var(--ink-2); font-size: .92rem; }
+.tk-ask { font-style: normal; color: var(--ink); font-weight: 750; background: var(--caution-soft); padding: 0 6px; border-radius: 6px; }
+.tk-amt { font-weight: 800; font-size: 1.1rem; text-align: right; }
+@media (max-width: 560px) { .tk-row { grid-template-columns: 46px 44px minmax(0, 1fr); } .tk-check { width: 46px; height: 46px; } .tk-sw { width: 44px; height: 44px; } .tk-amt { grid-column: 3; text-align: left; } .tk-code { font-size: 1.3rem; } }
+.pr-qr { flex: none; display: grid; justify-items: center; gap: 2pt; width: 0.95in; font-size: 7pt; text-align: center; }
+.pr-qr svg { width: 0.95in; height: 0.95in; display: block; }
 .together .tg-zone { display: grid; gap: 10px; margin-top: 22px; }
 .together .tg-zone > h2 { font-size: 1.3rem; }
 .tg-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; }

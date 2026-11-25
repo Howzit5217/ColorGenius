@@ -356,11 +356,12 @@
     if (['paint', 'stain', 'buy'].includes(a)) return b === 'results' ? { view: 'results', kind: a } : { view: 'flow', kind: a, step: Math.max(0, parseInt(b, 10) || 0) };
     if (a === 'color' && b) return { view: 'color', id: b };
     if (a === 'p' && b) return { view: 'shared', data: b };
+    if (a === 't' && b) return { view: 'ticket', data: b };
     if (a === 'kiosk' && b) return { view: 'kiosk', data: b };
     if (['lookup', 'list', 'settings', 'together'].includes(a)) return { view: a };
     return { view: 'home' };
   }
-  const pathOf = r => r.view === 'home' ? '' : r.view === 'flow' ? `${r.kind}/${r.step}` : r.view === 'results' ? `${r.kind}/results` : r.view === 'color' ? `color/${r.id}` : r.view === 'shared' ? `p/${r.data}` : r.view;
+  const pathOf = r => r.view === 'home' ? '' : r.view === 'flow' ? `${r.kind}/${r.step}` : r.view === 'results' ? `${r.kind}/results` : r.view === 'color' ? `color/${r.id}` : r.view === 'shared' ? `p/${r.data}` : r.view === 'ticket' ? `t/${r.data}` : r.view;
   let navDir = 0;
   function go(path, opts) {
     opts = opts || {};
@@ -411,6 +412,7 @@
     else if (r.view === 'list') renderList();
     else if (r.view === 'together') renderTogether();
     else if (r.view === 'shared') renderShared(r.data);
+    else if (r.view === 'ticket') renderTicket(r.data);
     else if (r.view === 'settings') {
       // a locked kiosk keeps Settings behind the PIN
       if (isKiosk() && !state.unlocked) { go('', { replace: true }); openUnlock(); return; }
@@ -2679,7 +2681,7 @@
     const item = { kind: 'paint', ref: c.id, space: a ? a.space : '', area: sp ? sp.label : '', brand: brandName(c.brand), name: c.name, code: E.codeLabel(c), hex: c.hex, lrv: String(c.lrv), finish: sp ? sheenName(sp.sheens[0]) : '', product: '', primer: '', loc: '' };
     item.loc = (c.flags & E.F.RACK) && c.extra && ['sw', 'valspar', 'hgsw'].includes(c.brand) ? c.extra : (c.flags & E.F.RACK) ? 'Rack' : '';
     const lb = lineBrandFor(c);
-    if (lb) { const r = E.recommendLines(lb, c, a || { space: 'living' }, { lines: settings.lines }); if (r.best) item.product = lineLabel(lb, r.best.line); }
+    if (lb) { const r = E.recommendLines(lb, c, a || { space: 'living' }, { lines: settings.lines }); if (r.best) { item.product = lineLabel(lb, r.best.line); item.line = r.best.line.id; } }
     if (a) { const pr = E.primerFor(a, c, engineSettings()); if (pr.need) item.primer = pr.products[0] ? pr.products[0].name : pr.title.replace(/^An? /, ''); }
     return item;
   }
@@ -2692,6 +2694,58 @@
     const best = E.closestByBrand(hex, { brands: brandsEnabled() })[0];
     return { kind: 'custom', ref: '#' + hex, area: '', brand: 'Exact Color', name: best ? `Closest: ${brandName(best.color.brand)} ${best.color.name}` : 'Exact color', code: best ? E.codeLabel(best.color) : '', hex, lrv: String(C.lrvFromHex(hex)), finish: '', product: '', primer: '', loc: '' };
   }
+  // ---- how much of each: counts of each size of can ----
+  const CAN_SIZES = [['sample', 'Sample', 'Samples'], ['quart', 'Quart', 'Quarts'], ['gallon', 'Gallon', 'Gallons'], ['bucket', '5-Gallon Bucket', '5-Gallon Buckets']];
+  const CAN_OF = { sample: 'sample', quart: 'quart', gallon: 'gallon', '5-gallon bucket': 'bucket', bucket: 'bucket' };
+  // an item's cart: its own counts, or read from its amount line ("2 gallons + 1 quart")
+  function cartOf(x) {
+    const c = { sample: 0, quart: 0, gallon: 0, bucket: 0 };
+    if (x.cart && typeof x.cart === 'object') { for (const k of Object.keys(c)) c[k] = Math.max(0, Math.min(99, Math.round(+x.cart[k] || 0))); return c; }
+    String(x.amount || '').replace(/(\d+)\s*(5-gallon bucket|gallon|quart|sample)s?/gi, (m, n, z) => { c[CAN_OF[z.toLowerCase()]] += +n; return m; });
+    return c;
+  }
+  const cartLine = c => CAN_SIZES.filter(([k]) => c[k]).map(([k, one, many]) => `${c[k]} ${(c[k] === 1 ? one : many).toLowerCase()}`).join(' + ');
+  const cartEmpty = c => !CAN_SIZES.some(([k]) => c[k]);
+  // what a paint item still needs before it can be mixed
+  const needsInfo = x => { const c = cartOf(x), onlySamples = c.sample && !c.quart && !c.gallon && !c.bucket; return cartEmpty(c) || (x.kind !== 'stain' && !x.finish && !onlySamples); };
+  // the paint lines a color can be mixed in, for inside or outside
+  function linesFor(x) {
+    const c = x.kind !== 'stain' && E.findColor(x.ref), lb = c ? lineBrandFor(c) : null; if (!lb) return { lb: null, lines: [] };
+    const sp = E.SPACES[x.space], use = sp ? (sp.kind === 'exterior' ? 'exterior' : 'interior') : '';
+    const lines = (E.PAINT_LINES[lb] || []).filter(l => settings.lines[l.id] !== false && (!use || l.use === use || l.use === 'both'));
+    return { lb, lines };
+  }
+  let itemEdit = null;
+  function openItemEdit(id) {
+    const x = session.items.find(i => i.id === id); if (!x) return;
+    itemEdit = id;
+    const { lb, lines } = linesFor(x), c = cartOf(x);
+    const chips = (attr, list, on) => `<div class="chipset">${list.map(([v, l]) => `<button type="button" class="chip plain" ${attr}="${esc(v)}" aria-pressed="${on(v)}">${esc(l)}</button>`).join('')}</div>`;
+    openModal([x.brand, x.name].filter(Boolean).join(' ') || 'This Color', `<p class="part-lead">What the paint desk needs to mix it: the sheen, the paint and how much.</p>
+      ${x.kind !== 'stain' ? `<div class="setup-group"><h3>Sheen</h3>${chips('data-ie-finish', E.SHEENS.map(z => [z.name, z.name]), v => v === x.finish)}</div>` : ''}
+      ${lines.length > 1 ? `<div class="setup-group"><h3>Which Paint</h3>${selectHtml('ieLine', [['', 'Not picked yet']].concat(lines.map(l => [l.id, l.name, { interior: 'Inside', exterior: 'Outside', both: 'Floors' }[l.use]])), (lines.find(l => lineLabel(lb, l) === x.product) || {}).id || '', brandName(lb), v => {
+        const y = session.items.find(i => i.id === itemEdit), l = lines.find(q => q.id === v); if (!y) return;
+        if (l) { y.product = lineLabel(lb, l); y.line = l.id; } else { y.product = ''; y.line = ''; }
+        saveSession(); if (state.view === 'list') { const sy = window.scrollY; renderList(); window.scrollTo(0, sy); }
+      })}</div>` : ''}
+      <div class="setup-group"><h3>How Much</h3><div class="ie-steps">${CAN_SIZES.map(([k, one, many]) => `<div class="ie-step"><span>${many}</span><button type="button" class="ie-pm" data-ie-minus="${k}" aria-label="One less ${one.toLowerCase()}">−</button><b id="ie-${k}" aria-live="polite">${c[k]}</b><button type="button" class="ie-pm" data-ie-plus="${k}" aria-label="One more ${one.toLowerCase()}">+</button></div>`).join('')}</div>
+        ${x.kind === 'plan' || x.space ? '' : '<p class="muted small" style="margin:0">Not sure how much? Which Paint to Buy works it out from the room’s size.</p>'}</div>
+      <div class="modal-foot"><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`);
+  }
+  document.addEventListener('click', e => {
+    const open = e.target.closest('[data-item-edit]'); if (open) { openItemEdit(open.dataset.itemEdit); return; }
+    const t = e.target.closest('#modal button'); if (!t || !itemEdit) return;
+    const x = session.items.find(i => i.id === itemEdit); if (!x) return;
+    const d = t.dataset;
+    if (d.ieFinish) { x.finish = d.ieFinish; $$('#modal [data-ie-finish]').forEach(b => b.setAttribute('aria-pressed', String(b === t))); }
+    if (d.iePlus || d.ieMinus) {
+      const k = d.iePlus || d.ieMinus, c = cartOf(x);
+      c[k] = Math.max(0, Math.min(99, c[k] + (d.iePlus ? 1 : -1)));
+      x.cart = c; x.amount = cartLine(c);
+      const b = $('#ie-' + k); if (b) b.textContent = c[k];
+    }
+    if (d.ieFinish || d.iePlus || d.ieMinus) { saveSession(); if (state.view === 'list') { const y = window.scrollY; renderList(); window.scrollTo(0, y); } }
+  });
   function addToList(item) {
     if (!item) return;
     session.items.push(Object.assign({ id: newId() }, item));
@@ -2849,9 +2903,10 @@
       <div class="list-head"><label class="field">What’s this project for?<input type="text" class="input" id="listName" value="${esc(session.name || '')}" placeholder="Smith kitchen, Mom’s porch..." maxlength="60" autocomplete="off"></label>
         <label class="field">Notes for the printout<input type="text" class="input" id="listNotes" value="${esc(session.notes || '')}" placeholder="Phone number, due date..." maxlength="160" autocomplete="off"></label></div>
       ${items.length ? `<ol class="items">${items.map((x, i) => `<li class="item"><span class="n">${i + 1}</span><button type="button" class="sw" ${x.hex ? swStyle(x.hex) : 'style="background:var(--surface-2)"'} data-open-item="${esc(x.ref)}" aria-label="Open ${esc(x.name)}"></button>
-          <span class="what"><input type="text" class="area" data-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><b>${esc([x.brand, x.name, x.code].filter(Boolean).join(' '))}</b><span>${esc([x.finish, x.product, x.amount].filter(Boolean).join(' · '))}</span></span>
+          <span class="what"><input type="text" class="area" data-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><b>${esc([x.brand, x.name, x.code].filter(Boolean).join(' '))}</b><span>${esc([x.finish, x.product, x.amount].filter(Boolean).join(' · '))}</span><button type="button" class="ie-btn${needsInfo(x) ? ' need' : ''}" data-item-edit="${esc(x.id)}">${needsInfo(x) ? (x.kind === 'stain' ? 'Add how much' : 'Add sheen & amount') : (x.kind === 'stain' ? 'Change how much' : 'Change sheen & amount')}</button></span>
           <button type="button" class="icon-btn" data-del-item="${esc(x.id)}" aria-label="Remove ${esc(x.name)}">${xIcon}</button></li>`).join('')}</ol>
         <button type="button" class="tg-cta" data-go="together"><span class="tg-cta-sws" aria-hidden="true">${items.slice(0, 4).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span class="tg-cta-txt"><b>See It All Together</b><span>Every color in this project at once, each where it goes${items.some(x => x.kind === 'stain') ? ', the stain too' : ''}</span></span>${chev('right', 22)}</button>
+        <button type="button" class="ticket-cta" data-list="ticket">${QR_IC}<span><b>Paint Desk Ticket</b><span>A code the paint desk scans to see exactly what to mix</span></span>${chev('right', 22)}</button>
         <div class="actions stack"><button type="button" class="btn big primary" data-list="print">${ic('print', 22)}Print</button><button type="button" class="btn big primary" data-list="email">${mailIcon}Email It</button><button type="button" class="btn big" data-go="home">${plusIcon}Add More</button></div>
         <details class="more"><summary>More Things to Do</summary><div class="actions">${paintRefs.length ? '<button type="button" class="btn" data-list="present">Show Colors Full Screen</button>' : ''}${paintRefs.length > 1 ? '<button type="button" class="btn" data-list="compare">Compare the Colors</button>' : ''}<button type="button" class="btn" data-list="copy">Copy as Text</button><button type="button" class="btn" data-list="link">Copy a Link to It</button><button type="button" class="btn ghost" data-project-new="1">Start a New Project</button></div></details>`
         : `<div class="empty"><h2>Nothing in this project yet</h2><p class="muted">Find a color, then tap Add to Project. Everything you add lands here.</p><div class="actions stack"><button type="button" class="btn big primary" data-start="paint">Find a Paint Color</button>${jobOn('stain') ? '<button type="button" class="btn big" data-start="stain">Find a Stain</button>' : ''}<button type="button" class="btn big" data-go="lookup">Look Up a Color</button></div></div>`}
@@ -2874,6 +2929,7 @@
     if (act === 'copy') copyText(sheetText(session), 'Copied the whole project');
     if (act === 'link') shareLink(session).then(l => copyText(l, 'Copied a link. Anyone who opens it sees these colors.'));
     if (act === 'delete') askDelete(session);
+    if (act === 'ticket') openTicketCode(session);
     if (t.dataset.delItem) {
       const id = t.dataset.delItem, li = t.closest('li');
       const done = () => { session.items = session.items.filter(x => x.id !== id); saveSession(); updateListBtn(); if (state.view === 'list') renderList(); };
@@ -2953,14 +3009,92 @@
   const toB64u = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
   const fromB64u = str => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((str.length + 3) % 4)), ch => ch.charCodeAt(0));
   const squeeze = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
-  async function packProject(s) {
-    const items = s.items.slice(0, 120).map(x => { const a = SHARE_KEYS.map(k => String(x[k] || '')); while (a.length && !a[a.length - 1]) a.pop(); return a; });
+  async function packProject(s, compact) {
+    // compact (for a QR code): a color the app knows travels as its number only, a paint line as its short name,
+    // and the roller and brush and where to find it stay behind (the desk doesn't need them)
+    const items = s.items.slice(0, 120).map(x => {
+      const known = compact && x.kind !== 'stain' && E.findColor(x.ref), lid = compact && (x.line || lineMap().byLabel[x.product]);
+      const a = SHARE_KEYS.map(k => (compact && (k === 'tools' || k === 'loc')) || (known && ['brand', 'name', 'code', 'hex'].includes(k)) ? '' : k === 'product' && lid && lineMap().byId[lid] ? '@' + lid : String(x[k] || '')); while (a.length && !a[a.length - 1]) a.pop(); return a; });
     const raw = new TextEncoder().encode(JSON.stringify({ v: 1, n: (s.name || '').trim(), t: (s.notes || '').trim(), s: storeName(), d: Date.now(), i: items }));
     // squeezed small when the browser can ("z"), plain otherwise ("j")
     if (typeof CompressionStream === 'function') { try { return 'z' + toB64u(await squeeze(raw, new CompressionStream('deflate-raw'))); } catch (e) { /* plain below */ } }
     return 'j' + toB64u(raw);
   }
+  // every paint line by its short name and by the name people see
+  let lineMaps = null;
+  function lineMap() {
+    if (lineMaps) return lineMaps;
+    const byId = {}, byLabel = {};
+    for (const [b, list] of Object.entries(E.PAINT_LINES)) for (const l of list) { const lab = lineLabel(b, l); byId[l.id] = lab; byLabel[lab] = l.id; }
+    return (lineMaps = { byId, byLabel });
+  }
   const shareLink = async s => `${siteUrl()}#/p/${await packProject(s)}`;
+  const ticketLink = async s => `${siteUrl()}#/t/${await packProject(s, true)}`;
+  // the ticket's QR code, or '' when a project is too big for one code
+  async function ticketQr(s, label) { try { return window.CG.qr.svg(await ticketLink(s), { label: label || 'QR code for the paint desk' }); } catch (e) { return ''; } }
+  const QR_IC = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h2.5v2.5H14zM18 18h2.5v2.5H18zM14 18.5h1.5M18.5 14h2" stroke-linecap="round"/></svg>';
+  // ---- the paint desk ticket: shown as a code to scan at the desk ----
+  async function openTicketCode(s) {
+    const missing = s.items.filter(needsInfo);
+    openModal('Paint Desk Ticket', '<p class="muted">Making the code…</p>');
+    const qr = await ticketQr(s);
+    if ($('#modalTitle') && $('#modalTitle').textContent !== 'Paint Desk Ticket') return;   // closed or moved on
+    openModal('Paint Desk Ticket', `${qr ? `<div class="ticket-qr">${qr}</div><p style="font-size:1.1rem;margin:0">Show this at the paint desk. They scan it with any phone or tablet and see exactly what to mix: every color’s code, the sheen, the paint and how much, to check off as each can is made.</p>` : '<p style="font-size:1.1rem">This project is too big for one code. Print it (the printout has the list), or email it to the desk.</p>'}
+      ${missing.length ? `<p class="ticket-miss">${missing.length === 1 ? `<b>${esc(missing[0].name)}</b> still needs` : `<b>${missing.length} things</b> still need`} a sheen or how much. The desk can ask, or add it now with “Add sheen & amount” on the project.</p>` : ''}
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Close</button><span class="grow"></span>${qr ? '<button type="button" class="btn big" data-ticket-here="1">Open It Here</button>' : ''}<button type="button" class="btn big primary" data-list-print="1">${ic('print', 22)}Print</button></div>`);
+  }
+  document.addEventListener('click', async e => {
+    const t = e.target.closest('#modal button'); if (!t) return;
+    if (t.dataset.ticketHere) { const l = await ticketLink(session); closeModal(); go('t/' + l.split('#/t/')[1]); }
+    if (t.dataset.listPrint) { closeModal(); printPreview(session); }
+  });
+  // what the desk sees: big codes, one line per can to mix, each checked off as it's made (kept on that device)
+  let ticket = null;
+  const tickKey = code => 'tick:' + code.slice(-40);
+  function ticketTicks(code) { const all = store.get('ticks', {}) || {}; return Array.isArray(all[tickKey(code)]) ? all[tickKey(code)] : []; }
+  function saveTicks(code, ticks) {
+    const all = store.get('ticks', {}) || {};
+    all[tickKey(code)] = ticks;
+    const keys = Object.keys(all); if (keys.length > 30) delete all[keys[0]];
+    store.set('ticks', all);
+  }
+  async function renderTicket(code) {
+    view().innerHTML = '<div class="page narrow"><p class="muted">Opening the ticket…</p></div>';
+    let P = null;
+    try { P = await unpackProject(code); } catch (e) { P = null; }
+    if (!current || current.view !== 'ticket' || current.data !== code) return;
+    ticket = P ? { code, P } : null;
+    if (!P) { view().innerHTML = '<div class="page narrow"><div class="empty"><h1>This ticket doesn’t open</h1><p class="muted">Try scanning the code again, a little closer.</p></div></div>'; return; }
+    const ticks = ticketTicks(code);
+    const from = [P.store, P.date ? new Date(P.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''].filter(Boolean).join(' · ');
+    const row = (x, i) => {
+      const c = cartOf(x), done = ticks.includes(i), stain = x.kind === 'stain';
+      const code2 = x.code || (x.hex ? '#' + x.hex : '');
+      return `<li class="tk-row${done ? ' done' : ''}"><button type="button" class="tk-check" data-tick="${i}" role="checkbox" aria-checked="${done}" aria-label="${esc(x.name)} is mixed"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+        <span class="tk-sw" ${x.hex ? swStyle(x.hex) : 'style="background:var(--surface-2)"'}></span>
+        <span class="tk-what"><span class="tk-code">${esc(code2)}</span><b>${esc([x.brand, x.name].filter(Boolean).join(' '))}</b>
+          <span class="tk-facts">${[x.area, x.product, stain ? '' : x.finish || '<i class="tk-ask">Sheen: ask</i>'].filter(Boolean).map(v => v.startsWith('<i') ? v : esc(v)).join(' · ')}</span>
+          ${x.primer ? `<span class="tk-facts">Primer: ${esc(x.primer)}</span>` : ''}${x.tools ? `<span class="tk-facts">Also: ${esc(x.tools)}</span>` : ''}</span>
+        <span class="tk-amt">${cartEmpty(c) ? '<i class="tk-ask">How much: ask</i>' : esc(cartLine(c))}</span></li>`;
+    };
+    const left = P.items.length - ticks.filter(i => i < P.items.length).length;
+    view().innerHTML = `<div class="page narrow ticket-page">
+      <div class="page-head"><p class="eyebrow">Paint Desk Ticket</p><h1>${esc(P.name || 'Paint and Stain List')}</h1><p>${from ? esc(from) + ' · ' : ''}${P.items.length} to mix${left && left < P.items.length ? `, ${left} left` : !left ? ', all done' : ''}</p>${P.notes ? `<p class="tk-notes"><b>Notes</b> ${esc(P.notes)}</p>` : ''}</div>
+      <ol class="tk-list">${P.items.map(row).join('')}</ol>
+      <div class="actions stack"><button type="button" class="btn big primary" data-tk="all">${left ? 'Mark All Mixed' : 'Clear the Checks'}</button><button type="button" class="btn big" data-tk="print">${ic('print', 22)}Print</button><button type="button" class="btn big" data-tk="open">Open as a Project</button></div>
+      <p class="muted small">Colors on a screen are a guide. Mix by the code, and check the sheen and size with the customer.</p></div>`;
+  }
+  view().addEventListener('click', e => {
+    if (state.view !== 'ticket' || !ticket) return;
+    const t = e.target.closest('button'); if (!t) return;
+    const { code, P } = ticket;
+    let ticks = ticketTicks(code);
+    if (t.dataset.tick != null) { const i = +t.dataset.tick; ticks = ticks.includes(i) ? ticks.filter(v => v !== i) : ticks.concat([i]); saveTicks(code, ticks); renderTicket(code); return; }
+    const act = t.dataset.tk;
+    if (act === 'all') { saveTicks(code, ticks.length >= P.items.length ? [] : P.items.map((_, i) => i)); renderTicket(code); }
+    if (act === 'print') printPreview({ name: P.name || 'Paint and Stain List', notes: P.notes, items: P.items });
+    if (act === 'open') go('p/' + code);
+  });
   // the browser's own un-squeezing where it has it, the app's (js/inflate.js) where it doesn't
   async function unsqueeze(bytes) {
     if (typeof DecompressionStream === 'function') { try { return await squeeze(bytes, new DecompressionStream('deflate-raw')); } catch (e) { /* below */ } }
@@ -2977,6 +3111,7 @@
       const x = {};
       SHARE_KEYS.forEach((k, j) => { x[k] = str(a[j], k === 'product' || k === 'tools' ? 120 : 80); });
       x.hex = /^[0-9A-F]{6}$/i.test(x.hex) ? x.hex.toUpperCase() : '';
+      if (x.product[0] === '@') x.product = lineMap().byId[x.product.slice(1)] || '';
       if (!['paint', 'stain', 'custom', 'plan'].includes(x.kind)) x.kind = '';
       // a color the app knows shows the app's own name, number and color
       const c = x.kind !== 'stain' && E.findColor(x.ref);
@@ -3156,14 +3291,14 @@
   const PR_COLS = [['#', 'n'], ['Area', 'area'], ['Brand', 'brand'], ['Color', 'name'], ['Code', 'code'], ['Hex', 'hex'], ['Finish', 'finish'], ['Product', 'product'], ['Primer', 'primer'], ['Amount', 'amount'], ['Roller & Brush', 'tools'], ['Find It', 'loc']];
   const prCell = (x, k, i) => k === 'n' ? String(i + 1) : k === 'hex' ? (x.hex ? '#' + x.hex.toUpperCase() : '') : (x[k] || '');
   const storeName = () => settings.chain && CHAINS[settings.chain] && !CHAINS[settings.chain].other ? CHAINS[settings.chain].label.replace(/ Store$/, '') : '';
-  function sheetOf(s) {
+  function sheetOf(s, qr) {
     const cols = PR_COLS.filter(([, k]) => ['n', 'area', 'name'].includes(k) || s.items.some((x, i) => prCell(x, k, i)));
     const est = cols.reduce((w, [h, k]) => w + 8 + 5.1 * Math.min(34, Math.max(h.length, ...s.items.map((x, i) => prCell(x, k, i).length))), 0);
     const landscape = est > 540;
     const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const n = s.items.length;
     const html = `<div class="pr-sheet"><div class="pr-head"><div><div class="pr-title">${esc(titleOf(s))}</div><div class="pr-sub">Paint and Stain List</div></div>
-      <div class="pr-meta">${[storeName(), date, n + (n === 1 ? ' item' : ' items')].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</div></div>
+      <div class="pr-meta">${[storeName(), date, n + (n === 1 ? ' item' : ' items')].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</div>${qr ? `<div class="pr-qr">${qr}<span>Paint desk: scan to mix</span></div>` : ''}</div>
       ${(s.notes || '').trim() ? `<p class="pr-notes"><b>Notes</b> ${esc(s.notes.trim())}</p>` : ''}
       <table><thead><tr>${cols.map(([h, k]) => `<th class="c-${k}">${h}</th>`).join('')}</tr></thead><tbody>${s.items.map((x, i) => `<tr>${cols.map(([, k]) => `<td class="c-${k}">${esc(prCell(x, k, i))}</td>`).join('')}</tr>`).join('')}</tbody></table>
       <div class="pr-foot"><span>Colors look different on screens and paper. Check a real chip or sample before buying.</span><span>ColorGenius</span></div></div>`;
@@ -3176,7 +3311,7 @@
     s.items.forEach((x, i) => lines.push(`${i + 1}. ${[x.area, [x.brand, x.name, x.code].filter(Boolean).join(' '), x.hex ? '#' + x.hex.toUpperCase() : '', x.finish, x.product, x.primer ? 'Primer: ' + x.primer : '', x.amount, x.tools, x.loc ? 'Find it: ' + x.loc : ''].filter(Boolean).join(' - ')}`));
     return lines.join('\n');
   }
-  function printSheet(s) { const sh = sheetOf(s); printHtml(sh.html, sh.landscape); }
+  function printSheet(s) { const sh = sheetOf(s, previewQr); printHtml(sh.html, sh.landscape); }
   function printHtml(html, landscape) {
     $('#printArea').innerHTML = html;
     const page = document.createElement('style'); page.id = 'printPage';
@@ -3188,10 +3323,12 @@
     window.addEventListener('afterprint', done);
     window.print();
   }
-  let previewOf = null;
+  let previewOf = null, previewQr = '';
   function printPreview(s) {
-    previewOf = s;
+    previewOf = s; previewQr = '';
     const sh = sheetOf(s);
+    // the paint desk code goes on the sheet as soon as it's made
+    ticketQr(s, 'QR code: the paint desk scans it to see what to mix').then(qr => { if (previewOf !== s || !qr) return; previewQr = qr; const p = $('#modal .paper'); if (p) { p.innerHTML = sheetOf(s, qr).html; fitPaper(); } });
     openModal(`Print ${titleOf(s)}`, `<div class="paper-wrap"><div class="paper${sh.landscape ? ' landscape' : ''}">${sh.html}</div></div>
       <p class="muted">${sh.landscape ? 'Prints sideways so every column fits.' : 'Prints on one letter page.'} One line per item, black and white.</p>
       <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span><button type="button" class="btn big" data-copy-list="1">Copy as Text</button><button type="button" class="btn big" data-email-now="1">${mailIcon}Email</button><button type="button" class="btn big primary" data-print-now="1">${ic('print', 22)}Print</button></div>`, { wide: true });
@@ -3284,7 +3421,7 @@
   }
   function closeModal() {
     const el = $('#modal'); if (el.hidden || modalClosing) return;
-    state.duel = null; pad = null; camStop();
+    state.duel = null; pad = null; camStop(); itemEdit = null;
     const done = () => { modalClosing = 0; el.classList.remove('closing'); el.hidden = true; el.innerHTML = ''; };
     if (modalFocus && document.contains(modalFocus)) modalFocus.focus({ preventScroll: true });
     if (reduced()) { done(); return; }
@@ -4119,7 +4256,7 @@
     // The page is drawn behind the loading screen, which only lifts once its words and first pictures are ready (a
     // second at most), so nothing pops in or changes font after it shows. Then it rises in once.
     render(0);
-    if (!settings.onboarded && parseHash().view !== 'shared') openOnboarding();
+    if (!settings.onboarded && !['shared', 'ticket'].includes(parseHash().view)) openOnboarding();
     const ready = [document.fonts && document.fonts.ready].concat($$('#view img').slice(0, 8).map(i => i.decode ? i.decode().catch(() => {}) : null));
     await Promise.race([Promise.all(ready), new Promise(r => setTimeout(r, 1100))]);
     const ld = $('#loading'), v = view();
