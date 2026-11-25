@@ -1988,7 +1988,7 @@
           <div class="badges">${popBadge(c)}<span class="badge">${esc(d.familyName)}</span><span class="badge">${esc(d.undertone === 'neutral' ? 'True neutral' : cap(d.undertone) + ' undertone')}</span>${c.flags & E.F.DISC ? '<span class="badge">Discontinued</span>' : ''}</div>
           ${popWhyLine(c)}
           ${settings.showLrv ? `<div class="lrv-box"><div class="lrv-top"><span>Light Reflectance (LRV)</span><span class="mono">${c.lrv} of 100</span></div><div class="lrv-bar"><i style="left:${Math.max(0, Math.min(100, c.lrv))}%"></i></div><p>${esc(lrvWords(c.lrv))}.</p></div>` : ''}
-          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-sample-one="${esc(c.id)}">${ic('swatch', 22)}Add a Sample</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
+          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-photo="${esc(c.id)}">${ic('camera', 22)}Try on My Photo</button><button type="button" class="btn big" data-sample-one="${esc(c.id)}">${ic('swatch', 22)}Add a Sample</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
           ${sampleNote(c)}
         </div>
       </div>
@@ -2882,6 +2882,167 @@
   }
   document.addEventListener('click', e => { const t = e.target.closest('[data-wx]'); if (t) wxCheck(t.dataset.wx); });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'wxZip') { e.preventDefault(); const b = $('[data-wx]'); if (b) wxCheck(b.dataset.wx); } });
+  // ---- paint my photo: a photo of the room, a tap on a wall, and it's that color (the math is js/photopaint.js) ----
+  // The photo stays on the device: it's read here and never sent anywhere.
+  const PPT = window.CG.photopaint;
+  const DL_IC = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>';
+  let ph = null;
+  function photoColors(from) {
+    const list = from === 'project' ? session.items.filter(x => x.hex && x.kind !== 'fix').map(x => ({ hex: x.hex, name: x.name, code: x.code })) : [];
+    const c = from && from !== 'project' && E.findColor(from);
+    if (c) list.push({ hex: c.hex, name: c.name, code: E.codeLabel(c) });
+    const seen = new Set();
+    return list.filter(x => !seen.has(x.hex) && seen.add(x.hex)).slice(0, 12);
+  }
+  function openPhoto(from) {
+    closePhoto();
+    const colors = photoColors(from); if (!colors.length) return;
+    ph = { colors, pick: colors[colors.length === 1 ? 0 : 0].hex, img: null, P: null, regions: [], hist: [], spread: 0.5, url: '', focus: document.activeElement };
+    const el = document.createElement('div');
+    el.id = 'photo'; el.className = 'photo'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Paint my photo');
+    const fileBtn = (label, cls, cap) => `<span class="btn big ${cls} file-btn">${label}<input type="file" accept="image/*"${cap ? ' capture="environment"' : ''} data-ph-file="1" aria-label="${label}"></span>`;
+    el.innerHTML = `<div class="ph-top"><button type="button" class="cam-icon" data-ph-close="1" aria-label="Close">${xIcon}</button><span class="ph-title">Paint My Photo</span><span class="grow"></span>
+        <button type="button" class="cam-icon" data-ph-undo="1" aria-label="Undo" disabled>${ic('undo', 22)}</button><button type="button" class="cam-icon" data-ph-save="1" aria-label="Save the picture" disabled>${DL_IC}</button></div>
+      <div class="ph-stage" id="phStage">
+        <div class="ph-start" id="phStart"><p class="ph-big">Take a photo of the room, then tap a wall to paint it.</p>
+          <div class="ph-btns">${fileBtn('Take a Photo', 'primary', true)}${fileBtn('Choose a Photo', '', false)}</div>
+          <ul class="ph-tips"><li>Stand back so the whole wall shows, in daylight or with the lights on.</li><li>Tap the trim or a door with another color. Undo steps back.</li><li>The photo stays on this device. It isn’t sent anywhere.</li></ul></div>
+        <canvas id="phCanvas" hidden></canvas><p class="ph-busy" id="phBusy" hidden>Getting the photo ready…</p></div>
+      <div class="ph-bottom" id="phBottom" hidden>
+        <div class="ph-colors" role="group" aria-label="Paint color">${colors.map(phChip).join('')}<button type="button" class="ph-more" data-ph-more="1" aria-label="Another color">+</button></div>
+        <div class="ph-find" id="phFind" hidden><input type="search" class="input" id="phFindQ" placeholder="Find a color: name or number" aria-label="Find a color" autocomplete="off"><div class="ph-found" id="phFound"></div></div>
+        <div class="ph-controls"><label class="ph-spread"><span>Spread</span><input type="range" min="0" max="100" value="50" data-ph-spread="1" aria-label="How far a tap spreads"></label>
+          <button type="button" class="btn" data-ph-hold="1">Hold to See Before</button><button type="button" class="btn ghost" data-ph-clear="1">Start Over</button>${fileBtn('New Photo', 'ghost small-file', false)}</div>
+        <p class="ph-hint" id="phHint" aria-live="polite">Tap a wall to paint it.</p></div>`;
+    document.body.appendChild(el);
+    document.documentElement.classList.add('cam-open'); syncBars();
+    $('[data-ph-close]', el).focus({ preventScroll: true });
+  }
+  const phChip = c => `<button type="button" class="ph-chip" data-ph-pick="${c.hex}" aria-pressed="${ph && ph.pick === c.hex}" aria-label="${esc(c.name)}"><span class="sw" style="background:#${c.hex}"></span><span class="ph-nm">${esc(c.name)}</span></button>`;
+  function closePhoto() {
+    const el = $('#photo'); if (!el) return;
+    el.remove(); document.documentElement.classList.remove('cam-open'); syncBars();
+    if (ph && ph.url) URL.revokeObjectURL(ph.url);
+    const back = ph && ph.focus; ph = null;
+    if (back && document.contains(back)) back.focus({ preventScroll: true });
+  }
+  async function phLoad(file) {
+    if (!ph || !file) return;
+    $('#phStart').hidden = true; $('#phBusy').hidden = false;
+    if (ph.url) URL.revokeObjectURL(ph.url);
+    ph.url = URL.createObjectURL(file);
+    const im = new Image();
+    try { im.src = ph.url; await im.decode(); } catch (e) { if (!ph) return; $('#phBusy').hidden = true; $('#phStart').hidden = false; toast('That photo couldn’t be opened. Try another.'); return; }
+    if (!ph) return;
+    // worked on at up to 960 pixels across: plenty to see, quick to fill
+    const k = Math.min(1, 960 / Math.max(im.naturalWidth, im.naturalHeight)), W = Math.max(1, Math.round(im.naturalWidth * k)), H = Math.max(1, Math.round(im.naturalHeight * k));
+    const cv = $('#phCanvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    g.drawImage(im, 0, 0, W, H);
+    ph.img = g.getImageData(0, 0, W, H);
+    await new Promise(r => setTimeout(r, 30));   // let "Getting the photo ready" show
+    ph.P = PPT.prep(ph.img); ph.regions = []; ph.hist = [];
+    $('#phBusy').hidden = true; cv.hidden = false; $('#phBottom').hidden = false;
+    phFit(); phDraw(); phButtons();
+  }
+  // the photo as big as fits between the top bar and the controls
+  function phFit() {
+    const cv = $('#phCanvas'), st = $('#phStage'); if (!cv || !st || cv.hidden) return;
+    const r = st.getBoundingClientRect(), k = Math.min((r.width - 20) / cv.width, (r.height - 8) / cv.height);
+    cv.style.width = Math.max(1, Math.floor(cv.width * k)) + 'px'; cv.style.height = Math.max(1, Math.floor(cv.height * k)) + 'px';
+  }
+  window.addEventListener('resize', () => { if (ph) phFit(); });
+  function phDraw(before) {
+    if (!ph || !ph.img) return;
+    const g = $('#phCanvas').getContext('2d');
+    if (before || !ph.regions.length) { g.putImageData(ph.img, 0, 0); return; }
+    const out = PPT.render(ph.P, ph.img, ph.regions);
+    g.putImageData(new ImageData(out.data, out.width, out.height), 0, 0);
+  }
+  function phButtons() { const u = $('[data-ph-undo]'), sv = $('[data-ph-save]'); if (u) u.disabled = !ph.hist.length; if (sv) sv.disabled = !ph.regions.length; }
+  const phHint = t => { const h = $('#phHint'); if (h) h.textContent = t; };
+  function phTap(e) {
+    if (!ph || !ph.P) return;
+    const cv = $('#phCanvas'), r = cv.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * cv.width, y = (e.clientY - r.top) / r.height * cv.height;
+    if (x < 0 || y < 0 || x >= cv.width || y >= cv.height) return;
+    const p = Math.floor(y) * cv.width + Math.floor(x);
+    // on a part already painted: that part takes the new color
+    for (let i = ph.regions.length - 1; i >= 0; i--) {
+      const g = ph.regions[i];
+      if (!g.mask[p]) continue;
+      if (g.hex === ph.pick) { phHint('That part is this color already. Pick another color, or move Spread to take in more.'); return; }
+      ph.hist.push({ t: 'color', i, hex: g.hex }); g.hex = ph.pick; phDraw(); phButtons(); phHint('Painted. Tap another part, or pick another color.');
+      return;
+    }
+    const fillR = PPT.fill(ph.P, x, y, ph.spread);
+    if (fillR.size < 40) { phHint('That spot is too small to paint. Tap a bigger part, or move Spread up.'); return; }
+    ph.regions.push({ mask: fillR.mask, ref: fillR.ref, hex: ph.pick, x, y, spread: ph.spread });
+    ph.hist.push({ t: 'add' });
+    phDraw(); phButtons();
+    phHint(ph.regions.length === 1 ? 'Painted. Missed a bit, or went too far? Move Spread. Tap the trim with another color.' : 'Painted. Undo steps back.');
+  }
+  document.addEventListener('click', e => {
+    if (!ph) {
+      const open = e.target.closest('[data-photo]');
+      if (open && state.ready) openPhoto(open.dataset.photo);
+      return;
+    }
+    if (e.target.id === 'phCanvas') { phTap(e); return; }
+    const t = e.target.closest('#photo button'); if (!t) return;
+    const d = t.dataset;
+    if (d.phClose) closePhoto();
+    if (d.phPick) { ph.pick = d.phPick; $$('#photo [data-ph-pick]').forEach(b => b.setAttribute('aria-pressed', String(b === t))); phHint('Now tap a part of the photo for this color.'); }
+    if (d.phMore) { const fd = $('#phFind'); fd.hidden = !fd.hidden; if (!fd.hidden) $('#phFindQ').focus(); }
+    if (d.phFound) {
+      const c = E.findColor(d.phFound); if (!c) return;
+      if (!ph.colors.some(x => x.hex === c.hex)) { ph.colors.push({ hex: c.hex, name: c.name, code: E.codeLabel(c) }); $('[data-ph-more]').insertAdjacentHTML('beforebegin', phChip(ph.colors[ph.colors.length - 1])); }
+      ph.pick = c.hex; $$('#photo [data-ph-pick]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.phPick === c.hex)));
+      $('#phFind').hidden = true; $('#phFindQ').value = ''; $('#phFound').innerHTML = '';
+      phHint(`${c.name}: tap a part of the photo for it.`);
+    }
+    if (d.phUndo && ph.hist.length) {
+      const h = ph.hist.pop();
+      if (h.t === 'add') ph.regions.pop(); else if (h.t === 'color' && ph.regions[h.i]) ph.regions[h.i].hex = h.hex;
+      phDraw(); phButtons();
+    }
+    if (d.phClear) { ph.regions = []; ph.hist = []; phDraw(); phButtons(); phHint('Tap a wall to paint it.'); }
+    if (d.phSave) phSave();
+  });
+  // a new photo (or the first one)
+  document.addEventListener('change', e => { if (ph && e.target.dataset && e.target.dataset.phFile && e.target.files && e.target.files[0]) { phLoad(e.target.files[0]); e.target.value = ''; } });
+  // Spread: the last part painted is filled again, tighter or looser
+  document.addEventListener('input', e => {
+    if (!ph) return;
+    if (e.target.dataset && e.target.dataset.phSpread) {
+      ph.spread = +e.target.value / 100;
+      const last = ph.regions[ph.regions.length - 1];
+      if (last && ph.hist.length && ph.hist[ph.hist.length - 1].t === 'add') {
+        clearTimeout(ph.spreadT);
+        ph.spreadT = setTimeout(() => { if (!ph) return; const r = PPT.fill(ph.P, last.x, last.y, ph.spread); if (r.size >= 40) { last.mask = r.mask; last.ref = r.ref; last.spread = ph.spread; phDraw(); } }, 120);
+      }
+    }
+    if (e.target.id === 'phFindQ') {
+      const q = e.target.value.trim();
+      $('#phFound').innerHTML = q ? E.search(q, { brands: brandsEnabled(), limit: 6 }).map(r => `<button type="button" class="ph-chip" data-ph-found="${esc(r.color.id)}"><span class="sw" style="background:#${r.color.hex}"></span><span class="ph-nm">${esc(r.color.name)} <small>${esc(E.codeLabel(r.color))}</small></span></button>`).join('') : '';
+    }
+  });
+  // hold to see the photo as it was
+  const phHold = on => { if (ph && ph.regions.length) phDraw(on); };
+  document.addEventListener('pointerdown', e => { if (ph && e.target.closest('[data-ph-hold]')) phHold(true); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(k => document.addEventListener(k, e => { if (ph && e.target.closest && e.target.closest('[data-ph-hold]')) phHold(false); }, true));
+  document.addEventListener('keydown', e => { if (ph && e.key === 'Escape') { e.stopImmediatePropagation(); closePhoto(); } }, true);
+  async function phSave() {
+    const cv = $('#phCanvas'); if (!cv || !ph || !ph.regions.length) return;
+    phDraw();
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    if (!blob) { toast('The picture couldn’t be saved here.'); return; }
+    const name = 'ColorGenius room.png', file = typeof File === 'function' ? new File([blob], name, { type: 'image/png' }) : null;
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: 'My room in new colors' }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('Saved the picture');
+  }
   function addToList(item) {
     if (!item) return;
     session.items.push(Object.assign({ id: newId() }, item));
@@ -3045,7 +3206,7 @@
         <button type="button" class="tg-cta" data-go="together"><span class="tg-cta-sws" aria-hidden="true">${items.slice(0, 4).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span class="tg-cta-txt"><b>See It All Together</b><span>Every color in this project at once, each where it goes${items.some(x => x.kind === 'stain') ? ', the stain too' : ''}</span></span>${chev('right', 22)}</button>
         <button type="button" class="ticket-cta" data-list="ticket">${QR_IC}<span><b>Paint Desk Ticket</b><span>A code the paint desk scans to see exactly what to mix</span></span>${chev('right', 22)}</button>
         <div class="actions stack"><button type="button" class="btn big primary" data-list="print">${ic('print', 22)}Print</button><button type="button" class="btn big primary" data-list="email">${mailIcon}Email It</button><button type="button" class="btn big" data-go="home">${plusIcon}Add More</button></div>
-        <details class="more"><summary>More Things to Do</summary><div class="actions">${paintRefs.length ? '<button type="button" class="btn" data-list="present">Show Colors Full Screen</button>' : ''}${paintRefs.length > 1 ? '<button type="button" class="btn" data-list="compare">Compare the Colors</button>' : ''}<button type="button" class="btn" data-list="copy">Copy as Text</button><button type="button" class="btn" data-list="link">Copy a Link to It</button><button type="button" class="btn ghost" data-project-new="1">Start a New Project</button></div></details>`
+        <details class="more"><summary>More Things to Do</summary><div class="actions">${paintRefs.length ? '<button type="button" class="btn" data-list="present">Show Colors Full Screen</button>' : ''}${paintRefs.length > 1 ? '<button type="button" class="btn" data-list="compare">Compare the Colors</button>' : ''}${items.some(x => x.hex && x.kind !== 'fix') ? '<button type="button" class="btn" data-photo="project">Try the Colors on My Photo</button>' : ''}<button type="button" class="btn" data-list="copy">Copy as Text</button><button type="button" class="btn" data-list="link">Copy a Link to It</button><button type="button" class="btn ghost" data-project-new="1">Start a New Project</button></div></details>`
         : `<div class="empty"><h2>Nothing in this project yet</h2><p class="muted">Find a color, then tap Add to Project. Everything you add lands here.</p><div class="actions stack"><button type="button" class="btn big primary" data-start="paint">Find a Paint Color</button>${jobOn('stain') ? '<button type="button" class="btn big" data-start="stain">Find a Stain</button>' : ''}<button type="button" class="btn big" data-go="lookup">Look Up a Color</button></div></div>`}
       ${items.length || (session.name || '').trim() ? `<div class="proj-delete"><button type="button" class="btn ghost danger" data-list="delete">${trashIcon}Delete This Project</button></div>` : ''}
       ${isKiosk() ? '' : `<section class="section" aria-labelledby="pastH"><h2 id="pastH">Earlier Projects</h2>${past.length ? `<div class="past">${past.map(s => `<div class="past-item"><span class="mini-sws">${s.items.slice(0, 5).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span><b>${esc(titleOf(s))}</b><span class="when">${s.items.length} item${s.items.length === 1 ? '' : 's'} · ${esc(whenOf(s.updated))}</span></span>
@@ -3805,7 +3966,7 @@
     const root = document.documentElement;
     const dark = settings.theme === 'dark' || (settings.theme !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     root.style.colorScheme = settings.theme === 'light' ? 'light' : settings.theme === 'dark' ? 'dark' : 'light dark';
-    const full = document.getElementById('camera') ? '#000000' : !$('#present').hidden ? '#111111' : '';
+    const full = document.getElementById('camera') || document.getElementById('photo') ? '#000000' : !$('#present').hidden ? '#111111' : '';
     const bg = full || getComputedStyle(root).getPropertyValue('--bg').trim() || (dark ? '#141413' : '#f5f3ef');
     for (const m of document.querySelectorAll('meta[name="theme-color"]')) if (m.getAttribute('content') !== bg) m.setAttribute('content', bg);
   }
