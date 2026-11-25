@@ -357,11 +357,12 @@
     if (a === 'color' && b) return { view: 'color', id: b };
     if (a === 'p' && b) return { view: 'shared', data: b };
     if (a === 't' && b) return { view: 'ticket', data: b };
+    if (a === 'fix') return { view: 'fix', id: b || '' };
     if (a === 'kiosk' && b) return { view: 'kiosk', data: b };
     if (['lookup', 'list', 'settings', 'together'].includes(a)) return { view: a };
     return { view: 'home' };
   }
-  const pathOf = r => r.view === 'home' ? '' : r.view === 'flow' ? `${r.kind}/${r.step}` : r.view === 'results' ? `${r.kind}/results` : r.view === 'color' ? `color/${r.id}` : r.view === 'shared' ? `p/${r.data}` : r.view === 'ticket' ? `t/${r.data}` : r.view;
+  const pathOf = r => r.view === 'home' ? '' : r.view === 'flow' ? `${r.kind}/${r.step}` : r.view === 'results' ? `${r.kind}/results` : r.view === 'color' ? `color/${r.id}` : r.view === 'shared' ? `p/${r.data}` : r.view === 'ticket' ? `t/${r.data}` : r.view === 'fix' ? (r.id ? `fix/${r.id}` : 'fix') : r.view;
   let navDir = 0;
   function go(path, opts) {
     opts = opts || {};
@@ -413,6 +414,7 @@
     else if (r.view === 'together') renderTogether();
     else if (r.view === 'shared') renderShared(r.data);
     else if (r.view === 'ticket') renderTicket(r.data);
+    else if (r.view === 'fix') renderFix(r.id);
     else if (r.view === 'settings') {
       // a locked kiosk keeps Settings behind the PIN
       if (isKiosk() && !state.unlocked) { go('', { replace: true }); openUnlock(); return; }
@@ -443,6 +445,52 @@
     ['Light changes color', 'Warm bulbs make colors cozier. Daylight bulbs make them crisper.'],
     ['Two thin coats', 'Two thin coats look better and last longer than one thick one.'],
   ];
+  // ================================================================
+  // FIX A PROBLEM: the paint problems people bring to the desk (the words are in js/fixes.js)
+  // ================================================================
+  const FX = window.CG.fixes;
+  const fixIc = (name, size) => `<svg viewBox="0 0 32 32" width="${size || 32}" height="${size || 32}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FX.ICONS[name] || FX.ICONS.peel}</svg>`;
+  const FIX_WHERE = [['', 'All'], ['in', 'Inside'], ['out', 'Outside']];
+  const fixItem = p => ({ kind: 'fix', ref: 'fix:' + p.id, area: 'Fix', brand: '', name: p.name, code: '', hex: '', lrv: '', finish: '', product: '', primer: '', loc: '', amount: '', tools: p.buy.join(', ') });
+  function renderFix(id) {
+    const p = id ? FX.find(id) : null;
+    if (!p) {
+      const w = state.fixWhere || '', list = FX.LIST.filter(x => !w || x.where === w || x.where === 'both');
+      view().innerHTML = `<div class="page">
+        <div class="page-head"><p class="eyebrow">Fix a Problem</p><h1>What’s going on with the paint?</h1><p>Tap what you see: why it happens, how to fix it, and what to buy.</p></div>
+        <div class="chipset fix-where" role="group" aria-label="Inside or outside">${FIX_WHERE.map(([k, l]) => `<button type="button" class="chip plain" data-fix-where="${k}" aria-pressed="${w === k}">${l}</button>`).join('')}</div>
+        <div class="fix-grid">${list.map(x => `<button type="button" class="fix-card" data-go="fix/${x.id}"><span class="fix-ic">${fixIc(x.icon, 30)}</span><span class="fix-txt"><b>${esc(x.name)}</b><span>${esc(x.see)}</span></span></button>`).join('')}</div>
+        <p class="fix-note">${esc(FX.LEAD)}</p></div>`;
+      return;
+    }
+    const others = FX.LIST.filter(x => x.id !== p.id && (x.where === p.where || x.where === 'both' || p.where === 'both')).slice(0, 4);
+    const on = session.items.some(x => x.ref === 'fix:' + p.id);
+    view().innerHTML = `<div class="page narrow fix-page">${backBtn()}
+      <div class="page-head"><p class="eyebrow">Fix a Problem</p><h1 class="fix-h"><span class="fix-ic big">${fixIc(p.icon, 36)}</span>${esc(p.name)}</h1><p class="fix-see">${esc(p.see)}</p></div>
+      ${p.lead ? `<p class="fix-warn"><b>Old house?</b> ${esc(FX.LEAD)}</p>` : ''}${p.safe ? `<p class="fix-warn"><b>Be safe.</b> ${esc(FX.SAFE)}</p>` : ''}
+      ${p.test ? `<section class="fix-sec"><h2>Quick Test</h2><p>${esc(p.test)}</p></section>` : ''}
+      <section class="fix-sec"><h2>Why It Happens</h2><ul class="fix-why">${p.why.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>
+      <section class="fix-sec"><h2>How to Fix It</h2><ol class="fix-steps">${p.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol></section>
+      <section class="fix-sec"><h2>What to Buy</h2><ul class="fix-buy">${p.buy.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>
+      ${p.tip ? `<p class="fix-tip"><b>Tip</b> ${esc(p.tip)}</p>` : ''}
+      <div class="actions stack"><button type="button" class="btn big primary${on ? ' done' : ''}" data-add="fix:${esc(p.id)}">${on ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-fix-print="${esc(p.id)}">${ic('print', 22)}Print</button></div>
+      ${others.length ? `<section class="section"><h2>Other Problems</h2><div class="fix-grid">${others.map(x => `<button type="button" class="fix-card" data-go="fix/${x.id}"><span class="fix-ic">${fixIc(x.icon, 30)}</span><span class="fix-txt"><b>${esc(x.name)}</b><span>${esc(x.see)}</span></span></button>`).join('')}</div><div class="actions"><button type="button" class="btn" data-go="fix">See Every Problem</button></div></section>` : ''}
+    </div>`;
+  }
+  // one problem on one page: black and white, the steps numbered and the shopping list with boxes to check
+  function printFix(p) {
+    printHtml(`<div class="pr-sheet pr-fix"><div class="pr-head"><div><div class="pr-title">${esc(p.name)}</div><div class="pr-sub">${esc(p.see)}</div></div><div class="pr-meta">${[storeName(), new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</div></div>
+      ${p.lead ? `<p class="pr-notes"><b>Old house?</b> ${esc(FX.LEAD)}</p>` : ''}${p.safe ? `<p class="pr-notes"><b>Be safe.</b> ${esc(FX.SAFE)}</p>` : ''}
+      ${p.test ? `<h3>Quick Test</h3><p>${esc(p.test)}</p>` : ''}<h3>Why It Happens</h3><ul>${p.why.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+      <h3>How to Fix It</h3><ol>${p.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+      <h3>What to Buy</h3><ul class="pr-check">${p.buy.map(x => `<li>${esc(x)}</li>`).join('')}</ul>${p.tip ? `<p><b>Tip</b> ${esc(p.tip)}</p>` : ''}
+      <div class="pr-foot"><span>Ask at the paint desk if you’re not sure.</span><span>ColorGenius</span></div></div>`, false);
+  }
+  document.addEventListener('click', e => {
+    const t = e.target.closest('button'); if (!t || !state.ready) return;
+    if (t.dataset.fixWhere != null) { state.fixWhere = t.dataset.fixWhere; renderFix(''); }
+    if (t.dataset.fixPrint) { const p = FX.find(t.dataset.fixPrint); if (p) printFix(p); }
+  });
   function renderHome() {
     const tiles = [
       jobOn('paint') && ['paint', 'Paint Colors', 'Find the right color for a room, cabinets, trim or the outside of a house.'],
@@ -457,6 +505,7 @@
       <div class="tiles">${tiles.map(([k, t, s]) => `<button type="button" class="tile" data-start="${k}">
         <span class="tile-art"><img src="img/tile-${k}.jpg" alt="" width="1080" height="510" decoding="async"></span>
         <span class="tile-text"><span class="tile-title">${esc(t)}${chev('right', 22)}</span><span class="tile-sub">${esc(s)}</span></span></button>`).join('')}</div>
+      <button type="button" class="home-fix" data-go="fix"><span class="hf-ic">${fixIc('peel', 34)}</span><span class="hf-txt"><b>Fix a Problem</b><span>Peeling, stains bleeding through, mildew, sticky paint, blotchy stain and more: why it happens, how to fix it and what to buy.</span></span>${chev('right', 22)}</button>
       <section class="section" aria-labelledby="projH">
         <div class="page-head"><h2 id="projH">Projects</h2><p>Save the colors, stains and shopping lists for one job in one place, then print it or email it.</p></div>
         <div class="proj-grid">
@@ -2707,7 +2756,7 @@
   const cartLine = c => CAN_SIZES.filter(([k]) => c[k]).map(([k, one, many]) => `${c[k]} ${(c[k] === 1 ? one : many).toLowerCase()}`).join(' + ');
   const cartEmpty = c => !CAN_SIZES.some(([k]) => c[k]);
   // what a paint item still needs before it can be mixed
-  const needsInfo = x => { const c = cartOf(x), onlySamples = c.sample && !c.quart && !c.gallon && !c.bucket; return cartEmpty(c) || (x.kind !== 'stain' && !x.finish && !onlySamples); };
+  const needsInfo = x => { if (x.kind === 'fix') return false; const c = cartOf(x), onlySamples = c.sample && !c.quart && !c.gallon && !c.bucket; return cartEmpty(c) || (x.kind !== 'stain' && !x.finish && !onlySamples); };
   // the paint lines a color can be mixed in, for inside or outside
   function linesFor(x) {
     const c = x.kind !== 'stain' && E.findColor(x.ref), lb = c ? lineBrandFor(c) : null; if (!lb) return { lb: null, lines: [] };
@@ -2759,6 +2808,7 @@
     const i = session.items.findIndex(x => x.ref === ref);
     if (i >= 0) { const was = session.items[i]; session.items.splice(i, 1); saveSession(); updateListBtn(); toast(`Took ${was.name} off ${sessionTitle()}`); return; }
     if (ref.startsWith('#')) addToList(customItem(ref.slice(1)));
+    else if (ref.startsWith('fix:')) { const p = FX.find(ref.slice(4)); if (p) addToList(fixItem(p)); }
     else {
       const stainHit = state.results.stain && state.results.stain.results.concat(state.results.stain.finalists || []).some(r => r.id === ref);
       const c = E.findColor(ref);
@@ -2902,8 +2952,8 @@
       <div class="page-head"><p class="eyebrow">Project</p><h1>${esc(sessionTitle())}</h1><p>Everything for this job in one place. Print it, email it, or bring it to the paint desk.</p></div>
       <div class="list-head"><label class="field">What’s this project for?<input type="text" class="input" id="listName" value="${esc(session.name || '')}" placeholder="Smith kitchen, Mom’s porch..." maxlength="60" autocomplete="off"></label>
         <label class="field">Notes for the printout<input type="text" class="input" id="listNotes" value="${esc(session.notes || '')}" placeholder="Phone number, due date..." maxlength="160" autocomplete="off"></label></div>
-      ${items.length ? `<ol class="items">${items.map((x, i) => `<li class="item"><span class="n">${i + 1}</span><button type="button" class="sw" ${x.hex ? swStyle(x.hex) : 'style="background:var(--surface-2)"'} data-open-item="${esc(x.ref)}" aria-label="Open ${esc(x.name)}"></button>
-          <span class="what"><input type="text" class="area" data-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><b>${esc([x.brand, x.name, x.code].filter(Boolean).join(' '))}</b><span>${esc([x.finish, x.product, x.amount].filter(Boolean).join(' · '))}</span><button type="button" class="ie-btn${needsInfo(x) ? ' need' : ''}" data-item-edit="${esc(x.id)}">${needsInfo(x) ? (x.kind === 'stain' ? 'Add how much' : 'Add sheen & amount') : (x.kind === 'stain' ? 'Change how much' : 'Change sheen & amount')}</button></span>
+      ${items.length ? `<ol class="items">${items.map((x, i) => `<li class="item"><span class="n">${i + 1}</span><button type="button" class="sw${x.kind === 'fix' ? ' fix-sw' : ''}" ${x.hex ? swStyle(x.hex) : 'style="background:var(--surface-2)"'} data-open-item="${esc(x.ref)}" aria-label="Open ${esc(x.name)}">${x.kind === 'fix' ? fixIc((FX.find(x.ref.slice(4)) || {}).icon, 30) : ''}</button>
+          <span class="what"><input type="text" class="area" data-area="${esc(x.id)}" value="${esc(x.area)}" placeholder="Where it goes" aria-label="Where item ${i + 1} goes" maxlength="40"><b>${esc([x.brand, x.name, x.code].filter(Boolean).join(' '))}</b><span>${esc(x.kind === 'fix' ? x.tools : [x.finish, x.product, x.amount].filter(Boolean).join(' · '))}</span>${x.kind === 'fix' ? '' : `<button type="button" class="ie-btn${needsInfo(x) ? ' need' : ''}" data-item-edit="${esc(x.id)}">${needsInfo(x) ? (x.kind === 'stain' ? 'Add how much' : 'Add sheen & amount') : (x.kind === 'stain' ? 'Change how much' : 'Change sheen & amount')}</button>`}</span>
           <button type="button" class="icon-btn" data-del-item="${esc(x.id)}" aria-label="Remove ${esc(x.name)}">${xIcon}</button></li>`).join('')}</ol>
         <button type="button" class="tg-cta" data-go="together"><span class="tg-cta-sws" aria-hidden="true">${items.slice(0, 4).map(x => `<i ${x.hex ? swStyle(x.hex) : ''}></i>`).join('')}</span><span class="tg-cta-txt"><b>See It All Together</b><span>Every color in this project at once, each where it goes${items.some(x => x.kind === 'stain') ? ', the stain too' : ''}</span></span>${chev('right', 22)}</button>
         <button type="button" class="ticket-cta" data-list="ticket">${QR_IC}<span><b>Paint Desk Ticket</b><span>A code the paint desk scans to see exactly what to mix</span></span>${chev('right', 22)}</button>
@@ -2938,6 +2988,7 @@
     if (t.dataset.openItem) {
       const ref = t.dataset.openItem;
       if (ref.startsWith('#')) { state.query = ref; go('lookup'); }
+      else if (ref.startsWith('fix:')) go('fix/' + ref.slice(4));
       else if (E.findColor(ref) || S.find(ref)) go('color/' + encodeURIComponent(ref));
     }
     if (t.dataset.pastOpen) {
@@ -3014,7 +3065,7 @@
     // and the roller and brush and where to find it stay behind (the desk doesn't need them)
     const items = s.items.slice(0, 120).map(x => {
       const known = compact && x.kind !== 'stain' && E.findColor(x.ref), lid = compact && (x.line || lineMap().byLabel[x.product]);
-      const a = SHARE_KEYS.map(k => (compact && (k === 'tools' || k === 'loc')) || (known && ['brand', 'name', 'code', 'hex'].includes(k)) ? '' : k === 'product' && lid && lineMap().byId[lid] ? '@' + lid : String(x[k] || '')); while (a.length && !a[a.length - 1]) a.pop(); return a; });
+      const a = SHARE_KEYS.map(k => (compact && (k === 'loc' || (k === 'tools' && x.kind !== 'fix'))) || (known && ['brand', 'name', 'code', 'hex'].includes(k)) ? '' : k === 'product' && lid && lineMap().byId[lid] ? '@' + lid : String(x[k] || '')); while (a.length && !a[a.length - 1]) a.pop(); return a; });
     const raw = new TextEncoder().encode(JSON.stringify({ v: 1, n: (s.name || '').trim(), t: (s.notes || '').trim(), s: storeName(), d: Date.now(), i: items }));
     // squeezed small when the browser can ("z"), plain otherwise ("j")
     if (typeof CompressionStream === 'function') { try { return 'z' + toB64u(await squeeze(raw, new CompressionStream('deflate-raw'))); } catch (e) { /* plain below */ } }
@@ -3077,11 +3128,13 @@
           ${x.primer ? `<span class="tk-facts">Primer: ${esc(x.primer)}</span>` : ''}${x.tools ? `<span class="tk-facts">Also: ${esc(x.tools)}</span>` : ''}</span>
         <span class="tk-amt">${cartEmpty(c) ? '<i class="tk-ask">How much: ask</i>' : esc(cartLine(c))}</span></li>`;
     };
-    const left = P.items.length - ticks.filter(i => i < P.items.length).length;
+    const mix = P.items.map((x, i) => (x.kind === 'fix' ? -1 : i)).filter(i => i >= 0), fixes = P.items.filter(x => x.kind === 'fix');
+    const left = mix.filter(i => !ticks.includes(i)).length;
     view().innerHTML = `<div class="page narrow ticket-page">
-      <div class="page-head"><p class="eyebrow">Paint Desk Ticket</p><h1>${esc(P.name || 'Paint and Stain List')}</h1><p>${from ? esc(from) + ' · ' : ''}${P.items.length} to mix${left && left < P.items.length ? `, ${left} left` : !left ? ', all done' : ''}</p>${P.notes ? `<p class="tk-notes"><b>Notes</b> ${esc(P.notes)}</p>` : ''}</div>
-      <ol class="tk-list">${P.items.map(row).join('')}</ol>
-      <div class="actions stack"><button type="button" class="btn big primary" data-tk="all">${left ? 'Mark All Mixed' : 'Clear the Checks'}</button><button type="button" class="btn big" data-tk="print">${ic('print', 22)}Print</button><button type="button" class="btn big" data-tk="open">Open as a Project</button></div>
+      <div class="page-head"><p class="eyebrow">Paint Desk Ticket</p><h1>${esc(P.name || 'Paint and Stain List')}</h1><p>${from ? esc(from) + ' · ' : ''}${mix.length} to mix${left && left < mix.length ? `, ${left} left` : !left && mix.length ? ', all done' : ''}</p>${P.notes ? `<p class="tk-notes"><b>Notes</b> ${esc(P.notes)}</p>` : ''}</div>
+      <ol class="tk-list">${P.items.map((x, i) => (x.kind === 'fix' ? '' : row(x, i))).join('')}</ol>
+      ${fixes.length ? `<section class="tk-also"><h2>Also for This Job</h2>${fixes.map(x => `<p><b>${esc(x.name)}:</b> ${esc(x.tools)}</p>`).join('')}</section>` : ''}
+      <div class="actions stack">${mix.length ? `<button type="button" class="btn big primary" data-tk="all">${left ? 'Mark All Mixed' : 'Clear the Checks'}</button>` : ''}<button type="button" class="btn big" data-tk="print">${ic('print', 22)}Print</button><button type="button" class="btn big" data-tk="open">Open as a Project</button></div>
       <p class="muted small">Colors on a screen are a guide. Mix by the code, and check the sheen and size with the customer.</p></div>`;
   }
   view().addEventListener('click', e => {
@@ -3091,7 +3144,7 @@
     let ticks = ticketTicks(code);
     if (t.dataset.tick != null) { const i = +t.dataset.tick; ticks = ticks.includes(i) ? ticks.filter(v => v !== i) : ticks.concat([i]); saveTicks(code, ticks); renderTicket(code); return; }
     const act = t.dataset.tk;
-    if (act === 'all') { saveTicks(code, ticks.length >= P.items.length ? [] : P.items.map((_, i) => i)); renderTicket(code); }
+    if (act === 'all') { const mix = P.items.map((x, i) => (x.kind === 'fix' ? -1 : i)).filter(i => i >= 0); saveTicks(code, mix.every(i => ticks.includes(i)) ? [] : mix); renderTicket(code); }
     if (act === 'print') printPreview({ name: P.name || 'Paint and Stain List', notes: P.notes, items: P.items });
     if (act === 'open') go('p/' + code);
   });
@@ -3109,10 +3162,10 @@
     const str = (v, n) => String(v == null ? '' : v).slice(0, n);
     const items = o.i.slice(0, 120).filter(Array.isArray).map(a => {
       const x = {};
-      SHARE_KEYS.forEach((k, j) => { x[k] = str(a[j], k === 'product' || k === 'tools' ? 120 : 80); });
+      SHARE_KEYS.forEach((k, j) => { x[k] = str(a[j], k === 'tools' ? 240 : k === 'product' ? 120 : 80); });
       x.hex = /^[0-9A-F]{6}$/i.test(x.hex) ? x.hex.toUpperCase() : '';
       if (x.product[0] === '@') x.product = lineMap().byId[x.product.slice(1)] || '';
-      if (!['paint', 'stain', 'custom', 'plan'].includes(x.kind)) x.kind = '';
+      if (!['paint', 'stain', 'custom', 'plan', 'fix'].includes(x.kind)) x.kind = '';
       // a color the app knows shows the app's own name, number and color
       const c = x.kind !== 'stain' && E.findColor(x.ref);
       if (c) Object.assign(x, { brand: brandName(c.brand), name: c.name, code: E.codeLabel(c), hex: c.hex, lrv: String(c.lrv) });

@@ -757,3 +757,20 @@ test('screen tuning: the bulbs where the screen is set where its white starts, a
   assert.deepEqual(C.applyLight(white, warm, { enabled: true }), C.applyLight(white, warm));
   assert.ok(redBlue(C.applyLight(white, warm)) > 1.05);
 });
+
+// ---------------- fix a problem ----------------
+test('fix a problem: every problem has what it looks like, why, the steps, what to buy and a picture', () => {
+  const FX = require(path.join(ROOT, 'js/fixes.js'));
+  assert.ok(FX.LIST.length >= 12);
+  const ids = new Set();
+  for (const p of FX.LIST) {
+    assert.ok(/^[a-z]+$/.test(p.id) && !ids.has(p.id), 'id ' + p.id); ids.add(p.id);
+    assert.ok(p.name && p.see && p.why.length && p.steps.length >= 2 && p.buy.length, p.id);
+    assert.ok(FX.ICONS[p.icon], 'picture for ' + p.id);
+    assert.ok(['in', 'out', 'both'].includes(p.where), 'where for ' + p.id);
+    assert.equal(FX.find(p.id), p);
+  }
+  // scraping or sanding old paint warns about lead; mildew and bleach say to be safe
+  assert.ok(FX.find('peeling').lead && FX.find('cracking').lead && FX.find('mildew').safe);
+  assert.equal(FX.find('nope'), null);
+});
