@@ -143,3 +143,36 @@ test('tuning: a white chip sets the paper’s own tint, a dark chip the camera�
   // a tuning saved by an older version (powers only) still works
   assert.deepEqual(M.applyTune([0.25, 0.5, 1], [2, 1, 1]), [0.0625, 0.5, 1]);
 });
+
+// ---------------- colors between two primaries: teal, red-orange ----------------
+// A camera's sensor isn't the eye, and phones add punch, so it mixes red, green and blue a little wrong: worst for
+// colors between two primaries. (Benjamin Moore 759 Madison Avenue, a teal, read a step lighter, like 758.)
+const avgErr = (list, o, tune) => list.reduce((s, hex) => s + err(read(Object.assign({ hex }, o), { tune }).c.hex, hex), 0) / list.length;
+const pairOf = (hex, o) => ({ m: read(Object.assign({ hex }, o)).c.raw, t: M.linOf(hex).map(v => v / M.PAPER) });
+const MIXCAM = { mix: 'twist', curve: 'lift' };
+const TEALS = ['54B1C9', '76C4E2', '45ADBE', '8AD0DB'], REDOR = ['C8553D', 'B84A2E', 'D9714F'], OTHER = ['E07B39', 'A4B83A', '6F5A8C', '2F5DA8', 'E8C547'], NEUTRAL = ['8C8C88', 'EDEAE0', '22303F', 'D1CBC1'];
+test('a teal read wrong, then named: it reads right, and so do the teals near it', () => {
+  const untuned = err(read(Object.assign({ hex: '6BC0CE' }, MIXCAM)).c.hex, '6BC0CE');
+  assert.ok(untuned > 3, 'the camera reads 759 off: ' + untuned.toFixed(2));
+  const tune = M.fitTune([pairOf('6BC0CE', MIXCAM)]);
+  assert.ok(err(read(Object.assign({ hex: '6BC0CE' }, MIXCAM), { tune }).c.hex, '6BC0CE') < 1, '759 itself');
+  const before = avgErr(TEALS, MIXCAM), after = avgErr(TEALS, MIXCAM, tune);
+  assert.ok(after < before * 0.45, `teals near it: ${before.toFixed(2)} -> ${after.toFixed(2)}`);
+  assert.ok(avgErr(NEUTRAL, MIXCAM, tune) < avgErr(NEUTRAL, MIXCAM) + 0.5, 'grays and whites aren’t made worse');
+});
+test('a white, a dark and a few colorful chips bring every kind of color close', () => {
+  const tune = M.fitTune(['F0EDE4', '2E2F33', '6BC0CE', 'C25A3F', '9DAE3E', '76608F'].map(hex => pairOf(hex, MIXCAM)));
+  for (const [name, list] of [['teals', TEALS], ['red-oranges', REDOR], ['others', OTHER], ['neutrals', NEUTRAL]]) {
+    const before = avgErr(list, MIXCAM), after = avgErr(list, MIXCAM, tune);
+    assert.ok(after < 1.6 && after < before * 0.5, `${name}: ${before.toFixed(2)} -> ${after.toFixed(2)}`);
+  }
+  // on a camera with nothing to put right, the same tuning changes nothing much
+  const fine = M.fitTune(['F0EDE4', '2E2F33', '6BC0CE', 'C25A3F', '9DAE3E', '76608F'].map(hex => pairOf(hex, {})));
+  assert.ok(avgErr(TEALS.concat(REDOR, OTHER), {}, fine) < 1, 'an exact camera stays exact');
+  // Lab and back is exact
+  for (const hex of ['6BC0CE', 'C8553D', '22303F', 'EDEAE0']) assert.equal(M.hexOf(M.linFromLab(M.lab(M.linOf(hex)))), hex);
+});
+test('a picture with no size yet (the screen turning) is skipped, not an error', () => {
+  const frame = { data: new Uint8ClampedArray(16), width: 2, height: 2 };
+  assert.equal(M.analyze(frame, { mode: 'paper', color: { x0: NaN, y0: NaN, x1: NaN, y1: NaN } }).problem, 'small');
+});

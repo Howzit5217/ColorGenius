@@ -14,6 +14,15 @@ const CURVES = {
   shoulder: v => sEnc(v < 0.7 ? v : 0.7 + 0.3 * Math.tanh((v - 0.7) / 0.3)),
   // a video-style curve (BT.709) read as if it were the usual one: dark colors come out darker
   rec709: v => (v < 0.018 ? 4.5 * v : 1.099 * Math.pow(v, 0.45) - 0.099),
+  // middle tones lifted, as phones do to brighten a picture: colors come out lighter than they are
+  lift: v => Math.pow(sEnc(v), 0.88),
+};
+// How a camera mixes its red, green and blue (the sensor isn't the eye, and phones add punch). White stays white
+// (each row adds up to 1). vivid: more color all round. twist: uneven by hue, worst for in-between colors like
+// teal and red-orange, as real sensors are.
+const MIXES = {
+  vivid: (() => { const Y = [0.2126, 0.7152, 0.0722], s = 1.25; return [0, 1, 2].map(i => Y.map((y, j) => (1 - s) * y + (i === j ? s : 0))); })(),
+  twist: [[1.1, -0.04, -0.06], [-0.1, 1.18, -0.08], [0.03, -0.15, 1.12]],
 };
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 function gauss(r) { return Math.sqrt(-2 * Math.log(r() + 1e-12)) * Math.cos(2 * Math.PI * r()); }
@@ -69,6 +78,8 @@ export function shoot(o) {
     }
     for (let p = 0; p < rad.length; p++) rad[p] = rad[p] * (1 - o.flare) + flare[p];
   }
+  const mix = o.mix ? (typeof o.mix === 'string' ? MIXES[o.mix] : o.mix) : null;
+  if (mix) for (let p = 0; p < W * H; p++) { const v = [rad[p * 3], rad[p * 3 + 1], rad[p * 3 + 2]]; for (let c = 0; c < 3; c++) rad[p * 3 + c] = mix[c][0] * v[0] + mix[c][1] * v[1] + mix[c][2] * v[2]; }
   for (let p = 0; p < W * H; p++) {
     for (let c = 0; c < 3; c++) {
       const g = curve(Math.max(0, rad[p * 3 + c])) * 255 + (o.black || 0) + gauss(r) * (o.noise == null ? 1.2 : o.noise);

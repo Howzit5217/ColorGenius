@@ -2503,11 +2503,13 @@
   // which kinds of chip the camera is tuned with: a light one sets the paper's own tint (for whites and off-whites),
   // a dark one sets how the camera handles dark colors
   const tuneLum = p => 0.2126 * p.t[0] + 0.7152 * p.t[1] + 0.0722 * p.t[2];
-  const tuneKinds = () => { const ps = settings.camTune || []; return { light: ps.some(p => tuneLum(p) > 0.64), dark: ps.some(p => tuneLum(p) < 0.15) }; };
+  const tuneColorful = p => { const L = CM.lab(p.t.map(v => v * CM.PAPER)); return Math.hypot(L[1], L[2]) >= 12; };
+  const tuneKinds = () => { const ps = settings.camTune || []; return { light: ps.some(p => !tuneColorful(p) && tuneLum(p) > 0.64), dark: ps.some(p => !tuneColorful(p) && tuneLum(p) < 0.15), colorful: ps.filter(tuneColorful).length }; };
+  const TUNE_MAX = 12;
   function camTuneRow() {
     const n = (settings.camTune || []).length, k = tuneKinds();
-    const say = !n ? 'One white chip and one dark chip is best: the white one sets the paper, for whites and off-whites, and the dark one sets dark colors.'
-      : !k.light ? 'Add a white or off-white chip too, for whites.' : !k.dark ? 'Add a dark chip too, for dark colors.' : 'It has a white chip and a dark chip.';
+    const say = !n ? 'Best: one white chip (for whites), one dark chip (for dark colors), and a few colorful ones, like a teal and a red-orange (for the colors in between).'
+      : !k.light ? 'Add a white or off-white chip too, for whites.' : !k.dark ? 'Add a dark chip too, for dark colors.' : k.colorful < 2 ? 'Add a colorful chip or two, like a teal or a red-orange, for the colors in between.' : `It has a white, a dark and ${k.colorful} colorful chips.`;
     return `<b>Make it more exact:</b> tune the camera with chips you know. ${say}<span class="cam-tune-btns"><button type="button" class="cam-chip" data-cam-tune="1">${n ? 'Tune With Another Chip' : 'Tune the Camera'}</button>${n ? `<button type="button" class="cam-chip ghost" data-cam-untune="1">Undo Tuning (${n} chip${n > 1 ? 's' : ''})</button>` : ''}</span>`;
   }
   function camTunePick(c) {
@@ -2528,12 +2530,12 @@
   function camTuneDone(id) {
     const chip = E.findColor(id), c = cam && cam.tuneRead; if (!chip || !c) return;
     const pair = { m: c.raw, t: CM.linOf(chip.hex).map(v => v / CM.PAPER) };
-    settings.camTune = (settings.camTune || []).concat([pair]).slice(-6); saveSettings();
+    settings.camTune = (settings.camTune || []).concat([pair]).slice(-TUNE_MAX); saveSettings();
     cam.tuning = false; cam.tuneRead = null;
     const box = $('#camTune'); if (box) { box.hidden = true; box.innerHTML = ''; }
     const row = $('#camTuneRow'); if (row) row.innerHTML = camTuneRow();
     const k = tuneKinds();
-    toast(`Tuned with ${chip.name}.` + (k.light && k.dark ? ' Readings now fit this phone.' : !k.light ? ' A white chip next makes whites closer too.' : ' A dark chip next makes dark colors closer too.'), 5000);
+    toast(`Tuned with ${chip.name}.` + (!k.light ? ' A white chip next makes whites closer too.' : !k.dark ? ' A dark chip next makes dark colors closer too.' : k.colorful < 2 ? ' A colorful chip next makes in-between colors closer too.' : ' Readings now fit this phone.'), 5000);
   }
   document.addEventListener('click', async e => {
     if (e.target.closest('[data-camera]')) { openCamera(); return; }
@@ -2576,6 +2578,7 @@
       if (c.spread > 2.5) { t.disabled = false; camNote('The color kept changing. Hold the phone still and try again.'); return; }
       if (cam.tuning) { t.disabled = false; camTunePick(c); return; }
       closeCamera();
+      state.camLast = { raw: c.raw, hex: c.hex, taught: '' };
       state.query = '#' + c.hex; state.lookupHex = c.hex;
       if (state.view === 'lookup') renderLookup(); else go('lookup');
       const lit = C.hexToLab(c.hex)[0], k = tuneKinds();
@@ -2584,6 +2587,35 @@
     }
   });
   let lookTimer = 0;
+  // Right after a camera reading: if it isn't the chip in hand and the chip is known, pick it. The camera learns
+  // from that one reading (the same as tuning with it), so that color and the ones near it read closer next time.
+  // Not on a kiosk, where one shopper's pick would change it for everyone.
+  function camTeachCard(hex) {
+    const last = state.camLast;
+    if (!last || last.hex !== hex || isKiosk()) return '';
+    const was = last.taught ? E.findColor(last.taught) : null;
+    return `<div class="cam-teach">${ic('camera', 26)}<div class="cam-teach-in">
+      <p>${was ? `<b>Learned from ${esc(was.name)}.</b> This reading is now worked out with it. Still not right? Pick the chip again, or another.` : '<b>Read with the camera.</b> Not the chip in your hand? If you know which chip it is, find it here. The camera learns from it, so that color and the ones near it read closer next time.'}</p>
+      <label class="search"><input type="search" id="camTeachQ" placeholder="The chip’s name or number, like 759" aria-label="The chip’s name or number" autocomplete="off"></label>
+      <div class="rows" id="camTeachList"></div></div></div>`;
+  }
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'camTeachQ') return;
+    const q = e.target.value.trim(), list = $('#camTeachList'); if (!list) return;
+    list.innerHTML = q ? E.search(q, { brands: brandsEnabled(), limit: 5 }).map(r => `<button type="button" class="row" data-cam-teach="${esc(r.color.id)}"><span class="sw" ${swStyle(r.color.hex)}></span><span><span class="nm">${esc(r.color.name)}</span><span class="sub">${esc(brandName(r.color.brand))} ${esc(E.codeLabel(r.color))}</span></span><span></span></button>`).join('') : '';
+  });
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-cam-teach]'); if (!t || !state.camLast) return;
+    const chip = E.findColor(t.dataset.camTeach); if (!chip) return;
+    settings.camTune = (settings.camTune || []).concat([{ m: state.camLast.raw, t: CM.linOf(chip.hex).map(v => v / CM.PAPER) }]).slice(-TUNE_MAX); saveSettings();
+    // the same reading, worked out again with what was just learned
+    const hex = CM.hexOf(CM.applyTune(state.camLast.raw, camTune()).map(v => v * CM.PAPER));
+    state.camLast = { raw: state.camLast.raw, hex, taught: chip.id };
+    state.query = '#' + hex; state.lookupHex = hex;
+    const inp = $('#lookupInput'); if (inp) inp.value = state.query;
+    showLookup();
+    toast(`Learned from ${chip.name}. Colors like it now read closer on this phone.`, 4500);
+  });
   function exactCard(hex, c) {
     const rgb = C.hexToRgb(hex).map(v => Math.round(v)), lrv = c ? c.lrv : C.lrvFromHex(hex), ref = c ? c.id : '#' + hex, on = session.items.some(x => x.ref === ref);
     return `<div class="exact"><span class="exact-sw" ${swStyle(hex)}></span><div class="exact-info">
@@ -2609,7 +2641,7 @@
       state.lookupHex = hex;
       const pick = $('#lookupColor'); if (pick) { COLORS.lookupColor.hex = hex; $('.sw', pick).style.background = '#' + hex; $('.mono', pick).textContent = '#' + hex; }
       const near = jobOn('stain') ? S.search('', { hex, stainBrands: settings.stainBrands, limit: 6 }) : [];
-      host.innerHTML = exactCard(hex) + nearLists(E.closestByBrand(hex, { showDiscontinued: settings.showDiscontinued, collections: settings.collections }), 'Closest in Each Brand')
+      host.innerHTML = exactCard(hex) + camTeachCard(hex) + nearLists(E.closestByBrand(hex, { showDiscontinued: settings.showDiscontinued, collections: settings.collections }), 'Closest in Each Brand')
         + (near.length ? `<h2>Closest Stains</h2><div class="rows">${near.map(r => stainRow(r.stain, r.dE)).join('')}</div>` : '');
       return;
     }

@@ -38,7 +38,7 @@
   function patch(f, r, lo, hi) {
     const W = f.width, H = f.height, d = f.data;
     const x0 = Math.max(0, Math.floor(r.x0)), x1 = Math.min(W, Math.ceil(r.x1)), y0 = Math.max(0, Math.floor(r.y0)), y1 = Math.min(H, Math.ceil(r.y1));
-    if (x1 - x0 < 2 || y1 - y0 < 2) return null;
+    if (!(x1 - x0 >= 2 && y1 - y0 >= 2)) return null;   // (also when the picture has no size yet)
     const px = [], tops = [];
     let clip = 0;
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
@@ -47,7 +47,7 @@
       px.push({ c, y: lum(c), x, yy: y }); tops.push(m);
       if (m >= 250) clip++;
     }
-    const n = px.length;
+    const n = px.length; if (!n) return null;
     px.sort((p, q) => p.y - q.y); tops.sort((p, q) => p - q);
     const med = px[n >> 1].y;
     const keep = px.slice(Math.floor(n * lo), Math.max(Math.floor(n * lo) + 1, Math.ceil(n * hi)));
@@ -192,29 +192,82 @@
     return { ok: P.spread < 0.12, W: P.avg.map(v => v * (1 + D)), L: P.L * (1 + D), n: use.length, even: Math.abs(D) + (Ls.length ? (Math.max(...Ls) - Math.min(...Ls)) / P.L : 0), fit: 0, top: P.top, clip: P.clip, spread: P.spread, D };
   }
 
-  // Tuned with chips whose color is known: for each channel, the true share of the paper = a × reading^g.
-  //  a is the paper itself: it isn't exactly the neutral 0.86 assumed (copy paper is often a little blue, which
-  //    turns off-whites yellow, or a little cream). Light chips set it: near the paper the curve hardly matters.
-  //  g is the phone's own curve: its contrast, and lens flare or lifted shadows in dark colors. Middle and dark
-  //    chips set it, measured from the paper that the light chips found.
-  // So a white chip can't bend the dark colors, and a dark chip doesn't move the whites. One of each is best.
+  // Tuned with chips whose color is known. A camera bends colors in three ways, each set by its own kind of chip:
+  //  1. The paper itself (a, for each channel): copy paper isn't exactly the neutral 0.86 assumed; it's often a
+  //     little blue (which turns off-whites yellow) or a little cream. Light, nearly neutral chips set it.
+  //  2. The phone's curve (g, for each channel): its contrast, lifted middle tones, lens flare in dark colors.
+  //     Darker, nearly neutral chips set it, measured from the paper the light chips found.
+  //  3. How it mixes red, green and blue (M): a camera's sensor isn't the eye, and phones add punch, so colors
+  //     between two primaries (teal, red-orange, yellow-green) come out lighter, brighter or a shade off. Colorful
+  //     chips set it: a mix that leaves white white, held close to none so one chip can't swing every color.
+  // Then each chip's own color is pinned (local): whatever is left over on a tuned chip is taken off it, and off
+  // colors near it, fading out by about 20 Lab units away. A chip that read wrong reads right next time, and so do
+  // its neighbors on the fan deck.
+  const labRel = rel => lab(rel.map(v => v * PAPER));
+  function linFromLab(L) {
+    const fy = (L[0] + 16) / 116, fx = fy + L[1] / 500, fz = fy - L[2] / 200;
+    const inv = t => (t > 0.206893 ? t * t * t : (t - 16 / 116) / 7.787);
+    const X = inv(fx) * 0.95047, Y = inv(fy), Z = inv(fz) * 1.08883;
+    return [3.2406 * X - 1.5372 * Y - 0.4986 * Z, -0.9689 * X + 1.8758 * Y + 0.0415 * Z, 0.0557 * X - 0.204 * Y + 1.057 * Z];
+  }
+  const NEUTRAL_C = 12, LOCAL_R = 10;
   function fitTune(pairs) {
-    const a = [1, 1, 1], g = [1, 1, 1], clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const chips = (pairs || []).filter(p => p && p.m && p.t && p.m.every(v => v > 0.004 && v < 1.3) && p.t.every(v => v > 0.003 && v < 1.25))
+      .map(p => { const L = labRel(p.t); return { m: p.m, t: p.t, C: Math.hypot(L[1], L[2]), Y: lum(p.t) }; });
+    const neutral = chips.filter(c => c.C < NEUTRAL_C), colorful = chips.filter(c => c.C >= NEUTRAL_C);
+    const light = neutral.filter(c => c.Y > 0.55), deep = neutral.filter(c => c.Y <= 0.55);
+    // 1 and 2: the paper and the curve, for each channel
+    const a = [1, 1, 1], g = [1, 1, 1];
     for (let i = 0; i < 3; i++) {
-      const pts = [];
-      for (const p of pairs || []) { const m = p.m[i], t = p.t[i]; if (m > 0.004 && m < 1.3 && t > 0.003 && t < 1.25) pts.push({ x: Math.log(m), y: Math.log(t) }); }
-      const light = pts.filter(p => p.x > -0.45), deep = pts.filter(p => p.x <= -0.45);
       let la = 0, gi = 1;
       for (let it = 0; it < 4; it++) {
-        if (light.length) la = clamp(light.reduce((q, p) => q + p.y - gi * p.x, 0) / light.length, -0.2, 0.2);
-        if (deep.length) { let sxy = 0.1, sxx = 0.1; for (const p of deep) { sxy += p.x * (p.y - la); sxx += p.x * p.x; } gi = clamp(sxy / sxx, 0.55, 1.8); }
+        if (light.length) la = clamp(light.reduce((q, c) => q + Math.log(c.t[i]) - gi * Math.log(c.m[i]), 0) / light.length, -0.2, 0.2);
+        if (deep.length) { let sxy = 0.1, sxx = 0.1; for (const c of deep) { const x = Math.log(c.m[i]); sxy += x * (Math.log(c.t[i]) - la); sxx += x * x; } gi = clamp(sxy / sxx, 0.55, 1.8); }
       }
       a[i] = Math.exp(la); g[i] = gi;
     }
-    return { a, g };
+    const base = m => m.map((v, i) => a[i] * Math.pow(v, g[i]));
+    // 3: the mix. Each row moves a little of the other two channels in or out (white stays white), fitted on the
+    // colorful chips with each channel's error weighed by how much it shows (a small error in a dark channel shows)
+    const M = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    if (colorful.length) {
+      const prior = 1 / (0.15 * 0.15), noise = 1 / (0.03 * 0.03);
+      for (let i = 0; i < 3; i++) {
+        const [j, k] = [0, 1, 2].filter(x => x !== i);
+        let A11 = prior, A12 = 0, A22 = prior, B1 = 0, B2 = 0;
+        for (const c of colorful) {
+          const fb = base(c.m), w = noise / Math.pow(c.t[i] + 0.05, 2);
+          const u = fb[j] - fb[i], v = fb[k] - fb[i], r = c.t[i] - fb[i];
+          A11 += w * u * u; A12 += w * u * v; A22 += w * v * v; B1 += w * u * r; B2 += w * v * r;
+        }
+        const det = A11 * A22 - A12 * A12; if (!(det > 1e-12)) continue;
+        const dj = clamp((B1 * A22 - B2 * A12) / det, -0.4, 0.4), dk = clamp((A11 * B2 - A12 * B1) / det, -0.4, 0.4);
+        M[i][j] = dj; M[i][k] = dk; M[i][i] = 1 - dj - dk;
+      }
+    }
+    const tn = { a, g, M, local: [] };
+    // each chip's own color, pinned
+    for (const c of chips) {
+      const at = labRel(applyTune(c.m, tn)), want = labRel(c.t), d = want.map((v, i) => v - at[i]);
+      if (Math.hypot(d[0], d[1], d[2]) > 0.5) tn.local.push({ at, d });
+    }
+    return tn;
   }
   // (a tuning saved before the paper's tint was part of it is a plain list of powers)
-  const applyTune = (rel, tn) => (!tn ? rel : rel.map((v, i) => (tn.a ? tn.a[i] : 1) * Math.pow(Math.max(1e-5, v), tn.g ? tn.g[i] : Array.isArray(tn) ? tn[i] : 1)));
+  function applyTune(rel, tn) {
+    if (!tn) return rel;
+    if (Array.isArray(tn)) return rel.map((v, i) => Math.pow(Math.max(1e-5, v), tn[i]));
+    let f = rel.map((v, i) => (tn.a ? tn.a[i] : 1) * Math.pow(Math.max(1e-5, v), tn.g ? tn.g[i] : 1));
+    if (tn.M) f = tn.M.map(row => Math.max(1e-5, row[0] * f[0] + row[1] * f[1] + row[2] * f[2]));
+    if (tn.local && tn.local.length) {
+      const L = labRel(f), d = [0, 0, 0];
+      let w = 0;
+      for (const q of tn.local) { const k = Math.exp(-0.5 * Math.pow(dE(L, q.at) / LOCAL_R, 2)); w += k; for (let j = 0; j < 3; j++) d[j] += k * q.d[j]; }
+      if (w > 1e-4) f = linFromLab(L.map((v, j) => v + d[j] / Math.max(1, w))).map(v => Math.max(1e-5, v / PAPER));
+    }
+    return f;
+  }
 
   // One reading of one picture. layout: { mode: 'paper' | 'wall', color: rect, paper: rect (wall only) } in the
   // picture's own pixels. opts.tune: powers from fitTune. Returns the color and anything that needs fixing first.
@@ -252,5 +305,5 @@
     const spread = good.map(r => dE(lab(r.rel.map(v => v * PAPER)), L0)).sort((a, b) => a - b)[Math.floor(good.length * 0.75)] || 0;
     return { rel, raw: [rawMed(0), rawMed(1), rawMed(2)], hex: hexOf(rel.map(v => v * PAPER)), spread, n: good.length };
   }
-  return { PAPER, analyze, combine, fitTune, applyTune, patch, hexOf, linOf, lab, dE, LIN, toEnc };
+  return { PAPER, analyze, combine, fitTune, applyTune, patch, hexOf, linOf, lab, linFromLab, dE, LIN, toEnc };
 });
