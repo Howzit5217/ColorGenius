@@ -690,7 +690,7 @@ Panel and slab doors	Puertas de panel y lisas
 Paneling & Wood Ceilings	Paneles y techos de madera
 Patching compound soaks up paint differently than the rest of the wall.	El compuesto para resanar absorbe la pintura distinto que el resto de la pared.
 Peeling or Flaking Paint	Pintura que se pela o descascara
-Peeling, stains bleeding through, mildew, sticky paint, blotchy stain and more: why it happens, how to fix it and what to buy.	Pintura que se pela, manchas que se transparentan, moho, pintura pegajosa, tinte manchado y más: por qué pasa, cómo arreglarlo y qué comprar.
+Peeling, mildew, stains bleeding through or blotchy stain: why it happens, how to fix it and what to buy.	Pintura que se pela, moho, manchas que se transparentan o tinte manchado: por qué pasa, cómo arreglarlo y qué comprar.
 Penetrating semi-transparent deck stain	Tinte penetrante semitransparente para terrazas
 Pergola or Porch	Pérgola o porche
 Pets or kids?	¿Mascotas o niños?
@@ -1398,5 +1398,101 @@ Color, brand and product names stay as they are on the chips.	Los nombres de col
 On a kiosk, shoppers also get a button at the top to switch.	En un quiosco, los clientes también tienen un botón arriba para cambiarlo.
 Spanish	Español
 English	English
+Test before you buy	Prueba antes de comprar
+Paint a big sample on two walls and look at it in the morning and at night.	Pinta una muestra grande en dos paredes y mírala en la mañana y en la noche.
+Buy it all at once	Compra todo a la vez
+Get every can for a room at the same time so the color matches exactly.	Compra todas las latas para una habitación al mismo tiempo para que el color coincida exactamente.
+Box your paint	Mezcla todas tus latas
+Pour all your cans into one bucket and mix so every wall matches.	Vacía todas tus latas en una cubeta y mézclalas para que todas las paredes coincidan.
+Stir, don’t shake	Revuelve, no agites
+Stir paint for a full minute, scraping the bottom of the can.	Revuelve la pintura un minuto completo, raspando el fondo de la lata.
+Feel the finish	Elige bien el acabado
+Cabinets and trim need enamel. It dries hard and wipes clean.	Los gabinetes y las molduras necesitan esmalte. Seca duro y se limpia fácilmente.
+Two thin coats	Dos capas delgadas
+Two thin coats look better and last longer than one thick one.	Dos capas delgadas se ven mejor y duran más que una gruesa.
+Wash the walls first	Primero lava las paredes
+Wipe kitchen and bathroom walls with a degreaser so the new paint sticks.	Limpia las paredes de la cocina y el baño con un desengrasante para que la pintura nueva se pegue.
+Scuff glossy trim	Lija las molduras brillantes
+Sand shiny paint lightly with fine sandpaper so the new coat can grip.	Lija ligeramente la pintura brillante con lija fina para que la capa nueva se agarre.
+Prime your patches	Aplica imprimador a los resanes
+Spot-prime spackle so the patches don’t show through as dull spots.	Pon imprimador sobre la pasta de resanar para que los resanes no se noten como manchas opacas.
+Pull tape while wet	Quita la cinta en húmedo
+Pull painter’s tape at an angle while the last coat is still a little wet.	Quita la cinta de pintor en ángulo mientras la última capa sigue un poco húmeda.
+Keep a wet edge	Mantén el borde húmedo
+Roll from wet paint into dry so you don’t get lap marks.	Pasa el rodillo de la pintura húmeda hacia la seca para que no queden marcas de traslape.
+Roll a W	Pinta una W
+Roll a big W on the wall, then fill it in without lifting the roller.	Pinta una W grande en la pared y luego rellénala sin levantar el rodillo.
+Load the roller	Carga bien el rodillo
+A dry roller leaves thin streaks. Reload it before it runs dry.	Un rodillo seco deja rayas delgadas. Vuelve a cargarlo antes de que se quede sin pintura.
+Pick the right nap	Elige el pelo adecuado
+Smooth walls take a 3/8 inch nap. Textured walls and stucco need a thicker one.	Las paredes lisas llevan un rodillo de pelo de 3/8 de pulgada. Las paredes con textura y el estuco necesitan uno más grueso.
+Top to bottom	De arriba hacia abajo
+Paint the ceiling first, then the walls, then the trim.	Pinta primero el techo, luego las paredes y después las molduras.
+Mind the temperature	Cuida la temperatura
+Many paints need 50 °F or warmer while they dry. Check the can.	Muchas pinturas necesitan 50 °F o más mientras se secan. Revisa la lata.
+Beat the dew	Gánale al rocío
+Outside, stop early enough that the paint dries before the evening dew.	Afuera, termina temprano para que la pintura se seque antes del rocío de la tarde.
+Follow the shade	Sigue la sombra
+Paint outside walls after the sun leaves them. Hot siding dries paint too fast.	Pinta las paredes de afuera cuando ya no les dé el sol. El revestimiento caliente seca la pintura demasiado rápido.
+Stain needs dry wood	El tinte necesita madera seca
+Let a washed deck dry for two days before you stain it.	Deja secar una terraza lavada dos días antes de aplicarle el tinte.
+Wipe off extra stain	Quita el tinte que sobra
+Wipe stain after a few minutes. What soaks in is the color. The rest gets sticky.	Limpia el tinte después de unos minutos. Lo que absorbe la madera es el color. El resto se pone pegajoso.
+Condition soft woods	Acondiciona las maderas blandas
+Pine, maple and birch can blotch. A pre-stain conditioner evens them out.	El pino, el maple y el abedul pueden mancharse. Un acondicionador antes del tinte los empareja.
+Keep stirring stain	Sigue revolviendo el tinte
+The color settles to the bottom. Stir it now and then while you work.	El color se asienta en el fondo. Revuélvelo de vez en cuando mientras trabajas.
+Clear or amber	Transparente o ámbar
+Water-based polyurethane stays clear. Oil-based adds a warm amber glow.	El poliuretano a base de agua se queda transparente. El de aceite le da un tono ámbar cálido.
+Sand between clear coats	Lija entre capas transparentes
+A light pass with 220-grit between coats of polyurethane makes it smooth.	Una pasada ligera con lija de grano 220 entre capas de poliuretano lo deja liso.
+Save some for touch-ups	Guarda un poco para retoques
+Keep a small labeled jar of each color for touch-ups later.	Guarda un frasco pequeño con etiqueta de cada color para retocar más adelante.
+Write it down	Anótalo
+Write the color, brand and sheen on the lid and inside a closet door.	Escribe el color, la marca y el brillo en la tapa y por dentro de la puerta de un clóset.
+Close the can tight	Cierra bien la lata
+Wipe the rim, lay plastic wrap over it and tap the lid down to keep paint fresh.	Limpia el borde, pon plástico encima y golpea la tapa para que la pintura se mantenga fresca.
+Wrap it for lunch	Envuélvelo para el almuerzo
+Wrap a wet brush or roller in plastic so it doesn’t dry out on a break.	Envuelve en plástico la brocha o el rodillo húmedo para que no se seque en un descanso.
+Wash latex right away	Lava el látex enseguida
+Clean water-based paint out of brushes with warm soapy water before it dries.	Lava la pintura a base de agua de las brochas con agua tibia y jabón antes de que se seque.
+A good brush pays off	Una buena brocha vale la pena
+A quality brush, cleaned well, holds more paint and lasts for years.	Una brocha de calidad, bien lavada, carga más pintura y dura años.
+Bathrooms need air	Los baños necesitan aire
+Use a paint made for bathrooms and run the fan while it dries.	Usa una pintura hecha para baños y prende el extractor mientras se seca.
+Give it time to cure	Dale tiempo para curar
+Paint feels dry in hours but takes weeks to fully harden. Go easy on it.	La pintura se siente seca en horas, pero tarda semanas en endurecer por completo. Trátala con cuidado.
+Deep colors take more	Los colores intensos llevan más
+Deep and bright colors often need a gray or tinted primer and an extra coat.	Los colores oscuros e intensos a menudo necesitan un imprimador gris o entintado y una capa más.
+Not all whites match	No todos los blancos son iguales
+Whites lean warm, cool or gray. Hold the chips side by side to see it.	Los blancos tiran a cálido, frío o gris. Pon las muestras una junto a la otra para verlo.
+Check the LRV	Revisa el LRV
+The higher the Light Reflectance Value, the more light a color bounces around the room.	Entre más alto el valor de reflectancia de luz (LRV), más luz refleja el color en la habitación.
+Walls make colors stronger	La pared intensifica el color
+A color looks stronger on a whole wall than on a small chip. A shade lighter often helps.	Un color se ve más fuerte en toda una pared que en una muestra pequeña. Un tono más claro suele ayudar.
+Match the undertones	Combina los subtonos
+Pick wall and trim colors that lean the same way, warm with warm, cool with cool.	Elige colores de pared y molduras que tiren hacia el mismo lado: cálido con cálido, frío con frío.
+Flat on the ceiling	Plano en el techo
+Flat ceiling paint hides bumps and doesn’t shine back at you.	La pintura plana para techos disimula imperfecciones y no refleja la luz.
+Cover the floor	Cubre el piso
+Canvas drop cloths soak up drips. Plastic gets slippery.	Las lonas de tela absorben los escurrimientos. El plástico se pone resbaloso.
+Caulk the gaps	Sella las rendijas
+Caulk the gaps along trim before you paint for clean, sharp lines.	Aplica sellador en las rendijas de las molduras antes de pintar para tener líneas limpias.
+Block the stains	Bloquea las manchas
+Water and smoke stains bleed through paint. Seal them with a stain-blocking primer first.	Las manchas de agua y de humo traspasan la pintura. Séllalas primero con un imprimador que bloquee manchas.
+Old house? Test for lead	¿Casa antigua? Revisa si hay plomo
+Homes built before 1978 may have lead paint. Test before you sand or scrape.	Las casas construidas antes de 1978 pueden tener pintura con plomo. Haz una prueba antes de lijar o raspar.
+Kill the mildew	Elimina el moho
+Clean mildew off with a mildew remover before you paint, or it grows right back.	Limpia el moho con un removedor de moho antes de pintar, o vuelve a salir.
+Read the label	Lee la etiqueta
+The can tells you how far it goes, how long it takes to dry and how warm it needs to be.	La lata te dice cuánto rinde, cuánto tarda en secar y qué tan caliente necesita estar.
+Grab an extra quart	Lleva un cuarto extra
+A spare quart covers touch-ups and saves a trip back to the store.	Un cuarto de galón extra sirve para retoques y te ahorra otro viaje a la tienda.
+Go light first with stain	Con el tinte, empieza claro
+You can always go darker with stain. Going lighter means sanding it off.	Con el tinte siempre puedes ir más oscuro. Ir más claro significa lijarlo.
+Fix the wood outside	Arregla la madera de afuera
+Scrape loose paint and replace soft, rotten wood before you paint outside.	Raspa la pintura suelta y cambia la madera blanda o podrida antes de pintar afuera.
+Wait between coats	Espera entre capas
+Give the first coat the time on the can before the second, or it can drag and peel.	Dale a la primera capa el tiempo que indica la lata antes de la segunda, o se puede arrastrar y pelar.
 `;
 })(typeof self !== 'undefined' ? self : this);

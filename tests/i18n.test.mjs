@@ -50,3 +50,13 @@ test('a color with the same name as a word (like “Navy”) keeps its name', ()
   assert.equal(I.tr('Navy'), null);
   I.keep.delete('Navy');
 });
+test('every home-screen tip, and the five home tiles, are in Spanish', () => {
+  const app = fs.readFileSync(path.join(ROOT, 'js/app.js'), 'utf8');
+  const block = app.slice(app.indexOf('const TIPS = ['), app.indexOf('];', app.indexOf('const TIPS = [')));
+  // (the tips use curly apostrophes, so each one is two plain '…' strings)
+  const tips = [...block.matchAll(/\['([^']*)', '([^']*)'\]/g)].map(m => [m[1], m[2]]);
+  assert.ok(tips.length >= 50, tips.length + ' tips');
+  assert.equal(new Set(tips.map(t => t[0])).size, tips.length, 'no tip title twice');
+  for (const [t, s] of tips) { assert.ok(I.tr(t), 'tip title: ' + t); assert.ok(I.tr(s), 'tip: ' + s); }
+  for (const s of ['Paint Colors', 'Stain Colors', 'Which Paint to Buy', 'Look Up a Color', 'Fix a Problem', 'Peeling, mildew, stains bleeding through or blotchy stain: why it happens, how to fix it and what to buy.']) assert.ok(I.tr(s), s);
+});

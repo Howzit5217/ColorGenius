@@ -429,8 +429,9 @@
   }
 
   // ================================================================
-  // HOME: four big choices
+  // HOME: the two big choices on top (paint and stain colors), the three helpers under them
   // ================================================================
+  // three of these at random under the projects, so someone who comes back sees different ones
   const TIPS = [
     ['Test before you buy', 'Paint a big sample on two walls and look at it in the morning and at night.'],
     ['Flat hides, satin cleans', 'Lower sheens hide bumps and patches. Higher sheens wipe clean.'],
@@ -444,6 +445,48 @@
     ['Stain on a scrap first', 'The same stain looks different on oak, pine and maple. Test it on a board.'],
     ['Light changes color', 'Warm bulbs make colors cozier. Daylight bulbs make them crisper.'],
     ['Two thin coats', 'Two thin coats look better and last longer than one thick one.'],
+    ['Wash the walls first', 'Wipe kitchen and bathroom walls with a degreaser so the new paint sticks.'],
+    ['Scuff glossy trim', 'Sand shiny paint lightly with fine sandpaper so the new coat can grip.'],
+    ['Prime your patches', 'Spot-prime spackle so the patches don’t show through as dull spots.'],
+    ['Pull tape while wet', 'Pull painter’s tape at an angle while the last coat is still a little wet.'],
+    ['Keep a wet edge', 'Roll from wet paint into dry so you don’t get lap marks.'],
+    ['Roll a W', 'Roll a big W on the wall, then fill it in without lifting the roller.'],
+    ['Load the roller', 'A dry roller leaves thin streaks. Reload it before it runs dry.'],
+    ['Pick the right nap', 'Smooth walls take a 3/8 inch nap. Textured walls and stucco need a thicker one.'],
+    ['Top to bottom', 'Paint the ceiling first, then the walls, then the trim.'],
+    ['Mind the temperature', 'Many paints need 50 °F or warmer while they dry. Check the can.'],
+    ['Beat the dew', 'Outside, stop early enough that the paint dries before the evening dew.'],
+    ['Follow the shade', 'Paint outside walls after the sun leaves them. Hot siding dries paint too fast.'],
+    ['Stain needs dry wood', 'Let a washed deck dry for two days before you stain it.'],
+    ['Wipe off extra stain', 'Wipe stain after a few minutes. What soaks in is the color. The rest gets sticky.'],
+    ['Condition soft woods', 'Pine, maple and birch can blotch. A pre-stain conditioner evens them out.'],
+    ['Keep stirring stain', 'The color settles to the bottom. Stir it now and then while you work.'],
+    ['Clear or amber', 'Water-based polyurethane stays clear. Oil-based adds a warm amber glow.'],
+    ['Sand between clear coats', 'A light pass with 220-grit between coats of polyurethane makes it smooth.'],
+    ['Save some for touch-ups', 'Keep a small labeled jar of each color for touch-ups later.'],
+    ['Write it down', 'Write the color, brand and sheen on the lid and inside a closet door.'],
+    ['Close the can tight', 'Wipe the rim, lay plastic wrap over it and tap the lid down to keep paint fresh.'],
+    ['Wrap it for lunch', 'Wrap a wet brush or roller in plastic so it doesn’t dry out on a break.'],
+    ['Wash latex right away', 'Clean water-based paint out of brushes with warm soapy water before it dries.'],
+    ['A good brush pays off', 'A quality brush, cleaned well, holds more paint and lasts for years.'],
+    ['Bathrooms need air', 'Use a paint made for bathrooms and run the fan while it dries.'],
+    ['Give it time to cure', 'Paint feels dry in hours but takes weeks to fully harden. Go easy on it.'],
+    ['Deep colors take more', 'Deep and bright colors often need a gray or tinted primer and an extra coat.'],
+    ['Not all whites match', 'Whites lean warm, cool or gray. Hold the chips side by side to see it.'],
+    ['Check the LRV', 'The higher the Light Reflectance Value, the more light a color bounces around the room.'],
+    ['Walls make colors stronger', 'A color looks stronger on a whole wall than on a small chip. A shade lighter often helps.'],
+    ['Match the undertones', 'Pick wall and trim colors that lean the same way, warm with warm, cool with cool.'],
+    ['Flat on the ceiling', 'Flat ceiling paint hides bumps and doesn’t shine back at you.'],
+    ['Cover the floor', 'Canvas drop cloths soak up drips. Plastic gets slippery.'],
+    ['Caulk the gaps', 'Caulk the gaps along trim before you paint for clean, sharp lines.'],
+    ['Block the stains', 'Water and smoke stains bleed through paint. Seal them with a stain-blocking primer first.'],
+    ['Old house? Test for lead', 'Homes built before 1978 may have lead paint. Test before you sand or scrape.'],
+    ['Kill the mildew', 'Clean mildew off with a mildew remover before you paint, or it grows right back.'],
+    ['Read the label', 'The can tells you how far it goes, how long it takes to dry and how warm it needs to be.'],
+    ['Grab an extra quart', 'A spare quart covers touch-ups and saves a trip back to the store.'],
+    ['Go light first with stain', 'You can always go darker with stain. Going lighter means sanding it off.'],
+    ['Fix the wood outside', 'Scrape loose paint and replace soft, rotten wood before you paint outside.'],
+    ['Wait between coats', 'Give the first coat the time on the can before the second, or it can drag and peel.'],
   ];
   // ================================================================
   // FIX A PROBLEM: the paint problems people bring to the desk (the words are in js/fixes.js)
@@ -497,15 +540,17 @@
       jobOn('stain') && ['stain', 'Stain Colors', 'See wood stains on real wood for floors, furniture, decks and fences.'],
       jobOn('paint') && ['buy', 'Which Paint to Buy', 'Answer a few questions to get the paint, finish, primer, roller and brush, and how much.'],
       ['lookup', 'Look Up a Color', 'Have a color name, code or number? Find it and match it in any brand.'],
+      ['fix', 'Fix a Problem', 'Peeling, mildew, stains bleeding through or blotchy stain: why it happens, how to fix it and what to buy.'],
     ].filter(Boolean);
+    // the first two go on top, side by side; the rest share the row under them (tiles-1 … tiles-3 say how many)
+    const top = Math.min(2, tiles.length), low = tiles.length - top;
     const list = session.items;
     const tips = TIPS.slice().sort(() => Math.random() - 0.5).slice(0, 3);
     view().innerHTML = `<div class="home">
       <div class="home-head"><h1>${isKiosk() ? 'Welcome! What are you working on?' : 'What would you like to do?'}</h1><p>Tap one to start. Every step has a Back button, so you can always change your mind.</p></div>
-      <div class="tiles">${tiles.map(([k, t, s]) => `<button type="button" class="tile" data-start="${k}">
-        <span class="tile-art"><img src="img/tile-${k}.jpg" alt="" width="1080" height="510" decoding="async"></span>
+      <div class="tiles tiles-top-${top} tiles-low-${low}">${tiles.map(([k, t, s], i) => `<button type="button" class="tile ${i < top ? 'top' : 'low'}" data-start="${k}">
+        <span class="tile-art"><img src="img/tile-${k}.jpg" alt="" width="${k === 'paint' || k === 'stain' ? 1080 : 960}" height="${k === 'paint' || k === 'stain' ? 510 : 640}" decoding="async"></span>
         <span class="tile-text"><span class="tile-title">${esc(t)}${chev('right', 22)}</span><span class="tile-sub">${esc(s)}</span></span></button>`).join('')}</div>
-      <button type="button" class="home-fix" data-go="fix"><span class="hf-ic">${fixIc('peel', 34)}</span><span class="hf-txt"><b>Fix a Problem</b><span>Peeling, stains bleeding through, mildew, sticky paint, blotchy stain and more: why it happens, how to fix it and what to buy.</span></span>${chev('right', 22)}</button>
       <section class="section" aria-labelledby="projH">
         <div class="page-head"><h2 id="projH">Projects</h2><p>Save the colors, stains and shopping lists for one job in one place, then print it or email it.</p></div>
         <div class="proj-grid">
@@ -518,12 +563,14 @@
     </div>`;
   }
   // The home pictures are 3D product shots rendered ahead of time (img/tile-*.jpg, made with
-  // CG.room3d.snapshot('tile-paint', 1080, 510) and friends), so they're there the moment the app opens.
+  // CG.room3d.snapshot('tile-paint', 1080, 510) and friends: paint and stain at 1080 × 510, the three under them
+  // at 960 × 640; render at twice that and scale down), so they're there the moment the app opens.
   document.addEventListener('click', e => {
     const t = e.target.closest('button, a'); if (!t || !state.ready) return;
     if (t.dataset.start) {
       const k = t.dataset.start;
       if (k === 'lookup') { go('lookup'); return; }
+      if (k === 'fix') { go('fix'); return; }
       startFlow(k); return;
     }
     if (t.dataset.go) { e.preventDefault(); if (t.dataset.go === 'back') goBack(); else go(t.dataset.go === 'home' ? '' : t.dataset.go); }

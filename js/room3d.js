@@ -51,7 +51,7 @@
   class Builder {
     // `solid` counts the closed shapes being built: a face made outside one (a roof sheet, a gable, a vase) belongs to
     // an open shape, which the soft-shadow views have to draw from both sides
-    constructor() { this.groups = {}; this.mats = {}; this.M = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]; this.stack = []; this.decals = []; this.lamps = []; this.windows = []; this.lo = [1e9, 1e9, 1e9]; this.hi = [-1e9, -1e9, -1e9]; this.solid = 0; this.pieceName = ''; }
+    constructor() { this.groups = {}; this.mats = {}; this.M = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]; this.stack = []; this.decals = []; this.lamps = []; this.windows = []; this.lo = [1e9, 1e9, 1e9]; this.hi = [-1e9, -1e9, -1e9]; this.solid = 0; this.pieceName = ''; this.uvOff = null; }
     // build one piece of furniture: the parts of it that can be recolored get the piece's own materials
     piece(label, fn) { const was = this.pieceName; this.pieceName = label; try { return fn(); } finally { this.pieceName = was; } }
     // the first real definition of a material wins; one made up on first use can still be defined properly later
@@ -71,6 +71,8 @@
       const P = this.tp(p), N = this.tn(n);
       const ax = Math.abs(N[0]), ay = Math.abs(N[1]), az = Math.abs(N[2]);
       const uv = ay >= ax && ay >= az ? [P[0], P[2]] : ax >= az ? [P[2], P[1]] : [P[0], P[1]];
+      // (a small wooden thing can shift its texture so it sits inside one stretch of grain, clear of where it repeats)
+      if (this.uvOff) { uv[0] += this.uvOff[0]; uv[1] += this.uvOff[1]; }
       g.p.push(P[0], P[1], P[2]); g.n.push(N[0], N[1], N[2]); g.u.push(uv[0], uv[1]);
       for (let i = 0; i < 3; i++) { if (P[i] < this.lo[i]) this.lo[i] = P[i]; if (P[i] > this.hi[i]) this.hi[i] = P[i]; }
       return g.p.length / 3 - 1;
@@ -491,7 +493,7 @@
     const key = JSON.stringify([spec, gain]);
     if (texCache.has(key)) return texCache.get(key);
     const size = 512;
-    const f = WD.boardsField(spec.sp || 'red_oak', size, size, { cm: spec.cm || 0.3, boardCm: spec.board || 12, gapCm: spec.gap || 0, vertical: !!spec.vertical, seed: spec.seed || 1 });
+    const f = WD.boardsField(spec.sp || 'red_oak', size, size, { cm: spec.cm || 0.3, boardCm: spec.board || 12, gapCm: spec.gap || 0, vertical: !!spec.vertical, seed: spec.seed || 1, lenCm: spec.len, ends: spec.ends });
     const cv = document.createElement('canvas');
     WD.paintField(cv, f, { sp: spec.sp || 'red_oak', stain: spec.stain || null, tint: spec.stain ? null : spec.tint || null, gain, sheen: 0 });
     const out = { canvas: cv, meters: size * (spec.cm || 0.3) / 100 };
@@ -665,8 +667,9 @@
       gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.shadowTex); gl.bindSampler(2, this.sRaw); gl.uniform1i(u.uShadowRaw, 2);
       gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.aoTex); gl.bindSampler(3, this.sRaw); gl.uniform1i(u.uAoRaw, 3);
       // how soft the sun's shadow gets: about 2 degrees of blur per meter between the shadow and what casts it
-      const sr = fr.shadowR || 1;
-      gl.uniform1f(u.uSunSoft, 0.035 / (2 * sr)); gl.uniform1f(u.uSunSearch, Math.min(0.4, 0.06 * sr) / (2 * sr)); gl.uniform1f(u.uDepthM, sr * 4 - 0.1);
+      // (a product shot is lit by a big soft studio light: its shadows blur sunSoftK times as fast)
+      const sr = fr.shadowR || 1, sk = fr.sunSoftK || 1;
+      gl.uniform1f(u.uSunSoft, 0.035 * sk / (2 * sr)); gl.uniform1f(u.uSunSearch, Math.min(0.4, 0.06 * sr * Math.min(sk, 4)) / (2 * sr)); gl.uniform1f(u.uDepthM, sr * 4 - 0.1);
       gl.uniform1f(u.uSunNO, 2 * sr / this.shadowSize * 1.5);
       const A = this.ao;
       gl.uniform1f(u.uAoOn, A && fr.aoAmt > 0 ? 1 : 0);
@@ -1863,7 +1866,7 @@
   // ---------------- product shots for the home screen ----------------
   // A soft studio sweep (floor curving up into the back wall), one key light, and the objects on it.
   function studio(b, bg) {
-    b.mat('bd', { color: bg, gloss: 0, flatN: true });
+    b.mat('bd', { color: bg, gloss: 0, flatN: true, noShadow: true });
     const zc = -0.32, r = 0.3, W = 3;
     b.quad('bd', [-W, 0, zc], [W, 0, zc], [W, 0, 2.5], [-W, 0, 2.5], [0, 1, 0]);
     const N = 12;
@@ -1894,104 +1897,241 @@
     b.cyl('brass', px, 0, pz, 0.01, 0.0055 * 7 + 0.002, 14);
     return { cam: far ? { eye: [0, 0.6, 0.28], target: [0, 0, 0.008], fov: 34 } : { eye: [0, 0.46, 0.215], target: [0, 0, 0.008], fov: 34 }, studio: true };
   }
+  // ---- the pieces the product shots share ----
+  // a can of paint or stain: the tin, a wrap-around label with a band of color and a few lines of "print", the
+  // rolled rim, and either its lid on or open with the paint showing inside
+  function paintCan(b, n, x, z, r, h, o) {
+    o = o || {};
+    b.mat(n + 'tin', { color: o.tin || 'C2C5C8', gloss: 0.85 });
+    b.mat(n + 'lab', { color: o.label || 'F4F2EC', gloss: 0.3 }); b.mat(n + 'band', { color: o.band || '2F6B5E', gloss: 0.35 }); b.mat(n + 'ink', { color: o.ink || '3A3632', gloss: 0.2 });
+    const lr = r * 1.006;
+    b.cyl(n + 'tin', x, 0, z, r, h, 40, r, 'b');
+    b.cyl(n + 'lab', x, h * 0.14, z, lr, h * 0.68, 40, lr, '');
+    b.cyl(n + 'band', x, h * 0.14, z, lr * 1.001, h * 0.3, 40, lr * 1.001, '');
+    // the printed lines face the camera: short dark strips on the front of the label
+    for (const [y, w] of [[0.58, 0.5], [0.66, 0.34], [0.73, 0.42]]) {
+      const a = w * 0.9;
+      b.push().at(x, 0, z, 0);
+      for (let k = -4; k < 4; k++) { const t0 = (k / 4) * a, t1 = ((k + 1) / 4) * a; b.quad(n + 'ink', [Math.sin(t0) * lr * 1.002, h * y, Math.cos(t0) * lr * 1.002], [Math.sin(t1) * lr * 1.002, h * y, Math.cos(t1) * lr * 1.002], [Math.sin(t1) * lr * 1.002, h * y + h * 0.028, Math.cos(t1) * lr * 1.002], [Math.sin(t0) * lr * 1.002, h * y + h * 0.028, Math.cos(t0) * lr * 1.002], norm([Math.sin((t0 + t1) / 2), 0, Math.cos((t0 + t1) / 2)])); }
+      b.pop();
+    }
+    // the rolled rim
+    b.lathe(n + 'tin', x, h, z, [[r * 1.02, -0.004], [r * 1.035, 0.002], [r * 1.0, 0.006], [r * 0.94, 0.004], [r * 0.9, 0.001]], 40);
+    if (o.open) {
+      // open: the paint inside, a little below the rim, with a glossy surface
+      b.mat(n + 'paint', { color: o.open, gloss: 0.7 });
+      b.cyl(n + 'paint', x, h - 0.012, z, r * 0.9, 0.006, 40, r * 0.9, 't');
+    } else {
+      b.lathe(n + 'tin', x, h + 0.006, z, [[r * 0.94, -0.002], [r * 0.95, 0.002], [r * 0.9, 0.005], [r * 0.6, 0.005], [0, 0.004]], 40);
+    }
+    b.contact(x, z, r * 2.1, r * 2.1, 0, true);
+  }
+  // an angled sash brush lying flat: a wood handle, a steel ferrule and the bristles, with paint on the tips
+  function sashBrush(b, n, x, z, ry, o) {
+    o = o || {};
+    b.push().at(x, 0, z, ry);
+    b.mat(n + 'h', { color: o.handle || 'B48A63', wood: { sp: 'birch', board: 120, len: 2000, ends: false }, gloss: 0.35 });
+    b.uvOff = [0.75, 0.6]; b.rbox(n + 'h', -0.17, 0, -0.014, -0.03, 0.02, 0.014, 0.009); b.uvOff = null;
+    b.mat(n + 'f', { color: 'BFC2C4', gloss: 0.92 }); b.rbox(n + 'f', -0.034, 0, -0.028, 0.026, 0.026, 0.028, 0.004);
+    b.mat(n + 'b', { color: o.bristle || '2F3B4C', pat: PAT.bead, gloss: 0.12 }); b.rbox(n + 'b', 0.026, 0.002, -0.026, 0.08, 0.021, 0.026, 0.006);
+    if (o.paint) { b.mat(n + 'p', { color: o.paint, gloss: 0.6 }); b.rbox(n + 'p', 0.066, 0.002, -0.0262, 0.092, 0.0215, 0.0262, 0.006); }
+    b.contact(-0.04, 0, 0.27, 0.06, 0, false, 0.8);
+    b.pop();
+  }
+  // a roll of painter's tape, lying flat
+  function tapeRoll(b, n, x, z, o) {
+    o = o || {};
+    const R = 0.05, r0 = 0.036, h = 0.024;
+    b.mat(n + 't', { color: o.color || '4C8FD1', gloss: 0.25 }); b.mat(n + 'c', { color: 'C7A982', gloss: 0.2 });
+    b.lathe(n + 't', x, 0, z, [[r0, 0], [R, 0], [R, h], [r0, h], [r0, 0]], 40);
+    b.lathe(n + 'c', x, 0, z, [[r0 - 0.006, 0], [r0, 0], [r0, h + 0.001], [r0 - 0.006, h + 0.001], [r0 - 0.006, 0]], 40);
+    b.contact(x, z, R * 2.1, R * 2.1, 0, true, 0.8);
+  }
+  function stirStick(b, n, x, z, ry, y) {
+    b.push().at(x, y || 0, z, ry);
+    b.mat(n, { color: 'D8C29A', wood: { sp: 'birch', board: 120, len: 2000, ends: false }, gloss: 0.15 });
+    b.uvOff = [0.75, 0.6]; b.rbox(n, -0.15, 0, -0.012, 0.15, 0.004, 0.012, 0.002, 1); b.uvOff = null;
+    if (!y) b.contact(0, 0, 0.3, 0.026, 0, false, 0.4);
+    b.pop();
+  }
+  // a loose paint chip, lying flat
+  function chip(b, n, x, z, ry, hex) {
+    b.push().at(x, 0, z, ry);
+    b.mat(n + 'c', { color: 'F8F7F4', gloss: 0.15 }); b.mat(n + 'k', { color: hex, gloss: 0.2 }); b.mat(n + 't', { color: 'B9B5AE', gloss: 0.1 });
+    b.rbox(n + 'c', -0.04, 0, -0.06, 0.04, 0.0028, 0.06, 0.003, 1);
+    b.box(n + 'k', -0.034, 0.0028, -0.054, 0.034, 0.0034, 0.024);
+    b.box(n + 't', -0.034, 0.0028, 0.034, 0.012, 0.0031, 0.04); b.box(n + 't', -0.034, 0.0028, 0.045, -0.004, 0.0031, 0.05);
+    b.contact(0, 0, 0.084, 0.124, 0, false, 0.3);
+    b.pop();
+  }
+  // a roller lying on its side, handle pointing back
+  function roller(b, n, x, z, ry, cover) {
+    b.push().at(x, 0, z, ry);
+    b.mat(n + 'c', { color: cover, pat: PAT.fabric, gloss: 0.25 });
+    b.rod(n + 'c', 'x', 0, 0.036, 0, 0.036, 0.19, 28);
+    b.mat(n + 'e', { color: 'E9E6DF', gloss: 0.4 }); b.rod(n + 'e', 'x', -0.0962, 0.036, 0, 0.03, 0.003, 24); b.rod(n + 'e', 'x', 0.0962, 0.036, 0, 0.03, 0.003, 24);
+    b.mat(n + 'w', { color: 'B9BCBE', gloss: 0.85 });
+    b.rod(n + 'w', 'x', 0.11, 0.036, 0, 0.005, 0.03, 8); b.rod(n + 'w', 'z', 0.125, 0.036, -0.05, 0.005, 0.1, 8);
+    b.mat(n + 'g', { color: 'B5362E', gloss: 0.5 }); b.rod(n + 'g', 'z', 0.125, 0.036, -0.18, 0.016, 0.17, 16);
+    b.mat(n + 'gb', { color: '2B2B2C', gloss: 0.4 }); b.rod(n + 'gb', 'z', 0.125, 0.036, -0.268, 0.0165, 0.008, 16);
+    b.contact(0, 0, 0.21, 0.06, 0, false); b.contact(0.125, -0.17, 0.04, 0.2, 0, false, 0.5);
+    b.pop();
+  }
   Object.assign(SCENES, {
     'tile-icon'(b) { return iconScene(b, false); },
     'tile-icon-safe'(b) { return iconScene(b, true); },
     // Each shot keeps everything inside the middle of the frame (the home tiles crop the sides on wide screens and
-    // the top and bottom on mid-size ones), nothing floats or passes through anything else, and each thing has one
-    // soft shadow right under it.
+    // the top and bottom on others), nothing floats or passes through anything else, and each thing has one soft
+    // shadow right under it. The two wide ones sit on top of the home screen; the three below are 3 by 2.
     'tile-paint'(b) {
       studio(b, 'EAE4D9');
-      // a fan deck, fanned out from its brass rivet (the same as the app icon's)
+      // the fan deck, fanned out from its brass rivet (the same as the app icon's)
       b.mat('brass', { color: 'BC9A45', gloss: 0.85 });
       const hues = ['E8DFCF', 'C9B79C', 'A9B8A0', '6F8F85', '4F6B7D', '2F3B4C', 'C47F5E'];
-      const px = -0.17, pz = 0.1;
-      // (thin cards lying flat cast only a faint shadow right along their own edges)
+      const px = -0.25, pz = 0.12;
       hues.forEach((h, i) => { b.push().at(px, i * 0.0055, pz, (i - 3) * 0.2); chipStrip(b, 'chip' + i, h, 0.24); b.contact(0, -0.114, 0.064, 0.256, 0, false, 0.3); b.pop(); });
       b.cyl('brass', px, 0, pz, 0.01, 0.0055 * 7 + 0.002, 14);
-      // a roller lying on its side with sage paint on it, handle pointing back
-      b.push().at(0.17, 0, 0.06, 0.55);
-      b.mat('cover', { color: '6F8F85', pat: PAT.fabric, gloss: 0.25 });
-      b.rod('cover', 'x', 0, 0.036, 0, 0.036, 0.19, 24);
-      b.mat('wire', { color: 'B9BCBE', gloss: 0.8 });
-      b.rod('wire', 'x', 0.11, 0.036, 0, 0.005, 0.03, 8); b.rod('wire', 'z', 0.125, 0.036, -0.05, 0.005, 0.1, 8);
-      b.mat('grip', { color: 'B5362E', gloss: 0.45 }); b.rod('grip', 'z', 0.125, 0.036, -0.18, 0.016, 0.17, 14);
-      b.contact(0, 0, 0.21, 0.06, 0, false); b.contact(0.125, -0.17, 0.04, 0.2, 0, false, 0.5);
-      b.pop();
-      return { cam: { eye: [0.0, 0.46, 0.6], target: [0.0, 0.0, -0.02], fov: 34 }, studio: true };
+      // an open can of the sage, with a stir stick across it, and two loose chips
+      paintCan(b, 'can', 0.06, -0.08, 0.075, 0.14, { open: '6F8F85', band: '6F8F85', label: 'F6F4EE' });
+      stirStick(b, 'stick', 0.06, -0.08, 0.35, 0.146);
+      chip(b, 'lc1', -0.07, 0.18, 0.25, 'A9B8A0'); chip(b, 'lc2', 0.01, 0.215, -0.12, 'C9B79C');
+      // the roller with sage on it, and a brush with sage on its tips
+      roller(b, 'rl', 0.29, 0.05, 0.55, '6F8F85');
+      sashBrush(b, 'br', 0.24, 0.2, -0.3, { paint: '6F8F85' });
+      return { cam: { eye: [0.02, 0.5, 0.66], target: [0.02, 0.0, 0.0], fov: 36 }, studio: true, cast: true, sunSoftK: 3, shadowC: [0.02, 0.05, 0.05], shadowR: 0.5 };
     },
     'tile-stain'(b) {
       studio(b, 'E8DFD3');
-      // bare oak, then two stains on it. (The shot sits off to one side, OX/OZ, so each board falls inside one
+      // bare oak, then three stains on it, light to dark. (Off to one side, OX/OZ, so each board falls inside one
       // repeat of the wood texture and doesn't show the seam where it repeats.)
       const OX = 0.42, OZ = 0.3;
-      const boards = [['b1', null, OX - 0.1, OZ - 0.11, 0.05], ['b2', { hex: 'A3794A', type: 'semi' }, OX - 0.12, OZ + 0.02, -0.03], ['b3', { hex: '5A3E2B', type: 'semi' }, OX - 0.09, OZ + 0.15, 0.04]];
+      const boards = [['b1', null, OX - 0.14, OZ - 0.165, 0.05], ['b2', { hex: 'C08A55', type: 'semi' }, OX - 0.16, OZ - 0.055, -0.02], ['b3', { hex: 'A3794A', type: 'semi' }, OX - 0.13, OZ + 0.055, 0.03], ['b4', { hex: '5A3E2B', type: 'semi' }, OX - 0.15, OZ + 0.165, -0.04]];
       for (const [n, st, x, z, ry] of boards) {
-        b.mat(n, { color: 'C9A77A', wood: { sp: 'red_oak', board: 60, cm: 0.12, stain: st, seed: n.length + z * 100 }, gloss: st ? 0.35 : 0.12 });
-        b.push().at(x, 0, z, ry); b.rbox(n, -0.2, 0, -0.052, 0.2, 0.022, 0.052, 0.003, 1); b.contact(0, 0, 0.41, 0.11, 0, false, 0.6); b.pop();
+        b.mat(n, { color: 'C9A77A', wood: { sp: 'red_oak', board: 60, cm: 0.12, stain: st, seed: n.length + z * 100, len: 2000, ends: false }, gloss: st ? 0.38 : 0.12 });
+        b.push().at(x, 0, z, ry); b.rbox(n, -0.2, 0, -0.048, 0.2, 0.022, 0.048, 0.003, 1); b.contact(0, 0, 0.41, 0.1, 0, false, 0.6); b.pop();
       }
-      // a can of stain with a dark label
-      b.mat('tin', { color: 'BFC2C4', gloss: 0.85 }); b.mat('label', { color: '3A2A20', gloss: 0.35 }); b.mat('labelB', { color: 'C9A15E', gloss: 0.35 });
-      const cx = OX + 0.25, cz = OZ;
-      b.cyl('tin', cx, 0, cz, 0.07, 0.115, 28); b.cyl('label', cx, 0.016, cz, 0.0708, 0.08, 28, 0.0708, ''); b.cyl('labelB', cx, 0.05, cz, 0.0712, 0.012, 28, 0.0712, '');
-      b.cyl('tin', cx, 0.115, cz, 0.068, 0.006, 28, 0.066);
-      b.contact(cx, cz, 0.15, 0.15, 0, true);
-      return { cam: { eye: [OX + 0.04, 0.46, OZ + 0.6], target: [OX + 0.04, 0.0, OZ], fov: 34 }, studio: true };
+      // a can of the dark stain, its lid beside it, a foam brush and a folded rag with stain on it
+      paintCan(b, 'sc', OX + 0.2, OZ - 0.06, 0.068, 0.11, { band: '5A3E2B', label: 'E9DCC6', ink: '3A2A20' });
+      b.mat('lid', { color: 'BFC2C4', gloss: 0.85 }); b.lathe('lid', OX + 0.3, 0, OZ + 0.07, [[0.07, 0], [0.072, 0.004], [0.066, 0.007], [0, 0.007]], 40); b.contact(OX + 0.3, OZ + 0.07, 0.15, 0.15, 0, true, 0.6);
+      b.push().at(OX + 0.27, 0, OZ + 0.215, 0.2);
+      b.mat('foam', { color: '2B2B2C', pat: PAT.concrete, gloss: 0.05 }); b.rbox('foam', 0.0, 0, -0.026, 0.05, 0.016, 0.026, 0.004);
+      b.mat('stem', { color: 'D8C29A', gloss: 0.2 }); b.rbox('stem', -0.16, 0.004, -0.007, 0.002, 0.014, 0.007, 0.004);
+      b.contact(-0.05, 0, 0.22, 0.05, 0, false, 0.7); b.pop();
+      b.mat('rag', { color: 'EFEBE3', pat: PAT.fabric, gloss: 0.05 }); b.mat('ragS', { color: '8A6345', pat: PAT.fabric, gloss: 0.1 });
+      b.push().at(OX + 0.08, 0, OZ - 0.2, -0.3); b.rbox('rag', -0.06, 0, -0.045, 0.06, 0.02, 0.045, 0.012); b.rbox('ragS', -0.02, 0.006, -0.03, 0.045, 0.0205, 0.025, 0.01); b.contact(0, 0, 0.13, 0.1, 0, false, 0.7); b.pop();
+      return { cam: { eye: [OX + 0.04, 0.5, OZ + 0.66], target: [OX + 0.04, 0.0, OZ], fov: 36 }, studio: true, cast: true, sunSoftK: 3, shadowC: [OX + 0.04, 0.05, OZ], shadowR: 0.5 };
     },
     'tile-buy'(b) {
       studio(b, 'DFE8E3');
-      // a gallon of paint
-      b.mat('tin', { color: 'C4C7C9', gloss: 0.85 }); b.mat('label', { color: '2F6B5E', gloss: 0.35 }); b.mat('labelW', { color: 'F4F2EC', gloss: 0.3 });
-      const cx = -0.17, cz = -0.03;
-      b.cyl('tin', cx, 0, cz, 0.085, 0.19, 32); b.cyl('label', cx, 0.03, cz, 0.0856, 0.12, 32, 0.0856, ''); b.cyl('labelW', cx, 0.085, cz, 0.0862, 0.018, 32, 0.0862, ''); b.cyl('labelW', cx, 0.115, cz, 0.0862, 0.008, 32, 0.0862, '');
-      b.lathe('tin', cx, 0.19, cz, [[0.086, 0], [0.088, 0.006], [0.08, 0.008], [0.077, 0.004], [0, 0.004]], 32);
-      b.contact(cx, cz, 0.18, 0.18, 0, true);
-      // an angled brush lying flat
-      b.push().at(0.03, 0, 0.14, -0.4);
-      b.mat('handle', { color: 'B48A63', wood: { sp: 'birch', board: 30 }, gloss: 0.3 }); b.rbox('handle', -0.15, 0, -0.016, -0.02, 0.022, 0.016, 0.01);
-      b.mat('ferrule', { color: 'B9BCBE', gloss: 0.9 }); b.rbox('ferrule', -0.025, 0, -0.03, 0.03, 0.026, 0.03, 0.004);
-      b.mat('bristle', { color: '2F3B4C', pat: PAT.bead, gloss: 0.1 }); b.rbox('bristle', 0.03, 0.002, -0.028, 0.09, 0.02, 0.028, 0.006);
-      b.contact(-0.03, 0, 0.25, 0.06, 0, false, 0.8);
-      b.pop();
-      // a roller resting in a tray of paint
-      b.mat('tray', { color: '4A4D50', gloss: 0.4 }); b.mat('pool', { color: 'D9CDB8', gloss: 0.6 });
-      const tx0 = 0.07, tx1 = 0.33, tz0 = -0.19, tz1 = 0.01;
-      b.rbox('tray', tx0, 0, tz0, tx1, 0.028, tz1, 0.01); b.box('pool', tx0 + 0.02, 0.028, tz0 + 0.02, tx1 - 0.02, 0.0285, tz1 - 0.02);
+      // a gallon and a quart, the brush, a roller in its tray, tape and stir sticks: what to bring home
+      paintCan(b, 'gal', -0.17, -0.06, 0.085, 0.19, { band: '2F6B5E' });
+      paintCan(b, 'qt', -0.03, -0.1, 0.055, 0.11, { band: '2F6B5E' });
+      sashBrush(b, 'br', 0.0, 0.13, -0.35, {});
+      tapeRoll(b, 'tp', -0.26, 0.15);
+      stirStick(b, 'st1', 0.18, 0.2, -0.08);
+      // the roller resting in a tray of paint
+      b.mat('tray', { color: '4A4D50', gloss: 0.4 }); b.mat('pool', { color: 'D9CDB8', gloss: 0.65 }); b.mat('ridge', { color: '5A5D60', gloss: 0.4 });
+      const tx0 = 0.07, tx1 = 0.33, tz0 = -0.19, tz1 = 0.04;
+      b.rbox('tray', tx0, 0, tz0, tx1, 0.028, tz1, 0.01); b.box('pool', tx0 + 0.02, 0.028, tz0 + 0.02, tx1 - 0.02, 0.0285, tz0 + 0.13);
+      for (let k = 0; k < 5; k++) b.box('ridge', tx0 + 0.02, 0.028, tz0 + 0.14 + k * 0.014, tx1 - 0.02, 0.031, tz0 + 0.146 + k * 0.014);
       b.contact((tx0 + tx1) / 2, (tz0 + tz1) / 2, tx1 - tx0, tz1 - tz0, 0, false);
-      b.mat('cover', { color: 'D9CDB8', pat: PAT.fabric }); b.rod('cover', 'x', (tx0 + tx1) / 2, 0.0285 + 0.03, -0.09, 0.03, 0.19, 24);
-      // its frame bends back over the tray's edge to the handle
+      b.mat('cover', { color: 'D9CDB8', pat: PAT.fabric }); b.rod('cover', 'x', (tx0 + tx1) / 2, 0.0285 + 0.03, -0.09, 0.03, 0.19, 28);
       const wx = (tx0 + tx1) / 2 + 0.11;
       b.mat('wire', { color: 'B9BCBE', gloss: 0.8 }); b.rod('wire', 'x', wx - 0.005, 0.0585, -0.09, 0.004, 0.022, 8); b.rod('wire', 'z', wx + 0.006, 0.0585, -0.12, 0.004, 0.06, 8);
-      // ...and the handle slopes down from there until its end rests on the floor
       const tilt = -0.24, tc = Math.cos(tilt), ts = Math.sin(tilt);
       b.push(); b.M = [1, 0, 0, 0, tc, -ts, 0, ts, tc, wx + 0.006, 0.0585, -0.15];
       b.mat('grip', { color: '2F3B4C', gloss: 0.45 }); b.rod('wire', 'z', 0, 0, -0.01, 0.004, 0.02, 8); b.rod('grip', 'z', 0, 0, -0.1, 0.014, 0.16, 14);
       b.pop();
       b.contact(wx + 0.006, -0.3, 0.03, 0.06, 0, false, 0.6);
-      return { cam: { eye: [0.08, 0.44, 0.68], target: [0.08, 0.05, -0.03], fov: 34 }, studio: true };
+      return { cam: { eye: [0.06, 0.52, 0.66], target: [0.06, 0.03, -0.01], fov: 40 }, studio: true, cast: true, sunSoftK: 3, shadowC: [0.06, 0.06, 0.0], shadowR: 0.5 };
     },
     'tile-lookup'(b) {
       studio(b, 'E7E5EF');
-      // five chips in a gentle arc
-      const hues = ['D1CBC1', 'A7B3A0', '8C9FB3', 'C58F73', 'E3D5B8'];
+      // chips in a gentle arc, a magnifying glass on the middle one, and a phone showing the color it matched
+      const hues = ['C7BCAA', 'A7B3A0', '8C9FB3', 'C58F73', 'DCC79C'];
       hues.forEach((h, i) => {
-        b.mat('card' + i, { color: 'F8F7F4', gloss: 0.15 }); b.mat('cardc' + i, { color: h, gloss: 0.2 });
-        const x = -0.24 + i * 0.12, ry = (i - 2) * 0.06;
-        b.push().at(x, 0, 0.01 + Math.abs(i - 2) * 0.014, ry);
+        b.mat('card' + i, { color: 'F8F7F4', gloss: 0.15 }); b.mat('cardc' + i, { color: h, gloss: 0.2 }); b.mat('cardt' + i, { color: 'B9B5AE', gloss: 0.1 });
+        const x = -0.22 + i * 0.11, ry = (i - 2) * 0.06;
+        b.push().at(x, 0, 0.03 + Math.abs(i - 2) * 0.014, ry);
         b.rbox('card' + i, -0.045, 0, -0.075, 0.045, 0.003, 0.075, 0.004, 1); b.box('cardc' + i, -0.039, 0.003, -0.069, 0.039, 0.0036, 0.03);
+        b.box('cardt' + i, -0.039, 0.003, 0.042, 0.01, 0.0033, 0.05); b.box('cardt' + i, -0.039, 0.003, 0.056, -0.008, 0.0033, 0.062);
         b.contact(0, 0, 0.094, 0.154, 0, false, 0.3);
         b.pop();
       });
-      // a magnifying glass lying on the middle chip: the lens shows that color, a little brighter
-      const mx = 0.0, mz = -0.025, R = 0.05, t = 0.008, cy = 0.0036 + t;
+      const mx = 0.0, mz = -0.005, R = 0.05, t = 0.008, cy = 0.0036 + t;
       b.mat('ring', { color: '2B2B2C', gloss: 0.6, twoSided: true });
       const prof = []; for (let i = 0; i <= 20; i++) { const a = i / 20 * Math.PI * 2; prof.push([R + Math.cos(a) * t, cy + Math.sin(a) * t]); }
-      b.lathe('ring', mx, 0, mz, prof, 36);
-      b.mat('lens', { color: 'A9BACB', gloss: 1 }); b.cyl('lens', mx, cy - 0.002, mz, R - 0.002, 0.004, 36);
-      // the handle lies on top of the next chip (resting on it, not sunk into it)
-      b.push().at(mx, 0, mz, -0.55); b.rod('ring', 'x', R + t + 0.065, 0.0036 + 0.0105, 0, 0.0105, 0.13, 14); b.contact(R + t + 0.065, 0, 0.13, 0.03, 0, false, 0.7); b.pop();
+      b.lathe('ring', mx, 0, mz, prof, 40);
+      b.mat('lens', { color: 'A9BACB', gloss: 1 }); b.cyl('lens', mx, cy - 0.002, mz, R - 0.002, 0.004, 40);
+      b.push().at(mx, 0, mz, -0.55); b.rod('ring', 'x', R + t + 0.065, 0.0036 + 0.0105, 0, 0.0105, 0.13, 16); b.contact(R + t + 0.065, 0, 0.13, 0.03, 0, false, 0.7); b.pop();
       b.contact(mx, mz, R * 2.2, R * 2.2, 0, true, 0.8);
-      return { cam: { eye: [0.0, 0.4, 0.47], target: [0.0, 0.0, 0.0], fov: 34 }, studio: true };
+      // a fan deck, opened a little, lying at the back
+      b.mat('brassL', { color: 'BC9A45', gloss: 0.85 });
+      ['D9CBB0', 'B7C4A8', '93A9BC', '6F8F85', '4F6B7D', 'C48A6A', 'E1D2A8'].forEach((h, i) => { b.push().at(-0.04, i * 0.0055, -0.175, 1.45 - (i - 3) * 0.1); chipStrip(b, 'lk' + i, h, 0.22); b.contact(0, -0.104, 0.064, 0.236, 0, false, 0.3); b.pop(); });
+      b.cyl('brassL', -0.04, 0, -0.175, 0.009, 0.0055 * 7 + 0.002, 14);
+      // the phone, back and off to the side, its screen the matched color with a bar of info under it
+      b.push().at(0.16, 0, -0.13, -0.25);
+      b.mat('ph', { color: '1E1F21', gloss: 0.7 }); b.rbox('ph', -0.04, 0, -0.08, 0.04, 0.009, 0.08, 0.008);
+      b.mat('scr', { color: '8C9FB3', gloss: 0.9 }); b.box('scr', -0.034, 0.009, -0.07, 0.034, 0.0094, 0.03);
+      b.mat('scrW', { color: 'F4F3EF', gloss: 0.9 }); b.box('scrW', -0.034, 0.009, 0.03, 0.034, 0.0094, 0.07);
+      b.mat('scrT', { color: '6D6A66', gloss: 0.5 }); b.box('scrT', -0.028, 0.0094, 0.038, 0.012, 0.0097, 0.045); b.box('scrT', -0.028, 0.0094, 0.051, -0.004, 0.0097, 0.056);
+      b.contact(0, 0, 0.09, 0.17, 0, false, 0.8);
+      b.pop();
+      return { cam: { eye: [-0.01, 0.52, 0.4], target: [-0.01, 0.0, -0.025], fov: 40 }, studio: true, cast: true, sunSoftK: 3, shadowC: [0.0, 0.03, -0.03], shadowR: 0.5 };
+    },
+    'tile-fix'(b) {
+      studio(b, 'E6E1DA');
+      // a piece of drywall with a hole patched smooth, a crack waiting for tape, and old paint flaking at a corner
+      const D = { x0: -0.3, x1: 0.06, z0: -0.17, z1: 0.11, h: 0.013 };
+      const WALL = 'AEB9C0';
+      b.mat('dw', { color: 'E9E5DC', pat: PAT.stucco, gloss: 0.05 }); b.mat('dwP', { color: WALL, pat: PAT.stucco, gloss: 0.12 });
+      b.rbox('dw', D.x0, 0, D.z0, D.x1, D.h, D.z1, 0.002, 1);
+      // the painted face, with the patch and the crack on it
+      b.box('dwP', D.x0 + 0.004, D.h, D.z0 + 0.004, D.x1 - 0.004, D.h + 0.0006, D.z1 - 0.004);
+      // the spackle, sanded smooth and feathered out into the old paint: lighter toward the middle, a little off round
+      // (eight thin layers, each a little smaller and a little closer to the spackle's own white, so it fades in)
+      const wl = C.hexToLinear(WALL), pl = C.hexToLinear('E2E4E1');
+      for (let k = 0; k < 8; k++) {
+        const t = (k + 1) / 8, r = 0.07 - k * 0.0052, a = k * 2.4, y = 0.0008 + k * 0.0002;
+        b.mat('patch' + k, { color: C.linearToHex(wl.map((v, i) => v + (pl[i] - v) * t * t * (3 - 2 * t))), pat: PAT.stucco, gloss: 0.06 });
+        b.lathe('patch' + k, -0.125 + Math.cos(a) * 0.003, D.h, -0.045 + Math.sin(a) * 0.003, [[r, 0.0006], [r * 0.85, y], [0, y]], 40);
+      }
+      // the crack: a dark jagged line, wider in the middle, with a short branch
+      b.mat('crack', { color: '3E3B37', gloss: 0.05 });
+      const crack = (x, z, segs, w0, w1) => {
+        segs.forEach(([dx, dz], i) => {
+          const L = Math.hypot(dx, dz), w = w0 + (w1 - w0) * Math.sin(Math.PI * (i + 0.5) / segs.length);
+          b.push().at(x + dx / 2, 0, z + dz / 2, -Math.atan2(dz, dx)); b.box('crack', -L / 2 - w / 2, D.h + 0.0006, -w / 2, L / 2 + w / 2, D.h + 0.0009, w / 2); b.pop();
+          x += dx; z += dz;
+        });
+      };
+      crack(-0.275, 0.07, [[0.014, -0.006], [0.012, 0.004], [0.016, -0.009], [0.01, 0.002], [0.015, -0.008], [0.012, 0.003], [0.014, -0.007], [0.01, -0.001]], 0.0012, 0.0034);
+      crack(-0.222, 0.056, [[0.008, 0.008], [0.006, 0.004], [0.007, 0.007]], 0.0009, 0.0018);
+      // bare drywall paper where the paint peeled away at the corner, and the flakes that came off
+      b.mat('bare', { color: 'C4B79D', pat: PAT.concrete, gloss: 0.04 });
+      for (const [x, z, w, d, ry] of [[0.03, 0.084, 0.03, 0.018, 0.5], [0.042, 0.07, 0.02, 0.016, -0.7], [0.016, 0.094, 0.018, 0.01, 1.3], [0.048, 0.09, 0.014, 0.022, 0.2], [0.022, 0.074, 0.012, 0.009, -1.2], [0.036, 0.098, 0.016, 0.008, 2.4]]) { b.push().at(x, 0, z, ry); b.box('bare', -w / 2, D.h + 0.0006, -d / 2, w / 2, D.h + 0.0008, d / 2); b.pop(); }
+      b.mat('flake', { color: WALL, gloss: 0.12 }); b.mat('flakeU', { color: 'F0EEE8', gloss: 0.1 });
+      for (const [fx, fz, s, ry] of [[0.1, 0.135, 0.013, 0.4], [0.128, 0.105, 0.01, 1.1], [0.088, 0.165, 0.007, 2.0], [0.118, 0.152, 0.005, 0.7]]) {
+        b.push().at(fx, 0, fz, ry); b.box('flakeU', -s, 0, -s * 0.65, s, 0.0006, s * 0.65); b.box('flake', -s * 0.92, 0.0006, -s * 0.58, s * 0.96, 0.0012, s * 0.6); b.box('flake', -s * 0.5, 0.0006, s * 0.4, s * 0.3, 0.0012, s * 0.8); b.pop();
+      }
+      b.contact((D.x0 + D.x1) / 2, (D.z0 + D.z1) / 2, D.x1 - D.x0, D.z1 - D.z0, 0, false, 0.7);
+      // a putty knife resting with its blade on the drywall
+      b.push().at(-0.03, 0, 0.17, 0.35);
+      b.mat('blade', { color: '8E9398', gloss: 0.5 }); b.mat('bladeE', { color: 'C4C8CB', gloss: 0.8 }); b.mat('pk', { color: '2F3B4C', gloss: 0.45 }); b.mat('pkF', { color: 'B9BCBE', gloss: 0.9 });
+      b.rbox('blade', 0.0, 0, -0.04, 0.075, 0.002, 0.04, 0.003, 1); b.box('bladeE', 0.067, 0.002, -0.039, 0.0745, 0.0023, 0.039); b.rbox('pkF', -0.018, 0, -0.016, 0.004, 0.012, 0.016, 0.003); b.rbox('pk', -0.13, 0.001, -0.013, -0.016, 0.02, 0.013, 0.008);
+      b.contact(-0.03, 0, 0.21, 0.08, 0, false, 0.7); b.pop();
+      // a tub of spackle with its lid on, and a sanding sponge
+      b.mat('tub', { color: 'F3F2EE', gloss: 0.35 }); b.mat('tubL', { color: '2E6FB0', gloss: 0.45 }); b.mat('tubB', { color: 'D9542F', gloss: 0.35 }); b.mat('tubI', { color: '3A3632', gloss: 0.2 });
+      const sx = 0.19, sz = -0.08;
+      b.cyl('tub', sx, 0, sz, 0.068, 0.085, 40, 0.074, 'b'); b.cyl('tubB', sx, 0.03, sz, 0.0715, 0.022, 40, 0.0725, '');
+      b.cyl('tubL', sx, 0.085, sz, 0.078, 0.016, 40, 0.078, 't');
+      for (const y of [0.058, 0.066]) b.cyl('tubI', sx, y, sz, 0.0728 + (y - 0.058) * 0.07, 0.003, 40, 0.0729 + (y - 0.058) * 0.07, '');
+      b.contact(sx, sz, 0.16, 0.16, 0, true);
+      b.push().at(0.2, 0, 0.11, -0.25);
+      b.mat('sp', { color: 'E2B23C', pat: PAT.concrete, gloss: 0.05 }); b.mat('spG', { color: 'C29425', pat: PAT.concrete, gloss: 0.05 });
+      b.rbox('sp', -0.05, 0, -0.035, 0.05, 0.03, 0.035, 0.008); b.rbox('spG', -0.0505, 0.008, -0.0355, 0.0505, 0.022, 0.0355, 0.006);
+      b.contact(0, 0, 0.11, 0.08, 0, false, 0.8); b.pop();
+      return { cam: { eye: [-0.04, 0.5, 0.54], target: [-0.04, 0.0, -0.02], fov: 40 }, studio: true, cast: true, sunSoftK: 3, shadowC: [-0.04, 0.04, -0.02], shadowR: 0.5 };
     },
   });
   // where a stain goes, by the stain job
@@ -2064,7 +2204,7 @@
         if (d.emit) { m.emit = emitFor(d.emit, L, !info.outside); if (d.emit === 'win' || d.emit === 'fire' || d.emit === 'screen') m.lin = [0, 0, 0]; }
         const stained = !!ptex;
         if (stained) { m.tex = woodTexture({ sp: ptex.sp, stain: ptex.stain, board: (d.wood && d.wood.board) || 12, vertical: d.wood && d.wood.vertical, cm: (d.wood && d.wood.cm) || 0.3, seed: 3 }, gain); m.gloss = Math.max(m.gloss, 0.3); if (d.pat === PAT.lap || d.pat === PAT.batten || d.pat === PAT.shake) m.pat = d.pat; else m.pat = 0; m.lin = [1, 1, 1]; }
-        else if (d.wood) { m.tex = woodTexture({ sp: d.wood.sp, stain: d.wood.stain || null, tint: d.role && !d.wood.stain ? hex : null, board: d.wood.board, vertical: d.wood.vertical, cm: d.wood.cm || 0.3, seed: d.wood.seed || 2 }, gain); m.pat = d.pat === PAT.lap || d.pat === PAT.batten ? d.pat : 0; }
+        else if (d.wood) { m.tex = woodTexture({ sp: d.wood.sp, stain: d.wood.stain || null, tint: d.role && !d.wood.stain ? hex : null, board: d.wood.board, vertical: d.wood.vertical, cm: d.wood.cm || 0.3, seed: d.wood.seed || 2, len: d.wood.len, ends: d.wood.ends }, gain); m.pat = d.pat === PAT.lap || d.pat === PAT.batten ? d.pat : 0; }
         else if (d.stone) { m.tex = stoneTexture(hex); }
         if (useOv) {
           // the material it really is: fabric, leather or velvet; wood grain or painted
@@ -2115,7 +2255,9 @@
       let amb = L.amb;
       if (info.studio) {
         // a product shot: one soft key light from above and a little to the left, an even fill, nothing else
-        sunDir = norm([-0.35, 1, 0.3]); sunCol = [0.9, 0.88, 0.85]; sunOn = true; amb = 0.8;
+        // (with real cast shadows, a little less fill and a little more key, so they read as shadows)
+        const k = info.cast ? 1.09 : 1;
+        sunDir = norm([-0.35, 1, 0.3]); sunCol = [0.9 * k, 0.88 * k, 0.85 * k]; sunOn = true; amb = info.cast ? 0.72 : 0.8;
       } else if (info.outside) {
         // the sun comes from the left side of the first view (not from behind the camera), so the shadows fall
         // across the picture where they can be seen. It stays put while the view is turned.
@@ -2158,7 +2300,7 @@
       }
       // outside in the sun, the shade takes on the sky's blue a little
       const sky = info.outside && sunOn ? [L.sky[0] * 0.92, L.sky[1] * 0.97, L.sky[2] * 1.04] : L.sky;
-      r.draw({ vp, inv: inv4(vp), eye: e, lvp, shadowR: shR, sunDir, sunCol, sunOn, showSun: info.outside, sky, ground: L.ground, horizon: L.horizon, skyTop: L.skyTop, amb, exp: L.exp * (o.exposure || 1), lamps, room: info.outside ? null : b.room, mats, wipePlane, clear: info.outside ? L.horizon : [0.88, 0.87, 0.85], skyBox: !!info.outside, time: (now || 0) / 1000, cast: !info.studio, aoAmt: info.studio ? 0 : info.outside ? 1 : 0.9, aoFar: info.outside ? 7 : 1.4 });
+      r.draw({ vp, inv: inv4(vp), eye: e, lvp, shadowR: shR, sunDir, sunCol, sunOn, showSun: info.outside, sky, ground: L.ground, horizon: L.horizon, skyTop: L.skyTop, amb, exp: L.exp * (o.exposure || 1), lamps, room: info.outside ? null : b.room, mats, wipePlane, clear: info.outside ? L.horizon : [0.88, 0.87, 0.85], skyBox: !!info.outside, time: (now || 0) / 1000, cast: !info.studio || !!info.cast, sunSoftK: info.sunSoftK || 1, aoAmt: info.studio ? 0 : info.outside ? 1 : 0.9, aoFar: info.outside ? 7 : 1.4 });
       if (anim || (info.water && o.interactive)) schedule();
     }
     function schedule() { if (!raf && !dead) raf = requestAnimationFrame(t => { raf = 0; draw(t); }); }

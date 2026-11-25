@@ -195,12 +195,12 @@
   function boardsField(sp, w, h, o) {
     o = o || {};
     const cm = o.cm || 0.25, bw = o.boardCm || 12, gap = o.gapCm || 0, vertical = !!o.vertical;
-    const key = ['boards', sp, w, h, cm, bw, gap, vertical, o.seed || 0].join('|');
+    const key = ['boards', sp, w, h, cm, bw, gap, vertical, o.seed || 0, o.lenCm || 0, o.ends !== false].join('|');
     return makeField(w, h, (x, y, out) => {
       const along = (vertical ? y : x) * cm, across = (vertical ? x : y) * cm;
       const row = Math.floor(across / (bw + gap)), inRow = across - row * (bw + gap);
       if (inRow > bw) return false; // gap between deck boards
-      const len = 90 + 90 * hash(row, 5 + (o.seed || 0));
+      const len = o.lenCm || 90 + 90 * hash(row, 5 + (o.seed || 0));
       const off = hash(row, 11) * len;
       const seg = Math.floor((along + off) / len);
       const b = board(sp, (o.seed || 0) * 1000 + row * 31 + seg * 7 + 1, bw, len);
