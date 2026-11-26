@@ -59,7 +59,7 @@
     grp(name) {
       if (this.pieceName && PART_OF[name]) { const key = name + '@' + this.pieceName; if (!this.mats[key]) this.mats[key] = Object.assign({}, this.mats[name] || { color: 'FFFFFF' }, { base: name, piece: this.pieceName }); name = key; }
       if (!this.mats[name]) this.mats[name] = { color: 'FFFFFF', auto: true };
-      return this.groups[name] || (this.groups[name] = { p: [], n: [], u: [], i: [] });
+      return this.groups[name] || (this.groups[name] = { p: [], n: [], u: [], i: [], o: [] });
     }
     push() { this.stack.push(this.M.slice()); return this; }
     pop() { this.M = this.stack.pop(); return this; }
@@ -85,6 +85,7 @@
       const flip = dot(cross(sub(b, a), sub(c, a)), fn) < 0;
       const i0 = this.vert(g, a, fn), i1 = this.vert(g, b, fn), i2 = this.vert(g, c, fn), i3 = this.vert(g, d, fn);
       if (flip) g.i.push(i0, i2, i1, i0, i3, i2); else g.i.push(i0, i1, i2, i0, i2, i3);
+      g.o.push(this.solid ? 0 : 1, this.solid ? 0 : 1);
       return this;
     }
     box(mat, x0, y0, z0, x1, y1, z1, skip) {
@@ -145,6 +146,7 @@
           const pa = g.p.slice(a * 3, a * 3 + 3), pb = g.p.slice(b * 3, b * 3 + 3), pc = g.p.slice(cc * 3, cc * 3 + 3);
           const fn = g.n.slice(a * 3, a * 3 + 3);
           if (dot(cross(sub(pb, pa), sub(pc, pa)), fn) < 0) g.i.push(a, cc, b, a, d, cc); else g.i.push(a, b, cc, a, cc, d);
+          g.o.push(0, 0);
         }
       }
       return this;
@@ -153,14 +155,15 @@
     cyl(mat, x, y0, z, r0, h, seg, r1, caps) {
       seg = seg || 16; r1 = r1 == null ? r0 : r1; caps = caps == null ? 'tb' : caps;
       const g = this.grp(mat), ring = [];
-      if (!(caps.includes('t') || r1 <= 0) || !(caps.includes('b') || r0 <= 0)) g.open = true;
+      const open = !(caps.includes('t') || r1 <= 0) || !(caps.includes('b') || r0 <= 0);
+      if (open) g.open = true;
       const slope = (r0 - r1) / h;
       for (let i = 0; i <= seg; i++) {
         const a = i / seg * Math.PI * 2, cx = Math.cos(a), sz = Math.sin(a);
         const n = norm([cx, slope, sz]);
         ring.push([this.vert(g, [x + cx * r0, y0, z + sz * r0], n), this.vert(g, [x + cx * r1, y0 + h, z + sz * r1], n)]);
       }
-      for (let i = 0; i < seg; i++) { const [a, b] = ring[i], [c, d] = ring[i + 1]; g.i.push(a, d, c, a, b, d); }
+      for (let i = 0; i < seg; i++) { const [a, b] = ring[i], [c, d] = ring[i + 1]; g.i.push(a, d, c, a, b, d); g.o.push(+open, +open); }
       this.solid++;
       if (caps.includes('t') && r1 > 0) this.disc(mat, x, y0 + h, z, r1, seg, 1);
       if (caps.includes('b') && r0 > 0) this.disc(mat, x, y0, z, r0, seg, -1);
@@ -171,7 +174,7 @@
       const g = this.grp(mat), n = [0, up, 0], c = this.vert(g, [x, y, z], n), ids = [];
       if (!this.solid) g.open = true;
       for (let i = 0; i <= seg; i++) { const a = i / seg * Math.PI * 2; ids.push(this.vert(g, [x + Math.cos(a) * r, y, z + Math.sin(a) * r], n)); }
-      for (let i = 0; i < seg; i++) if (up > 0) g.i.push(c, ids[i + 1], ids[i]); else g.i.push(c, ids[i], ids[i + 1]);
+      for (let i = 0; i < seg; i++) { if (up > 0) g.i.push(c, ids[i + 1], ids[i]); else g.i.push(c, ids[i], ids[i + 1]); g.o.push(this.solid ? 0 : 1); }
       return this;
     }
     // a horizontal cylinder along x or z (logs, rods, rails)
@@ -192,7 +195,7 @@
         for (let i = 0; i <= seg; i++) { const u = i / seg * Math.PI * 2; const d = [Math.sin(v) * Math.cos(u), Math.cos(v), Math.sin(v) * Math.sin(u)]; row.push(this.vert(g, [x + d[0] * rx, y + d[1] * ry, z + d[2] * rz], norm([d[0] / rx, d[1] / ry, d[2] / rz]))); }
         rows.push(row);
       }
-      for (let j = 0; j < rows.length - 1; j++) for (let i = 0; i < seg; i++) { const a = rows[j][i], b = rows[j][i + 1], c = rows[j + 1][i + 1], d = rows[j + 1][i]; g.i.push(a, b, c, a, c, d); }
+      for (let j = 0; j < rows.length - 1; j++) for (let i = 0; i < seg; i++) { const a = rows[j][i], b = rows[j][i + 1], c = rows[j + 1][i + 1], d = rows[j + 1][i]; g.i.push(a, b, c, a, c, d); g.o.push(0, 0); }
       return this;
     }
     // a turned shape from a profile of [radius, height] pairs (lamps, vases, pots, bowls)
@@ -206,7 +209,7 @@
         for (let i = 0; i <= seg; i++) { const a = i / seg * Math.PI * 2, c = Math.cos(a), s = Math.sin(a); ring.push(this.vert(g, [x + c * r, y + h, z + s * r], norm([c * dh, -dr, s * dh]))); }
         rings.push(ring);
       }
-      for (let k = 0; k < rings.length - 1; k++) for (let i = 0; i < seg; i++) { const a = rings[k][i], b = rings[k][i + 1], c = rings[k + 1][i + 1], d = rings[k + 1][i]; g.i.push(a, c, b, a, d, c); }
+      for (let k = 0; k < rings.length - 1; k++) for (let i = 0; i < seg; i++) { const a = rings[k][i], b = rings[k][i + 1], c = rings[k + 1][i + 1], d = rings[k + 1][i]; g.i.push(a, c, b, a, d, c); g.o.push(1, 1); }
       return this;
     }
     // a wall with rectangular openings. o = origin (bottom-left), u = unit vector along the wall, n = the side it faces.
@@ -233,6 +236,120 @@
     // wide faint fall-off around it (round under round things)
     contact(x, z, w, d, ry, round, s) { s = s || 1; this.shadow(x, z, w * 0.9, d * 0.9, 0.3 * s, ry, 0.002, round); this.shadow(x, z, w * 1.15, d * 1.15, 0.1 * s, ry, 0.0025, round); return this; }
     lamp(x, y, z, power, kind) { this.lamps.push({ p: this.tp([x, y, z]), power: power || 1, kind: kind || 'lamp' }); return this; }
+  }
+
+  // ---------------- what the turning camera may not pass through ----------------
+  // Every face of a scene, sorted into a tree of boxes, so the camera can quickly ask what a line meets (and from
+  // which side), and whether anything is closer to the lens than the picture can show.
+  function collider(b) {
+    const T = [], both = [], soft = [];
+    // (a face of an open shape, like a roof sheet, a wall of the room or a bowl, is drawn from both sides; trees,
+    // shrubs and plants are soft: they can stand between the camera and what it looks at)
+    for (const [name, g] of Object.entries(b.groups)) {
+      const two = !!(b.mats[name] || {}).twoSided, leafy = /^(treeL|trunk|shrub|leaf)$/.test(name), P = g.p, I = g.i, O = g.o && g.o.length === I.length / 3 ? g.o : null;
+      for (let k = 0; k < I.length; k += 3) {
+        for (let j = 0; j < 3; j++) { const v = I[k + j] * 3; T.push(P[v], P[v + 1], P[v + 2]); }
+        both.push(two || (O ? O[k / 3] === 1 : !!g.open)); soft.push(leafy);
+      }
+    }
+    const tri = new Float32Array(T), n = both.length, idx = new Int32Array(n), cen = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { idx[i] = i; for (let a = 0; a < 3; a++) cen[i * 3 + a] = (tri[i * 9 + a] + tri[i * 9 + 3 + a] + tri[i * 9 + 6 + a]) / 3; }
+    // each box: its corners, then either its two halves or (negative) where its few faces start and how many
+    const box = [], kid = [];
+    const build = (s, e) => {
+      const id = kid.length / 2; kid.push(0, 0);
+      const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+      for (let i = s; i < e; i++) { const t = idx[i] * 9; for (let v = 0; v < 9; v++) { const a = v % 3, x = tri[t + v]; if (x < lo[a]) lo[a] = x; if (x > hi[a]) hi[a] = x; } }
+      box.push(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]);
+      if (e - s <= 4) { kid[id * 2] = -1 - s; kid[id * 2 + 1] = e - s; return id; }
+      const cl = [1e9, 1e9, 1e9], ch = [-1e9, -1e9, -1e9];
+      for (let i = s; i < e; i++) for (let a = 0; a < 3; a++) { const x = cen[idx[i] * 3 + a]; if (x < cl[a]) cl[a] = x; if (x > ch[a]) ch[a] = x; }
+      let ax = 0; if (ch[1] - cl[1] > ch[ax] - cl[ax]) ax = 1; if (ch[2] - cl[2] > ch[ax] - cl[ax]) ax = 2;
+      const mid = (cl[ax] + ch[ax]) / 2;
+      let m = s;
+      for (let i = s; i < e; i++) if (cen[idx[i] * 3 + ax] < mid) { const t = idx[i]; idx[i] = idx[m]; idx[m] = t; m++; }
+      if (m === s || m === e) m = (s + e) >> 1;
+      const l = build(s, m), r = build(m, e);
+      kid[id * 2] = l; kid[id * 2 + 1] = r;
+      return id;
+    };
+    if (n) build(0, n);
+    const B = new Float32Array(box), K = new Int32Array(kid);
+    // the first face the line from o along d meets before tMax: { t, back, both } (back: it was met from behind;
+    // both: it's drawn from both sides), or null. With count, it goes on to tMax and also gives k: how many closed
+    // shapes' faces it crossed from behind, less those from the front (above 0, o is shut inside something).
+    // hard: soft things (trees, shrubs, plants) don't count
+    function ray(o, d, tMax, count, hard) {
+      const inv = d.map(v => 1 / (Math.abs(v) < 1e-9 ? 1e-9 : v));
+      let best = tMax, back = false, two = false, hit = false, k0 = 0;
+      const st = n ? [0] : [];
+      while (st.length) {
+        const id = st.pop(), q = id * 6;
+        let t0 = 0, t1 = count ? tMax : best;
+        for (let a = 0; a < 3 && t0 <= t1; a++) {
+          let ta = (B[q + a] - o[a]) * inv[a], tb = (B[q + 3 + a] - o[a]) * inv[a];
+          if (ta > tb) { const s = ta; ta = tb; tb = s; }
+          if (ta > t0) t0 = ta; if (tb < t1) t1 = tb;
+        }
+        if (t0 > t1) continue;
+        const L = K[id * 2];
+        if (L >= 0) { st.push(L, K[id * 2 + 1]); continue; }
+        for (let i = -1 - L, e = i + K[id * 2 + 1]; i < e; i++) {
+          const k = idx[i], p = k * 9;
+          if (hard && soft[k]) continue;
+          const e1x = tri[p + 3] - tri[p], e1y = tri[p + 4] - tri[p + 1], e1z = tri[p + 5] - tri[p + 2];
+          const e2x = tri[p + 6] - tri[p], e2y = tri[p + 7] - tri[p + 1], e2z = tri[p + 8] - tri[p + 2];
+          const px = d[1] * e2z - d[2] * e2y, py = d[2] * e2x - d[0] * e2z, pz = d[0] * e2y - d[1] * e2x;
+          const det = e1x * px + e1y * py + e1z * pz;
+          if (det > -1e-12 && det < 1e-12) continue;
+          const iv = 1 / det, tx = o[0] - tri[p], ty = o[1] - tri[p + 1], tz = o[2] - tri[p + 2];
+          const u = (tx * px + ty * py + tz * pz) * iv; if (u < 0 || u > 1) continue;
+          const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x;
+          const v = (d[0] * qx + d[1] * qy + d[2] * qz) * iv; if (v < 0 || u + v > 1) continue;
+          const t = (e2x * qx + e2y * qy + e2z * qz) * iv;
+          if (t <= 1e-5 || t >= tMax) continue;
+          if (count && !both[k]) k0 += det < 0 ? 1 : -1;
+          if (t < best) { best = t; hit = true; back = det < 0; two = both[k]; }
+        }
+      }
+      return hit || count ? { hit, t: best, back, both: two, k: k0 } : null;
+    }
+    // the squared distance from c to the nearest point of face p (Ericson, Real-Time Collision Detection 5.1.5)
+    function dist2(p, c) {
+      const ax = tri[p], ay = tri[p + 1], az = tri[p + 2];
+      const abx = tri[p + 3] - ax, aby = tri[p + 4] - ay, abz = tri[p + 5] - az, acx = tri[p + 6] - ax, acy = tri[p + 7] - ay, acz = tri[p + 8] - az;
+      const apx = c[0] - ax, apy = c[1] - ay, apz = c[2] - az;
+      const d1 = abx * apx + aby * apy + abz * apz, d2 = acx * apx + acy * apy + acz * apz;
+      let s = 0, t = 0;
+      if (d1 > 0 || d2 > 0) {
+        const d3 = d1 - (abx * abx + aby * aby + abz * abz), d4 = d2 - (acx * abx + acy * aby + acz * abz);
+        const d5 = d1 - (abx * acx + aby * acy + abz * acz), d6 = d2 - (acx * acx + acy * acy + acz * acz);
+        const vc = d1 * d4 - d3 * d2, vb = d5 * d2 - d1 * d6, va = d3 * d6 - d5 * d4;
+        if (d3 >= 0 && d4 <= d3) s = 1;
+        else if (d6 >= 0 && d5 <= d6) t = 1;
+        else if (vc <= 0 && d1 >= 0 && d3 <= 0) s = d1 / (d1 - d3);
+        else if (vb <= 0 && d2 >= 0 && d6 <= 0) t = d2 / (d2 - d6);
+        else if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) { t = (d4 - d3) / ((d4 - d3) + (d5 - d6)); s = 1 - t; }
+        else { const dn = 1 / (va + vb + vc); s = vb * dn; t = vc * dn; }
+      }
+      const dx = apx - abx * s - acx * t, dy = apy - aby * s - acy * t, dz = apz - abz * s - acz * t;
+      return dx * dx + dy * dy + dz * dz;
+    }
+    // is any face within r of c?
+    function near(c, r) {
+      const r2 = r * r, st = n ? [0] : [];
+      while (st.length) {
+        const id = st.pop(), q = id * 6;
+        let d2 = 0;
+        for (let a = 0; a < 3; a++) { const v = c[a] < B[q + a] ? B[q + a] - c[a] : c[a] > B[q + 3 + a] ? c[a] - B[q + 3 + a] : 0; d2 += v * v; }
+        if (d2 > r2) continue;
+        const L = K[id * 2];
+        if (L >= 0) { st.push(L, K[id * 2 + 1]); continue; }
+        for (let i = -1 - L, e = i + K[id * 2 + 1]; i < e; i++) if (dist2(idx[i] * 9, c) <= r2) return true;
+      }
+      return false;
+    }
+    return { ray, near, faces: n };
   }
 
   // ---------------- drawing with WebGL 2 ----------------
@@ -678,7 +795,8 @@
       gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
       for (const d of this.draws) {
         const m = fr.mats[d.name]; if (!m || m.hidden) continue;
-        if (m.twoSided) gl.disable(gl.CULL_FACE); else gl.enable(gl.CULL_FACE);
+        // (an open shape, like a bowl, a roof sheet or a lampshade, shows its inside too; a closed one only its outside)
+        if (m.twoSided || d.open) gl.disable(gl.CULL_FACE); else gl.enable(gl.CULL_FACE);
         gl.uniform3fv(u.uColor, m.lin); gl.uniform3fv(u.uPrev, m.prev || m.lin); gl.uniform3fv(u.uEmit, m.emit || [0, 0, 0]);
         gl.uniform1f(u.uWipe, m.wipe != null ? m.wipe : -1); gl.uniform4fv(u.uWipePlane, fr.wipePlane || [1, 0, 0, 0]);
         gl.uniform1f(u.uGloss, m.gloss || 0); gl.uniform1i(u.uPat, m.pat || 0); gl.uniform1f(u.uScale, m.scale || 1); gl.uniform1f(u.uFlatN, m.flatN ? 1 : 0);
@@ -818,8 +936,13 @@
     if (o.door) {
       const d = o.door, wl = walls[d.wall], u0 = d.at - d.w / 2, u1 = d.at + d.w / 2;
       onWall('trim', wl, u0 - 0.08, u0, 0, d.h + 0.08, 0.022); onWall('trim', wl, u1, u1 + 0.08, 0, d.h + 0.08, 0.022); onWall('trim', wl, u0 - 0.09, u1 + 0.09, d.h, d.h + 0.1, 0.026);
-      // a closed panel door, set a little back
+      // a closed panel door, set a little back, with the jambs and head lining the opening so nothing shows round it
       onWall('door', wl, u0, u1, 0, d.h, -0.02, -0.06);
+      const jd = -0.08;
+      b.quad('trim', P(wl, u0, 0, 0), P(wl, u0, 0, jd), P(wl, u0, d.h, jd), P(wl, u0, d.h, 0), wl.u);
+      b.quad('trim', P(wl, u1, 0, 0), P(wl, u1, 0, jd), P(wl, u1, d.h, jd), P(wl, u1, d.h, 0), scl(wl.u, -1));
+      b.quad('trim', P(wl, u0, d.h, 0), P(wl, u1, d.h, 0), P(wl, u1, d.h, jd), P(wl, u0, d.h, jd), [0, -1, 0]);
+      b.quad('floor', P(wl, u0, 0, 0), P(wl, u1, 0, 0), P(wl, u1, 0, jd), P(wl, u0, 0, jd), [0, 1, 0]);
       const pan = (a0, a1, y0, y1) => onWall('door', wl, a0, a1, y0, y1, -0.005, -0.03);
       const m = (u0 + u1) / 2;
       pan(u0 + 0.1, m - 0.05, 1.12, d.h - 0.12); pan(m + 0.05, u1 - 0.1, 1.12, d.h - 0.12); pan(u0 + 0.1, m - 0.05, 0.14, 0.98); pan(m + 0.05, u1 - 0.1, 0.14, 0.98);
@@ -1366,7 +1489,7 @@
       cabinets(b, -1.7, -0.45, r.z0, {});
       b.box('woodlt', -0.4, 1.3, r.z0, 1.2, 1.33, r.z0 + 0.3);
       b.mat('basket', { color: 'B9A88F', pat: PAT.fabric }); b.lathe('basket', 1.4, 0, -0.6, [[0, 0], [0.2, 0.01], [0.24, 0.36], [0.25, 0.38], [0.23, 0.38], [0, 0.04]], 16);
-      return { cam: { eye: [0.45, 1.45, 1.75], target: [-0.1, 1.0, -1.8], fov: 58 } };
+      return { cam: { eye: [0.45, 1.45, 1.68], target: [-0.1, 1.0, -1.8], fov: 58 } };
     },
     media(b, ctx) {
       const wins = winsFor(ctx, SPOT, ['left']);
@@ -1416,7 +1539,12 @@
         const xa = x0 + (W / N) * i, xb = xa + W / N;
         const ha = knee + (ridge - knee) * (1 - Math.abs(xa) / x1), hb = knee + (ridge - knee) * (1 - Math.abs(xb) / x1), hm = Math.min(ha, hb);
         const inWin = plan.length && xb > -wx + 1e-6 && xa < wx - 1e-6;
-        if (inWin) { b.quad('wall', [xa, knee, z0], [xb, knee, z0], [xb, wy0, z0], [xa, wy0, z0], [0, 0, 1]); if (hm > wy1) b.quad('wall', [xa, wy1, z0], [xb, wy1, z0], [xb, hm, z0], [xa, hm, z0], [0, 0, 1]); }
+        if (inWin) {
+          b.quad('wall', [xa, knee, z0], [xb, knee, z0], [xb, wy0, z0], [xa, wy0, z0], [0, 0, 1]); if (hm > wy1) b.quad('wall', [xa, wy1, z0], [xb, wy1, z0], [xb, hm, z0], [xa, hm, z0], [0, 0, 1]);
+          // (and the bits of this strip beside the window, so there's no slit next to it)
+          if (xa < -wx) b.quad('wall', [xa, wy0, z0], [-wx, wy0, z0], [-wx, wy1, z0], [xa, wy1, z0], [0, 0, 1]);
+          if (xb > wx) b.quad('wall', [wx, wy0, z0], [xb, wy0, z0], [xb, wy1, z0], [wx, wy1, z0], [0, 0, 1]);
+        }
         else b.quad('wall', [xa, knee, z0], [xb, knee, z0], [xb, hm, z0], [xa, hm, z0], [0, 0, 1]);
         if (Math.abs(ha - hb) > 1e-4) b.quad('wall', [xa, hm, z0], [xb, hm, z0], ha > hb ? [xa, ha, z0] : [xb, hb, z0], ha > hb ? [xa, ha, z0] : [xb, hb, z0], [0, 0, 1]);
       }
@@ -1427,9 +1555,12 @@
         b.box('trim', -wx, (wy0 + wy1) / 2 - 0.025, z0 - 0.1, wx, (wy0 + wy1) / 2 + 0.025, z0 - 0.08);
         b.windows.push({ center: [0, (wy0 + wy1) / 2, z0], out: [0, 0, -1], dir: plan[0].dir, w: 2 * wx, h: wy1 - wy0 });
       }
+      // the gable behind the camera: there when the room is turned around in 3D
+      b.wall('side', [x1, 0, z1], [-1, 0, 0], [0, 0, -1], W, knee, []);
+      b.quad('side', [x1, knee, z1], [x0, knee, z1], [0, ridge, z1], [0, ridge, z1], [0, 0, -1]);
       bed(b, 0, -0.9, 0, 1.5); nightstand(b, -1.25, -1.75, 0); nightstand(b, 1.25, -1.75, 0);
       rug(b, 0, -0.6, 2.6, 2.4);
-      b.room = { min: [x0, 0, z0], max: [x1, ridge, z1 + 3] };
+      b.room = { min: [x0, 0, z0], max: [x1, ridge, z1] };
       return { cam: { eye: [0.5, 1.5, 2.3], target: [-0.1, 1.2, -2.5], fov: 58 } };
     },
     garage(b, ctx) {
@@ -1649,7 +1780,7 @@
       for (const x of [-3.6, -2.0, 2.0, 3.6]) xWindow(b, x, 3.4, z1, 0.95, 1.4, { shutters });
       for (const x of [-3.4, 3.4]) xWindow(b, x, 1.2, z1, 1.1, 1.6, { shutters });
       frontDoor(b, 0, z1 + 0.001, { sidelights: true });
-      porch3(b, x0 + 0.2, x1 - 0.2, z1, 2.6, 0.5, ctx);
+      porch3(b, x0 + 0.2, x1 - 0.2, z1, 2.6, 0.5, ctx, false, 3.25);
       for (const x of [-4.2, 4.2]) shrub(b, x, z1 + 3.0, 1.1);
       b.box('walk', -0.8, 0.003, z1 + 2.8, 0.8, 0.012, z1 + 12);
       cam = sp === 'porch_floor' || ctx.has('step') ? { eye: [3.2, 1.8, 11], target: [0, 1.0, z1 + 1.2], fov: 46 } : { eye: [3.6, 1.9, 20], target: [0, 3.1, 0], fov: 46 };
@@ -1660,7 +1791,7 @@
       xWindow(b, 0, H + 0.6, z1, 0.9, 1.0);
       xWindow(b, -2.1, 1.1, z1, 1.2, 1.5, { shutters }); xWindow(b, 2.1, 1.1, z1, 1.2, 1.5, { shutters });
       frontDoor(b, 0, z1 + 0.001, {});
-      porch3(b, -1.6, 1.6, z1, 2.0, 0.4, ctx, true);
+      porch3(b, -1.6, 1.6, z1, 2.0, 0.4, ctx, true, 3.55);
       for (const x of [-2.9, 2.9]) shrub(b, x, z1 + 0.7, 1.0);
       b.box('walk', -0.6, 0.003, z1 + 2.2, 0.6, 0.012, z1 + 11);
       cam = { eye: [3.2, 1.8, 16.5], target: [0, 2.6, 0], fov: 46 };
@@ -1689,23 +1820,29 @@
       if (garage) garageDoor3(b, 3.6, z1, 3.6, 2.2); else xWindow(b, 3.4, 1.0, z1, 1.3, 1.3, { shutters });
       b.box('walk', -0.25, 0.003, z1 + 1.1, 1.05, 0.012, z1 + 11);
       for (const x of [-4.9, -3.0, -1.1]) shrub(b, x, z1 + 0.75, 1.0);
-      if (sp === 'porch_floor') porch3(b, -2.6, 1.6, z1, 2.0, 0.3, ctx, true);
+      if (sp === 'porch_floor') porch3(b, -2.6, 1.6, z1, 2.0, 0.3, ctx, true, H - 0.05);
       cam = { eye: [2.4, 1.75, 17], target: [0, 1.7, 0], fov: 46 };
     }
     for (const [x, z, s] of [[-13, -6, 1.2], [12, -7, 1.3], [-17, 4, 1.0], [16, 3, 1.1], [-6, -14, 1.3], [7, -15, 1.4]]) tree(b, x, z, s);
     if (sp === 'front_door' && ctx.closeup) cam = ctx.closeup;
     return { cam, outside: true };
   }
-  function porch3(b, x0, x1, z1, depth, y, ctx, small) {
+  // top: how high its roof can meet the house (under the eaves and the windows above), which sets how tall it is
+  function porch3(b, x0, x1, z1, depth, y, ctx, small, top) {
+    const ph = Math.min(2.5, top - y - 0.4), cy = y + ph + 0.22, ry = cy + 0.03, rt = Math.min(y + ph + 0.8, top);
     b.mat('porchfloor', { role: 'step', color: 'A8A39A', wood: ctx.has('step') ? null : null, pat: PAT.lap, gloss: 0.3, part: 'step' });
     b.box('porchfloor', x0, y - 0.15, z1, x1, y, z1 + depth);
     b.box('xtrim', x0, 0, z1 + depth - 0.05, x1, y - 0.15, z1 + depth);
     for (let i = 0; i < 3; i++) b.box('porchfloor', -0.9 + i * 0.0, y - 0.15 - i * 0.17 - 0.0, z1 + depth + i * 0.3, 0.9, y - i * 0.17, z1 + depth + (i + 1) * 0.3);
     const posts = small ? [x0 + 0.1, x1 - 0.1] : [x0 + 0.1, x0 + (x1 - x0) * 0.33, x0 + (x1 - x0) * 0.67, x1 - 0.1];
-    for (const px of posts) b.box('xtrim', px - 0.09, y, z1 + depth - 0.25, px + 0.09, y + 2.5, z1 + depth - 0.07);
-    b.box('xtrim', x0, y + 2.5, z1 + depth - 0.3, x1, y + 2.72, z1 + depth);
-    b.quad('roof', [x0 - 0.2, y + 2.75, z1 + depth + 0.3], [x1 + 0.2, y + 2.75, z1 + depth + 0.3], [x1 + 0.2, y + 3.3, z1], [x0 - 0.2, y + 3.3, z1], norm([0, depth, 0.55]));
-    b.mat('porchceil', { color: 'DCE8EC' }); b.quad('porchceil', [x0, y + 2.72, z1 + depth], [x1, y + 2.72, z1 + depth], [x1, y + 2.72, z1], [x0, y + 2.72, z1], [0, -1, 0]);
+    for (const px of posts) b.box('xtrim', px - 0.09, y, z1 + depth - 0.25, px + 0.09, y + ph, z1 + depth - 0.07);
+    b.box('xtrim', x0, y + ph, z1 + depth - 0.3, x1, cy, z1 + depth);
+    const ez = z1 + depth + 0.3, ex0 = x0 - 0.2, ex1 = x1 + 0.2;
+    b.quad('roof', [ex0, ry, ez], [ex1, ry, ez], [ex1, rt, z1], [ex0, rt, z1], norm([0, ez - z1, rt - ry]));
+    // the ceiling under it (painted the old porch blue) out to the roof's edges, and the two ends boxed in
+    b.mat('porchceil', { color: 'DCE8EC' }); b.quad('porchceil', [ex0, cy, ez], [ex1, cy, ez], [ex1, cy, z1], [ex0, cy, z1], [0, -1, 0]);
+    for (const [ex, sx] of [[ex0, -1], [ex1, 1]]) b.quad('xtrim', [ex, cy, z1], [ex, cy, ez], [ex, ry, ez], [ex, rt, z1], [sx, 0, 0]);
+    b.quad('xtrim', [ex0, cy, ez], [ex1, cy, ez], [ex1, ry, ez], [ex0, ry, ez], [0, 0, 1]);
     if (!small) for (const s of [-1, 1]) { const rx0 = s < 0 ? x0 + 0.2 : 1.1, rx1 = s < 0 ? -1.1 : x1 - 0.2; b.box('xtrim', rx0, y + 0.9, z1 + depth - 0.18, rx1, y + 0.96, z1 + depth - 0.12); for (let xx = rx0 + 0.1; xx < rx1; xx += 0.14) b.box('xtrim', xx - 0.018, y, z1 + depth - 0.17, xx + 0.018, y + 0.9, z1 + depth - 0.13); }
     b.mat('rocker', { color: '2E3134', gloss: 0.3 }); if (!small) { armchair(b, -3.0, z1 + 0.9, 0.15, 'rocker'); armchair(b, 3.0, z1 + 0.9, -0.15, 'rocker'); }
   }
@@ -1737,14 +1874,19 @@
     cabin(b, ctx) {
       yardMats(b); ground(b, 60);
       b.mat('logs', { role: 'body', color: '9C6B43', wood: { sp: 'pine', board: 30 }, part: 'body' });
-      const W = 8, D = 6.5, H = 2.9, x0 = -W / 2, x1 = W / 2, z0 = -D / 2, z1 = D / 2, r = 0.15;
-      for (let y = r; y < H; y += r * 2) { b.rod('logs', 'x', 0, y, z1, r, W + 0.5, 12); b.rod('logs', 'x', 0, y, z0, r, W + 0.5, 12); b.rod('logs', 'z', x0, y + r, 0, r, D + 0.5, 12); b.rod('logs', 'z', x1, y + r, 0, r, D + 0.5, 12); }
+      const W = 8, D = 6.5, H = 3.0, x0 = -W / 2, x1 = W / 2, z0 = -D / 2, z1 = D / 2, r = 0.15;
+      // (the logs stop under the roof, none poking up through it at the eaves)
+      for (let y = r; y + r <= H + 1e-6; y += r * 2) {
+        b.rod('logs', 'x', 0, y, z1, r, W + 0.5, 12); b.rod('logs', 'x', 0, y, z0, r, W + 0.5, 12);
+        if (y + 2 * r <= H + 1e-6) { b.rod('logs', 'z', x0, y + r, 0, r, D + 0.5, 12); b.rod('logs', 'z', x1, y + r, 0, r, D + 0.5, 12); }
+      }
       b.mat('body', { role: 'body', color: '9C6B43', wood: { sp: 'pine', board: 30 }, part: 'body' });
-      b.box('logs', x0, 0, z0, x1, H, z1);
-      gableRoof(b, x0 - 0.2, x1 + 0.2, z0, z1, H, 2.0, 0.6, false);
+      // (the roof sits on a plate a little above the top log, so the logs that run out past the corners stay under it)
+      b.box('logs', x0, 0, z0, x1, H + 0.12, z1);
+      gableRoof(b, x0, x1, z0, z1, H + 0.12, 2.0, 0.6, false);
       xWindow(b, -2.4, 1.0, z1 + r, 1.1, 1.2); xWindow(b, 2.4, 1.0, z1 + r, 1.1, 1.2);
       frontDoor(b, 0, z1 + r, {});
-      porch3(b, x0 + 0.3, x1 - 0.3, z1 + r, 2.0, 0.3, ctx, true);
+      porch3(b, x0 + 0.3, x1 - 0.3, z1 + r, 2.0, 0.3, ctx, true, 2.8);
       for (const [x, z, s] of [[-10, -6, 1.3], [9, -7, 1.4], [-13, 4, 1.1], [12, 3, 1.2], [-4, -12, 1.5], [5, -13, 1.3]]) tree(b, x, z, s);
       return { cam: { eye: [3.4, 1.8, 15], target: [0, 1.9, 0], fov: 46 }, outside: true };
     },
@@ -1799,8 +1941,8 @@
     }
     // the back of the house, a raised deck with railings and stairs
     bodyMat(b, 'wood', { part: '' });
-    b.box('body', -7, 0, -9, 7, 3.0, -3.6, 'b');
-    b.box('xtrim', -7.2, 2.9, -3.62, 7.2, 3.15, -3.5); b.quad('roof', [-7.4, 3.1, -3.2], [7.4, 3.1, -3.2], [7.4, 4.8, -6.5], [-7.4, 4.8, -6.5], norm([0, 3.3, 1.7]));
+    b.box('body', -7, 0, -9, 7, 3.2, -3.6, 'b');
+    gableRoof(b, -7, 7, -9, -3.6, 3.2, 1.45, 0.4, false);
     b.box('xtrim', -1.45, 0.6, -3.6, 1.45, 2.85, -3.55); b.box('glassx', -1.35, 0.65, -3.56, 1.35, 2.75, -3.53); b.box('xtrim', -0.03, 0.65, -3.56, 0.03, 2.75, -3.5);
     xWindow(b, -4.2, 1.3, -3.6, 1.3, 1.25); xWindow(b, 4.2, 1.3, -3.6, 1.3, 1.25);
     const H = 0.62, x0 = -4, x1 = 4, z0 = -3.6, z1 = 0.6;
@@ -1822,14 +1964,14 @@
     railRun(x0 + 0.06, z1 - 0.06, sx0, z1 - 0.06); railRun(sx1, z1 - 0.06, x1 - 0.06, z1 - 0.06); railRun(x0 + 0.06, z0 + 0.1, x0 + 0.06, z1 - 0.06); railRun(x1 - 0.06, z0 + 0.1, x1 - 0.06, z1 - 0.06);
     b.shadow(0, -1.5, 8.4, 4.6, 0.25);
     if (variant === 'pergola') {
-      for (const [px, pz] of [[-3.7, -0.2], [3.7, -0.2], [-3.7, -3.2], [3.7, -3.2]]) b.box(rail, px - 0.09, H, pz - 0.09, px + 0.09, H + 2.5, pz + 0.09);
-      for (const pz of [-0.2, -3.2]) b.box(rail, -4.2, H + 2.35, pz - 0.05, 4.2, H + 2.6, pz + 0.05);
-      for (let x = -3.9; x <= 3.9; x += 0.45) b.box(rail, x - 0.03, H + 2.6, -3.6, x + 0.03, H + 2.78, 0.2);
+      for (const [px, pz] of [[-3.7, -0.2], [3.7, -0.2], [-3.7, -2.9], [3.7, -2.9]]) b.box(rail, px - 0.09, H, pz - 0.09, px + 0.09, H + 2.5, pz + 0.09);
+      for (const pz of [-0.2, -2.9]) b.box(rail, -4.2, H + 2.35, pz - 0.05, 4.2, H + 2.6, pz + 0.05);
+      for (let x = -3.9; x <= 3.9; x += 0.45) b.box(rail, x - 0.03, H + 2.6, -3.05, x + 0.03, H + 2.78, 0.2);
     }
     const chairMat = variant === 'patioset' ? rail : deckWood(b, Object.assign({}, ctx, { tex: null }), 'chairw', { part: 'none', color: 'E9E5DC', wood: null, gloss: 0.3 });
     adirondack(b, -1.6, -1.6, 0.5, chairMat); adirondack(b, 1.5, -1.7, -0.5, chairMat);
     b.box(chairMat, -0.35, H + 0.38, -1.25, 0.35, H + 0.42, -0.75); for (const [px, pz] of [[-0.3, -1.2], [0.3, -1.2], [-0.3, -0.8], [0.3, -0.8]]) b.box(chairMat, px - 0.025, H, pz - 0.025, px + 0.025, H + 0.38, pz + 0.025);
-    b.lathe('pot', 3.3, H, -3.0, [[0, 0], [0.22, 0.01], [0.28, 0.5], [0.3, 0.52], [0, 0.52]], 16); for (let i = 0; i < 5; i++) b.sphere('leaf', 3.3 + (i - 2) * 0.08, H + 0.7 + (i % 2) * 0.15, -3.0, 0.2, 0.25, 0.2, 10);
+    b.lathe('pot', 3.15, H, -3.05, [[0, 0], [0.22, 0.01], [0.28, 0.5], [0.3, 0.52], [0, 0.52]], 16); for (let i = 0; i < 5; i++) b.sphere('leaf', 3.15 + (i - 2) * 0.08, H + 0.7 + (i % 2) * 0.15, -3.05, 0.2, 0.25, 0.2, 10);
     for (const [x, z, s] of [[-11, -2, 1.3], [11, -4, 1.4], [-6, -16, 1.4], [8, -17, 1.5], [-16, 8, 1.2], [15, 9, 1.3]]) tree(b, x, z, s);
     // chairs sit on the deck, not the ground
     for (const d of b.decals) if (Math.abs(d.y - 0.003) < 0.001 && d.x > x0 && d.x < x1 && d.z > z0 && d.z < z1 && d.w < 2) d.y = H + 0.004;
@@ -2155,15 +2297,8 @@
     if (kind === 'screen') return L.night ? [0.04, 0.06, 0.1] : [0.01, 0.012, 0.016];
     return [0, 0, 0];
   }
-  function mount(container, o) {
-    if (!supported()) return null;
-    const canvas = document.createElement('canvas');
-    canvas.className = 'gl' + (o.interactive ? '' : ' still');
-    canvas.setAttribute('aria-hidden', 'true');
-    container.appendChild(canvas);
-    let r;
-    try { r = new Renderer(canvas); } catch (e) { ok = false; canvas.remove(); if (window.console) console.warn('3D view off:', e && e.message); return null; }
-    if (!r.gl) { canvas.remove(); return null; }
+  // what a scene is built from: the answers, the stain being looked at, the parts it goes on, the room's layout
+  function sceneCtx(o) {
     const a = o.answers || {};
     const target = o.stain ? a.target : '';
     // texParts: a stain for each of several parts at once ({ deck: tex, fence: tex }), as a project shows them all
@@ -2177,6 +2312,19 @@
     if (o.floor) ctx.floor = o.floor;
     if (a.space === 'floor_paint') ctx.floor = 'concrete';
     if (['bathroom', 'powder', 'laundry'].includes(a.space)) ctx.floor = 'tile';
+    return ctx;
+  }
+  function mount(container, o) {
+    if (!supported()) return null;
+    const canvas = document.createElement('canvas');
+    canvas.className = 'gl' + (o.interactive ? '' : ' still');
+    canvas.setAttribute('aria-hidden', 'true');
+    container.appendChild(canvas);
+    let r;
+    try { r = new Renderer(canvas); } catch (e) { ok = false; canvas.remove(); if (window.console) console.warn('3D view off:', e && e.message); return null; }
+    if (!r.gl) { canvas.remove(); return null; }
+    const texParts = o.texParts || {};
+    const ctx = sceneCtx(o);
     const b = new Builder();
     let info;
     try { info = (SCENES[o.scene] || SCENES.living)(b, ctx) || {}; r.upload(b); } catch (e) { r.dispose(); canvas.remove(); if (window.console) console.warn('3D scene failed:', e && e.message); return null; }
@@ -2224,18 +2372,122 @@
     const cam0 = info.cam || IN_CAM;
     // inside, turning happens around the middle of the room (on the same line of sight as the picture), so the
     // camera stays in the room; outside, around the house
+    const orbitAround = target => { const off = sub(cam0.eye, target), d = len(off); return { yaw: Math.atan2(off[0], off[2]), pitch: Math.asin(off[1] / d), dist: d, target }; };
     const orbit0 = (() => {
       let target = cam0.target.slice();
+      const dir = norm(sub(cam0.target, cam0.eye));
       if (!info.outside && b.room) {
         const c = [(b.room.min[0] + b.room.max[0]) / 2, 1.2, (b.room.min[2] + b.room.max[2]) / 2];
-        const dir = norm(sub(cam0.target, cam0.eye));
         target = add(cam0.eye, scl(dir, Math.max(0.8, dot(sub(c, cam0.eye), dir))));
       }
-      const off = sub(cam0.eye, target), d = len(off);
-      return { yaw: Math.atan2(off[0], off[2]), pitch: Math.asin(off[1] / d), dist: d, target };
+      return orbitAround(target);
     })();
     let orbit = Object.assign({}, orbit0, { target: orbit0.target.slice() });
-    function eye() { const cp = Math.cos(orbit.pitch); return add(orbit.target, [Math.sin(orbit.yaw) * cp * orbit.dist, Math.sin(orbit.pitch) * orbit.dist, Math.cos(orbit.yaw) * cp * orbit.dist]); }
+    const near0 = info.outside ? 0.2 : 0.05;
+    // how wide the lens is: a little wider on a tall, narrow screen so the room still fits
+    const fovFor = aspect => (cam0.fov || 50) * D2R * (aspect < 1.4 ? Math.min(1.35, 1.4 / aspect) : 1);
+    // While it's turned, the camera keeps out of things: never through a wall or out of the room, never inside the
+    // furniture, a house or a tree, and nothing nearer the lens than the picture can show (that would cut a hole in
+    // it). Where the spot it's turned to isn't clear, it comes in toward the middle until it is (outside, it can go
+    // out past a house instead). A still picture keeps its own camera spot.
+    let col = null;
+    const IN_DIRS = [[1, 0.013, 0.007], [-1, 0.011, -0.009], [0.008, 1, 0.012], [-0.01, -1, 0.006], [0.012, 0.009, 1], [-0.007, 0.014, -1]].map(norm);
+    const OUT_DIRS = [[1, 0.05, 0.013], [-1, 0.04, -0.011], [0.012, 0.05, 1], [-0.009, 0.04, -1], [0.013, 1, 0.011]].map(norm);
+    // (reach: how far it is to the spot it turns around, or 0 to skip the last check)
+    function clearAt(p, fwd, aspect, reach) {
+      // the lens: the smallest ball holding the eye and the corners of the nearest picture it can draw, with a little
+      // room to spare (so a wall just behind the camera doesn't count, one at its side does)
+      const hh = near0 * Math.tan(fovFor(aspect) / 2), s = (near0 * near0 + hh * hh * (1 + aspect * aspect)) / (2 * near0);
+      if (col.near(add(p, scl(fwd, s)), s + (info.outside ? 0.15 : 0.05))) return false;
+      // it can see out in front of it: not tucked in behind the shelves or a cabinet, or right up against a house
+      // (outside, a tree or a shrub in front is all right)
+      if (reach && col.ray(p, fwd, Math.min(reach, info.outside ? 3 : 0.6), false, !!info.outside)) return false;
+      // inside, every way out meets the room's own walls, floor or ceiling from the front (not the back of a wall, from
+      // outside the room, nor the inside of a cabinet); outside, it isn't shut in anything (a house, a tree, a garage)
+      if (!info.outside) { for (const d of IN_DIRS) { const h = col.ray(p, d, 200); if (!h || (h.back && !h.both)) return false; } return true; }
+      // (shut in: it crosses more of a closed shape's sides from inside than from out, or the first thing it meets is
+      // the inside of something, like the underside of a roof from up in the attic. Up under the eaves, only the line
+      // straight up does that, so it takes three of the five)
+      let shut = 0;
+      for (const d of OUT_DIRS) { const h = col.ray(p, d, 500, true); if (h.k > 0 || (h.hit && h.back)) shut++; }
+      return shut < 3;
+    }
+    // get ready to turn (at the first touch): the faces sorted; outside, how far round it can turn; inside, the spot it
+    // turns around moved toward the camera, along the same line of sight, if it was in the middle of something
+    let yawLim = null;
+    function ready() {
+      if (col || !o.interactive) return;
+      col = collider(b);
+      const aspect0 = canvas.width / canvas.height || 1.6;
+      if (info.outside) {
+        // A view of the front of something (a porch, the front door, a fence) turns only as far round as it can before
+        // the house or the fence is in the way, rather than squeezing the camera up against it or jumping past it.
+        // One that goes all the way round (a house, a dock, a swing set) still does.
+        const cp = Math.cos(orbit0.pitch), d0 = orbit0.dist, step = 5 * D2R, P0 = orbit0.target;
+        // (where the spot it turns around is out in the open, like on a porch or a deck, the view to it must stay open
+        // too: not hidden, near the camera's end, behind the house or the end of the porch. Trees don't count. Seen
+        // across nine lines to around the spot, so railings and posts in the way don't count either)
+        const open = OUT_DIRS.filter(q => { const h = col.ray(P0, q, 500, true); return h.k > 0 || (h.hit && h.back); }).length < 3;
+        const hidden = (E, D) => {
+          const side = norm(cross(D, [0, 1, 0])); let shut = 0;
+          for (const sx of [-0.7, 0, 0.7]) for (const sy of [-0.4, 0, 0.4]) {
+            const to = sub(add(P0, add(scl(side, sx), [0, sy, 0])), E), L = len(to);
+            if (col.ray(E, scl(to, 1 / L), L * 0.55, false, true)) shut++;
+          }
+          return shut >= 7;
+        };
+        // (in the way: the camera would have to come in close, or go out past something, or can't see the spot)
+        const blocked = yw => {
+          const D = [Math.sin(yw) * cp, Math.sin(orbit0.pitch), Math.cos(yw) * cp], t = armFor(D, d0, aspect0);
+          return t < d0 * 0.85 || t > d0 + 0.3 || (open && hidden(add(P0, scl(D, t)), D));
+        };
+        let a = 0, c = 0;
+        while (a < Math.PI * 2 && !blocked(orbit0.yaw + a + step)) a += step;
+        // (turning around a spot on a wall, like the front door or the fence, it stops well before it's looking along
+        // the wall)
+        if (a < Math.PI * 2) {
+          while (!blocked(orbit0.yaw - c - step)) c += step;
+          const k = open ? 0 : 4 * step;
+          yawLim = [orbit0.yaw - Math.max(0, c - k), orbit0.yaw + Math.max(0, a - k)];
+        }
+        return;
+      }
+      const back = norm(sub(cam0.eye, orbit0.target)), aspect = aspect0;
+      let t = orbit0.target;
+      for (let k = 0; k < 80 && !clearAt(t, scl(back, -1), aspect, 0); k++) t = add(t, scl(back, 0.04));
+      if (t === orbit0.target) return;
+      // (it's called before the first turn, so the view itself doesn't move)
+      Object.assign(orbit0, orbitAround(t));
+      Object.assign(orbit, orbit0, { target: orbit0.target.slice() });
+    }
+    const arm = { key: '', t: 0 };
+    function armFor(D, want, aspect) {
+      const key = orbit.target.join() + '|' + D.join() + '|' + want + '|' + aspect.toFixed(2);
+      if (key === arm.key) return arm.t;
+      const fwd = scl(D, -1), T0 = orbit.target, ok = t => clearAt(add(T0, scl(D, t)), fwd, aspect, t);
+      let t = want;
+      if (!ok(want)) {
+        t = null;
+        const step = info.outside ? 0.25 : 0.08, lo = info.outside ? 0.3 : 0.02, hi = orbit0.dist * 3;
+        // the largest clear spot short of where it was turned to (found to a millimeter, so it moves smoothly)
+        const inward = a => { let g = a, bad = a + step; for (let i = 0; i < 7; i++) { const m = (g + bad) / 2; if (ok(m)) g = m; else bad = m; } return g; };
+        const outward = c => { let g = c, bad = c - step; for (let i = 0; i < 7; i++) { const m = (g + bad) / 2; if (ok(m)) g = m; else bad = m; } return g; };
+        // (in toward the middle first, so it stays on the same side of a wall as what it's looking at; only outside, and
+        // only if that finds nowhere, like a house with the turning spot inside it, out past it)
+        for (let a = want - step; t == null && a > lo; a -= step) if (ok(a)) t = inward(a);
+        if (info.outside) for (let c = want + step; t == null && c < hi; c += step) if (ok(c)) t = outward(c);
+        if (t == null) t = info.outside ? want : lo;
+      }
+      arm.key = key; arm.t = t;
+      return t;
+    }
+    function eye(aspect) {
+      const cp = Math.cos(orbit.pitch), D = [Math.sin(orbit.yaw) * cp, Math.sin(orbit.pitch), Math.cos(orbit.yaw) * cp];
+      const t = col ? armFor(D, orbit.dist, aspect || canvas.width / canvas.height) : orbit.dist;
+      return add(orbit.target, scl(D, t));
+    }
+    // zooming starts from where the camera really is (it may have come in from where it was turned to)
+    const settle = () => { if (col && arm.key) orbit.dist = arm.t; };
     function size() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = Math.max(2, Math.round((o.width || container.clientWidth || 600) * dpr)), h = Math.max(2, Math.round((o.height || container.clientHeight || 360) * dpr));
@@ -2245,9 +2497,8 @@
       if (dead || !r.gl) return;
       size();
       const L = LIGHTS[lightId] || LIGHTS.daylight;
-      const e = eye(), aspect = canvas.width / canvas.height;
-      const fov = (cam0.fov || 50) * D2R * (aspect < 1.4 ? Math.min(1.35, 1.4 / aspect) : 1);
-      const vp = mmul(persp(fov, aspect, info.outside ? 0.2 : 0.05, info.outside ? 400 : 60), lookAt(e, orbit.target, [0, 1, 0]));
+      const aspect = canvas.width / canvas.height, e = eye(aspect);
+      const vp = mmul(persp(fovFor(aspect), aspect, near0, info.outside ? 400 : 60), lookAt(e, orbit.target, [0, 1, 0]));
       // the sun
       const el = L.el * D2R;
       let sunOn = false, sunDir = [0, 1, 0], sunCol = [0, 0, 0];
@@ -2336,8 +2587,7 @@
     function pickAt(cx, cy) {
       const rc = canvas.getBoundingClientRect(); if (!rc.width) return null;
       const x = ((cx - rc.left) / rc.width) * 2 - 1, y = 1 - ((cy - rc.top) / rc.height) * 2;
-      const e = eye(), aspect = canvas.width / canvas.height;
-      const fov = (cam0.fov || 50) * D2R * (aspect < 1.4 ? Math.min(1.35, 1.4 / aspect) : 1), t = Math.tan(fov / 2);
+      const aspect = canvas.width / canvas.height, e = eye(aspect), t = Math.tan(fovFor(aspect) / 2);
       const fw = norm(sub(orbit.target, e)), rt = norm(cross(fw, [0, 1, 0])), upv = cross(rt, fw);
       const dir = norm(add(fw, add(scl(rt, x * t * aspect), scl(upv, y * t))));
       let best = Infinity, hit = null;
@@ -2370,8 +2620,8 @@
       canvas.tabIndex = 0; canvas.setAttribute('role', 'img'); canvas.removeAttribute('aria-hidden'); canvas.setAttribute('aria-label', 'A 3D view. Drag to look around, pinch or scroll to zoom, arrow keys to turn.');
       hint = document.createElement('span'); hint.className = 'scene-hint'; hint.textContent = o.onPick ? 'Drag to look around. Tap anything to change its color.' : 'Drag to look around'; container.appendChild(hint);
       const ptrs = new Map(); let pinch0 = 0, dist0 = 0;
-      const lim = () => { orbit.pitch = Math.max(info.outside ? 0.02 : -0.25, Math.min(1.25, orbit.pitch)); orbit.dist = Math.max(orbit0.dist * 0.35, Math.min(orbit0.dist * (info.outside ? 2.2 : 2.6), orbit.dist)); };
-      canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); if (ptrs.size === 2) { const [p, q] = [...ptrs.values()]; pinch0 = Math.hypot(p[0] - q[0], p[1] - q[1]); dist0 = orbit.dist; } if (hint) hint.classList.add('gone'); });
+      const lim = () => { if (yawLim) orbit.yaw = Math.max(yawLim[0], Math.min(yawLim[1], orbit.yaw)); orbit.pitch = Math.max(info.outside ? 0.02 : -0.25, Math.min(1.25, orbit.pitch)); orbit.dist = Math.max(orbit0.dist * 0.35, Math.min(orbit0.dist * (info.outside ? 2.2 : 2.6), orbit.dist)); };
+      canvas.addEventListener('pointerdown', e => { ready(); canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); if (ptrs.size === 2) { const [p, q] = [...ptrs.values()]; settle(); pinch0 = Math.hypot(p[0] - q[0], p[1] - q[1]); dist0 = orbit.dist; } if (hint) hint.classList.add('gone'); });
       canvas.addEventListener('pointermove', e => {
         if (!ptrs.has(e.pointerId)) return;
         const last = ptrs.get(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
@@ -2380,9 +2630,9 @@
       });
       const up = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; };
       canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
-      canvas.addEventListener('wheel', e => { e.preventDefault(); orbit.dist *= Math.exp(e.deltaY * 0.0012); lim(); schedule(); }, { passive: false });
+      canvas.addEventListener('wheel', e => { e.preventDefault(); ready(); settle(); orbit.dist *= Math.exp(e.deltaY * 0.0012); lim(); schedule(); }, { passive: false });
       canvas.addEventListener('dblclick', () => { orbit = Object.assign({}, orbit0, { target: orbit0.target.slice() }); schedule(); });
-      canvas.addEventListener('keydown', e => { const k = e.key; if (k === 'ArrowLeft') orbit.yaw += 0.1; else if (k === 'ArrowRight') orbit.yaw -= 0.1; else if (k === 'ArrowUp') orbit.pitch += 0.06; else if (k === 'ArrowDown') orbit.pitch -= 0.06; else if (k === '+' || k === '=') orbit.dist *= 0.9; else if (k === '-') orbit.dist *= 1.1; else return; e.preventDefault(); lim(); schedule(); });
+      canvas.addEventListener('keydown', e => { const k = e.key; ready(); if (k === 'ArrowLeft') orbit.yaw += 0.1; else if (k === 'ArrowRight') orbit.yaw -= 0.1; else if (k === 'ArrowUp') orbit.pitch += 0.06; else if (k === 'ArrowDown') orbit.pitch -= 0.06; else if (k === '+' || k === '=') { settle(); orbit.dist *= 0.9; } else if (k === '-') { settle(); orbit.dist *= 1.1; } else return; e.preventDefault(); lim(); schedule(); });
       setTimeout(() => { if (hint) hint.classList.add('gone'); }, o.onPick ? 6000 : 4000);
     }
     // a quick tap (not a drag, not a pinch, not a double-tap) on something, turning or not: tell the app what it
@@ -2438,5 +2688,7 @@
     v.destroy();
     return url;
   }
-  root.CG.room3d = { supported, has: id => !!SCENES[id], mount, snapshot, scenes: () => Object.keys(SCENES).filter(k => !k.startsWith('tile-')) };
+  // (build and collider are for the tests: a scene's shapes without drawing it, and what the camera checks against)
+  const build = (scene, o) => { const b = new Builder(); const info = (SCENES[scene] || SCENES.living)(b, sceneCtx(Object.assign({ scene }, o || {}))) || {}; return { b, info }; };
+  root.CG.room3d = { supported, has: id => !!SCENES[id], mount, snapshot, scenes: () => Object.keys(SCENES).filter(k => !k.startsWith('tile-')), build, collider };
 })(window);
