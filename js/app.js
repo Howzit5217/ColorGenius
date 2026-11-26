@@ -531,8 +531,8 @@
         ${p.test ? `<section class="fix-sec fix-box test"><h2><span class="ic">${ic('search', 22)}</span>Quick Test</h2><p>${esc(p.test)}</p></section>` : ''}
         <section class="fix-sec fix-box"><h2><span class="ic">${ic('unsure', 22)}</span>Why It Happens</h2><ul class="fix-why">${p.why.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>
       </div>
-      <section class="fix-sec fix-box"><h2><span class="ic">${ic('list', 22)}</span>How to Fix It</h2><ol class="fix-steps">${p.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol></section>
-      <section class="fix-sec fix-box"><h2><span class="ic">${ic('can', 22)}</span>What to Buy</h2><ul class="fix-buy">${p.buy.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>
+      <section class="fix-sec fix-box"><h2><span class="ic">${ic('list', 22)}</span>How to Fix It</h2>${bulletList(p.steps)}</section>
+      <section class="fix-sec fix-box"><h2><span class="ic">${ic('can', 22)}</span>What to Buy</h2>${bulletList(p.buy, true)}</section>
       ${p.tip ? `<p class="fix-tip"><b>Tip</b> ${esc(p.tip)}</p>` : ''}
       <div class="actions stack"><button type="button" class="btn big primary${on ? ' done' : ''}" data-add="fix:${esc(p.id)}">${on ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-fix-print="${esc(p.id)}">${ic('print', 22)}Print</button><button type="button" class="btn big" data-fix-email="${esc(p.id)}">${mailIcon}Email</button></div>
       ${others.length ? `<section class="section"><h2>Other Problems</h2><div class="fix-grid">${others.map(x => `<button type="button" class="fix-card" data-go="fix/${x.id}"><span class="fix-ic">${fixIc(x.icon, 30)}</span><span class="fix-txt"><b>${esc(x.name)}</b><span>${esc(x.see)}</span></span></button>`).join('')}</div><div class="actions"><button type="button" class="btn" data-go="fix">See Every Problem</button></div></section>` : ''}
@@ -570,6 +570,14 @@
   // the steps, the wait and what to buy. The rules are in js/answers.js.
   // ================================================================
   const AN = window.CG.answers;
+  // Steps and shopping lists as bullet points: each step's first sentence is the bullet, and its details are
+  // sub-bullets under it (a step's order still reads top to bottom; a list of steps stays an ordered list for
+  // screen readers)
+  function bulletList(items, buy) {
+    const li = x => { const b = AN.bullets(x, buy); return `<li${b.subs.length ? ' class="has-sub"' : ''}><span class="bul-main">${esc(b.main)}</span>${b.subs.length ? `<ul>${b.subs.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}</li>`; };
+    const tag = buy ? 'ul' : 'ol';
+    return `<${tag} class="bul${buy ? ' bul-buy' : ''}">${items.map(li).join('')}</${tag}>`;
+  }
   const askIc = (name, size) => `<svg viewBox="0 0 32 32" width="${size || 32}" height="${size || 32}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${AN.ICONS[name] || ''}</svg>`;
   const clockIc = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
   const askCards = list => `<div class="fix-grid">${list.map(T => `<button type="button" class="fix-card" data-go="ask/${T.id}"><span class="fix-ic">${askIc(T.icon, 30)}</span><span class="fix-txt"><b>${esc(T.name)}</b><span>${esc(T.line)}</span></span></button>`).join('')}</div>`;
@@ -591,8 +599,8 @@
       </section>
       ${A.warn ? `<p class="fix-warn"><b>Be safe.</b> <span>${esc(A.warn)}</span></p>` : ''}
       ${A.test ? `<section class="fix-box test"><h2><span class="ic">${ic('search', 22)}</span>Quick Test</h2><p>${esc(A.test)}</p></section>` : ''}
-      <section class="fix-box"><h2><span class="ic">${ic('list', 22)}</span>How to Do It</h2><ol class="fix-steps">${A.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${A.wait ? `<p class="ans-wait">${clockIc}<span><b>How long to wait</b> <span>${esc(A.wait)}</span></span></p>` : ''}</section>
-      <section class="fix-box"><h2><span class="ic">${ic('can', 22)}</span>What to Buy</h2><ul class="fix-buy">${A.buy.map(x => `<li>${esc(x)}</li>`).join('')}</ul>${A.note ? `<p class="ans-note">${esc(A.note)}</p>` : ''}</section>
+      <section class="fix-box"><h2><span class="ic">${ic('list', 22)}</span>How to Do It</h2>${bulletList(A.steps)}${A.wait ? `<p class="ans-wait">${clockIc}<span><b>How long to wait</b> <span>${esc(A.wait)}</span></span></p>` : ''}</section>
+      <section class="fix-box"><h2><span class="ic">${ic('can', 22)}</span>What to Buy</h2>${bulletList(A.buy, true)}${A.note ? `<p class="ans-note">${esc(A.note)}</p>` : ''}</section>
       ${A.tips.map(t => `<p class="fix-tip"><b>Tip</b> <span>${esc(t)}</span></p>`).join('')}
       ${A.lead ? `<p class="fix-warn"><b>Old house?</b> <span>${esc(FX.LEAD)}</span></p>` : ''}
       <div class="actions stack">${link ? `<button type="button" class="btn big" ${link.start ? `data-start="${link.start}"` : `data-go="${link.go}"`}>${esc(link.label)}${chev('right')}</button>` : ''}<button type="button" class="btn big primary${on ? ' done' : ''}" data-add="${esc(ref)}">${on ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-ask-print="${id}">${ic('print', 22)}Print</button><button type="button" class="btn big" data-ask-email="${id}">${mailIcon}Email</button></div>`;
@@ -3438,7 +3446,7 @@
       <p>Not sure yet? Get a sample of your top ${top.length === 1 ? 'color' : top.length === 2 ? 'two' : 'three'} and test ${top.length === 1 ? 'it' : 'them'} at home. A few samples cost a lot less than painting a room twice.</p>
       <div class="sp-picks">${top.map(c => `<button type="button" class="sp-pick" data-sp="${esc(c.id)}" aria-pressed="true"><span class="sw" ${swStyle(c.hex)}></span><span class="sp-txt"><b>${esc(c.name)}</b><small>${esc(brandName(c.brand))} ${esc(E.codeLabel(c))}</small></span><span class="sp-box" aria-hidden="true"></span></button>`).join('')}</div>
       <div class="actions"><button type="button" class="btn big primary" data-sp-add="1">${plusIcon}Add Samples to Project</button></div>
-      <details class="more sp-how"><summary>How to Test a Sample</summary><ol class="fix-steps">${SAMPLE_STEPS.map(x => `<li>${esc(x)}</li>`).join('')}</ol></details></section>`;
+      <details class="more sp-how"><summary>How to Test a Sample</summary>${bulletList(SAMPLE_STEPS)}</details></section>`;
   }
   // a sample of a color on the project: one more on its line if it's there, or a line of its own
   function addSample(c) {

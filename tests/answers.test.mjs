@@ -150,3 +150,19 @@ test('Look Up opens the right Quick Answer for a question-like search', () => {
   // a color search isn't one
   for (const q of ['Agreeable Gray', 'SW 7029', 'navy', 'Hale Navy', 'gloss black']) assert.equal(m(q), null, q);
 });
+
+test('steps and shopping lists as bullets: the first sentence on top, the details under it', () => {
+  const b = AN.bullets;
+  assert.deepEqual(b('Sand with the grain: 150-grit, then 220.'), { main: 'Sand with the grain', subs: ['150-grit, then 220.'] });
+  assert.deepEqual(b('Caulking a tub? Fill it with water first. The weight opens the joint.'), { main: 'Caulking a tub?', subs: ['Fill it with water first.', 'The weight opens the joint.'] });
+  assert.deepEqual(b('Put on 2 coats.'), { main: 'Put on 2 coats.', subs: [] });
+  // a thing to buy puts what's in brackets under it; a short name like (PVA) stays, and so do a step's brackets
+  assert.deepEqual(b('Mineral spirits (for cleanup)', true), { main: 'Mineral spirits', subs: ['For cleanup'] });
+  assert.deepEqual(b('Drywall (PVA) primer', true).subs, []);
+  assert.deepEqual(b('Direct-to-metal paint (DTM)', true).subs, []);
+  assert.deepEqual(b('Sand the edges smooth (feather them).').subs, []);
+  // numbers and sizes don't end a sentence
+  assert.deepEqual(b('Let each coat dry (6 to 24 hours, the can says), sand lightly with 220-grit, and wipe off the dust.').subs, []);
+  // Spanish splits the same way, its ¿ included
+  assert.deepEqual(b('¿Vas a sellar una tina? Llénala de agua primero.'), { main: '¿Vas a sellar una tina?', subs: ['Llénala de agua primero.'] });
+});

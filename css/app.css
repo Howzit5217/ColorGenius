@@ -1250,12 +1250,17 @@ html.cam-open { overflow: hidden; }
 .fix-sec { margin-top: 22px; }
 .fix-sec h2 { margin: 0 0 8px; font-size: 1.25rem; }
 .fix-sec p { margin: 0; line-height: 1.5; font-size: 1.05rem; }
-.fix-steps { margin: 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 10px; }
-.fix-steps li { position: relative; padding: 2px 0 0 46px; min-height: 34px; line-height: 1.5; font-size: 1.05rem; counter-increment: step; }
-.fix-steps li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--bg); font-weight: 800; }
-.fix-buy { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-.fix-buy li { padding: 10px 14px 10px 44px; border-radius: 12px; background: var(--surface-2); position: relative; line-height: 1.4; }
-.fix-buy li::before { content: ''; position: absolute; left: 14px; top: 50%; width: 18px; height: 18px; margin-top: -9px; border-radius: 5px; border: 2px solid var(--ink-3); }
+/* steps and shopping lists: bullet points, with a step's details as sub-bullets under it (no list is a grid or
+   flex box: some browsers then leave the bullets off) */
+.bul { margin: 0; padding: 0 0 0 1.35em; list-style: disc outside; }
+.bul > li { padding-left: 4px; line-height: 1.5; font-size: 1.05rem; }
+.bul > li + li { margin-top: 10px; }
+.bul > li::marker { color: var(--ink); }
+.bul > li.has-sub > .bul-main { font-weight: 700; }
+.bul ul { margin: 3px 0 0; padding: 0 0 0 1.3em; list-style: circle outside; }
+.bul ul li { padding-left: 2px; color: var(--ink-2); font-size: 1rem; line-height: 1.45; }
+.bul ul li + li { margin-top: 2px; }
+.bul ul li::marker { color: var(--ink-3); }
 .fix-tip { margin: 18px 0 0; padding: 12px 16px; border-radius: 14px; background: var(--accent-soft); line-height: 1.45; }
 .fix-page .actions { margin-top: 22px; }
 .item .sw.fix-sw { display: grid; place-items: center; color: var(--ink); }
@@ -1281,7 +1286,7 @@ html.cam-open { overflow: hidden; }
 .sp-pick[aria-pressed="true"] .sp-box { background: var(--ink); border-color: var(--ink); }
 .sp-pick[aria-pressed="true"] .sp-box::after { content: ''; width: 10px; height: 6px; margin-top: -3px; border: solid var(--bg); border-width: 0 0 2.5px 2.5px; transform: rotate(-45deg); }
 .sp-how { margin-top: 12px; }
-.sp-how .fix-steps { margin-top: 8px; }
+.sp-how .bul { margin-top: 8px; }
 /* ---------------- when to do it: the weather for outside jobs ---------------- */
 .wx-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin: 10px 0; }
 .wx-zip { flex: 0 1 180px; }
@@ -1382,7 +1387,8 @@ html.cam-open { overflow: hidden; }
 .fix-box.test h2 .ic { background: var(--surface); }
 .fix-box p, .fix-box li { max-width: 72ch; }
 .fix-box + .fix-box, .fix-cards + .fix-box { margin-top: 16px; }
-@media (min-width: 700px) { .fix-box .fix-buy { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* (a long shopping list in two columns on a wider screen) */
+@media (min-width: 700px) { .fix-box .bul-buy { columns: 2; column-gap: 36px; } .fix-box .bul-buy > li { break-inside: avoid; } .fix-box .bul-buy > li + li { margin-top: 0; } .fix-box .bul-buy > li { padding-bottom: 10px; } }
 
 /* ---------------- quick answers: the choices, and the answer under them (beside them on a wide screen) ---------------- */
 .ask-grid { display: grid; gap: 24px; margin-top: 6px; }

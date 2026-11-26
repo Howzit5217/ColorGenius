@@ -496,5 +496,28 @@
     for (const [id, re] of MATCH) if (re.test(s)) return id;
     return null;
   }
-  return { TOOLS, LIST, ICONS, VERDICTS, RAGS, find, pick, tap, shown, answer, refOf, fromRef, combos, match };
+  // A step (or a thing to buy) as a bullet point and the sub-bullets under it: the first sentence is the bullet
+  // and the rest go under it. "Label: detail" puts the detail under it too, and on a shopping list so does
+  // "Thing (detail)" (not a short name like "(PVA)"). The Spanish splits the same way, so each piece has its own
+  // line in the Spanish list. (Fix a Problem and the sample steps use it too.)
+  function sentences(t) {
+    const out = []; let cur = '';
+    for (let i = 0; i < t.length; i++) {
+      cur += t[i];
+      if ('.!?'.includes(t[i]) && t[i + 1] === ' ' && /[A-Z0-9ÁÉÍÓÚÑ¿¡]/.test(t[i + 2] || '')) { out.push(cur.trim()); cur = ''; }
+    }
+    if (cur.trim()) out.push(cur.trim());
+    return out;
+  }
+  const capFirst = s => s.replace(/^([¿¡"“(]*)(\S)/, (m, a, b) => a + b.toUpperCase());
+  function bullets(text, buy) {
+    const rest = sentences(String(text || '').trim());
+    let main = rest.shift() || '';
+    const subs = [];
+    const c = main.indexOf(': ');
+    if (c > 0) { subs.push(capFirst(main.slice(c + 2))); main = main.slice(0, c); }
+    else if (buy) { const m = main.match(/^(.+?) \(([^()]+)\)\.?$/); if (m && !/^[A-Z0-9-]{2,6}$/.test(m[2])) { main = m[1]; subs.push(capFirst(m[2])); } }
+    return { main, subs: subs.concat(rest) };
+  }
+  return { TOOLS, LIST, ICONS, VERDICTS, RAGS, find, pick, tap, shown, answer, refOf, fromRef, combos, match, bullets, sentences };
 });

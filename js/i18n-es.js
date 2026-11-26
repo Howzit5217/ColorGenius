@@ -2633,5 +2633,273 @@ Put It Back changes it back to how it was.	Con Regresarlo vuelve a como estaba.
 Keep Changing	Seguir cambiando
 or the closest paint to any color:	o la pintura más cercana a cualquier color:
 Changed in the picture from	En la imagen se cambió de
+Let it dry. Some go on pink and turn white when they’re ready.	Déjalo secar. Algunos salen rosas y se ponen blancos cuando están listos.
+Some go on pink and turn white when they’re ready.	Algunos salen rosas y se ponen blancos cuando están listos.
+Two thin coats. On steps, mix anti-slip grit into the last coat.	Dos capas delgadas. En los escalones, mezcla arena antideslizante en la última capa.
+Two thin coats.	Dos capas delgadas.
+On steps, mix anti-slip grit into the last coat.	En los escalones, mezcla arena antideslizante en la última capa.
+Prime. Knots, cedar, redwood or oak: an oil-based or shellac stain-blocking primer.	Aplica imprimador. Nudos, cedro, secoya o roble: un imprimador que bloquea manchas a base de aceite o de goma laca.
+Knots, cedar, redwood or oak: an oil-based or shellac stain-blocking primer.	Nudos, cedro, secoya o roble: un imprimador que bloquea manchas a base de aceite o de goma laca.
+Two thin coats. Thick coats peel.	Dos capas delgadas. Las capas gruesas se pelan.
+Thick coats peel.	Las capas gruesas se pelan.
+Sandpaper	Lija
+Sand with the grain	Lija a favor de la veta
+150-grit, then 220.	Grano 150 y luego 220.
+Stir it, don’t shake it	Revuélvelo, no lo agites
+Shaking makes bubbles that dry in the finish.	Agitarlo hace burbujas que se secan en el acabado.
+A quart covers about 125 sq ft a coat	Un cuarto cubre unos 125 pies² por capa
+150 and 220 grit	Grano 150 y 220
+For cleanup	Para limpiar
+Let the stain dry at least a day (gel stain 2 to 3 days), longer when it’s cool or damp.	Deja secar el tinte al menos un día (el tinte en gel de 2 a 3 días), más si hace fresco o hay humedad.
+It shouldn’t smell or feel tacky.	No debe oler ni sentirse pegajoso.
+220-grit	Grano 220
+Wipe off all the dust with a barely damp microfiber cloth.	Quita todo el polvo con un paño de microfibra apenas húmedo.
+An oily tack cloth can leave a film under water-based finishes.	Un paño atrapapolvo con aceite puede dejar una película debajo de los acabados a base de agua.
+Brush on thin coats with a synthetic brush.	Aplica capas delgadas con una brocha sintética.
+Lay it on and leave it: going back over it makes bubbles and streaks.	Ponlo y déjalo: volver a pasar la brocha hace burbujas y rayas.
+Or foam brush	O de espuma
+If you used wall paint	Si usaste pintura de pared
+Let it dry 3 days and sand very lightly.	Déjala secar 3 días y lija muy suave.
+Cabinet and trim enamel	Esmalte para gabinetes y molduras
+For touch-ups	Para retoques
+Only over wall paint	Solo sobre pintura de pared
+Sand the floor with 120-grit, then 150.	Lija el piso con grano 120 y luego 150.
+A rented floor sander makes quick work of a whole room.	Una lijadora de pisos rentada hace rápido una habitación entera.
+About a gallon for every 400 to 500 sq ft, each coat	Cerca de un galón por cada 400 a 500 pies², en cada capa
+Sanding discs or screens	Discos o mallas de lija
+120 and 150 grit	Grano 120 y 150
+Fine sanding pad	Almohadilla de lija fina
+For between coats	Para entre capas
+Exterior paint	Pintura exterior
+Or a chalk-style paint made for outdoors	O una pintura tipo tiza hecha para exteriores
+Over outdoor chalk-style paint	Sobre pintura tipo tiza para exteriores
+Cut the tip small and at an angle.	Corta la punta pequeña y en ángulo.
+You can always cut more.	Siempre puedes cortar más.
+Paint once it’s dry	Pinta cuando esté seco
+The tube says when (30 minutes to a day).	El tubo dice cuándo (de 30 minutos a un día).
+Painter’s caulk, white	Sellador para pintor, blanco
+Acrylic latex with silicone	Látex acrílico con silicón
+Deeper than 1/4 inch?	¿Más de 1/4 de pulgada de hondo?
+Push in foam backer rod first, so the caulk is about as deep as it is wide.	Mete primero un cordón de respaldo de espuma, para que el sellador quede tan hondo como ancho.
+Elastomeric caulk	Sellador elastomérico
+Paintable	Se puede pintar
+Or a thin wood strip	O una tira delgada de madera
+Keep the bead thin	Haz el cordón delgado
+Thick clear caulk stays cloudy.	El sellador transparente grueso se queda turbio.
+Fill it with a putty knife.	Rellénalo con una espátula.
+Deep holes: two thin passes, letting the first dry.	Hoyos hondos: dos pasadas delgadas, dejando secar la primera.
+Small drywall panel	Panel de yeso pequeño
+The same thickness, usually 1/2 inch	Del mismo grosor, casi siempre de 1/2 pulgada
+Siliconized acrylic, with mildew protection	Acrílico con silicón, con protección contra moho
+Cut and scrape out all the old caulk.	Corta y raspa todo el sellador viejo.
+New silicone won’t stick to old.	El silicón nuevo no se pega al viejo.
+Caulking a tub?	¿Vas a sellar una tina?
+Fill it with water first.	Llénala de agua primero.
+The weight opens the joint, so the caulk won’t tear the first time someone takes a bath.	El peso abre la junta, así el sellador no se rompe la primera vez que alguien se bañe.
+100% silicone caulk, kitchen and bath	Sellador de silicón 100%, para cocina y baño
+With mildew protection	Con protección contra moho
+Elastomeric or polymer	Elastomérico o de polímero
+Polymer or silicone	De polímero o silicón
+Small spots	Partes pequeñas
+Fill with stainable wood filler, sand, then match the color with stain markers and a fine brush.	Rellena con relleno para madera que acepta tinte, lija y luego iguala el color con marcadores de tinte y un pincel fino.
+Bigger damage	Daño más grande
+Cut out the bad part and glue in a matching piece of wood, then stain it all.	Corta la parte mala y pega un pedazo de madera que combine, y luego tiñe todo.
+Stainable wood filler	Relleno para madera que acepta tinte
+For small spots	Para partes pequeñas
+Matching wood and wood glue	Madera que combine y pegamento para madera
+For bigger damage	Para daños más grandes
+Concrete crack filler	Relleno para grietas de concreto
+Liquid, for thin cracks	Líquido, para grietas delgadas
+Run the sealant in.	Aplica el sellador.
+It flattens out on its own.	Se empareja solo.
+Joints	Juntas
+Push in foam backer rod, then run self-leveling concrete sealant over it.	Mete un cordón de respaldo de espuma y luego aplica encima sellador autonivelante para concreto.
+Holes and broken edges	Hoyos y bordes rotos
+Dampen the spot, press in concrete patch with a trowel and smooth it.	Humedece el lugar, presiona el parche para concreto con una llana y alísalo.
+Concrete patch	Parche para concreto
+For holes and broken edges	Para hoyos y bordes rotos
+Water test	Prueba del agua
+Sprinkle some water.	Échale unas gotas de agua.
+It should soak in and darken the concrete.	Debe absorberse y oscurecer el concreto.
+If it beads up, there’s a sealer to strip first.	Si forma gotas, hay un sellador que quitar primero.
+Plastic test	Prueba del plástico
+Tape a 2-foot square of plastic flat on the floor for a day.	Pega con cinta un cuadro de plástico de 2 pies, bien plano en el piso, por un día.
+If it’s damp under it, don’t use epoxy.	Si hay humedad debajo, no uses epóxico.
+Scrub oil spots with a degreaser, then clean and etch the whole floor (most kits come with the etcher).	Talla las manchas de aceite con un desengrasante, y luego limpia y graba todo el piso (casi todos los kits traen el grabador).
+After, it should feel like fine sandpaper.	Después debe sentirse como lija fina.
+Mix only what you can roll out in the kit’s working time, often an hour or two.	Mezcla solo lo que puedas aplicar con rodillo en el tiempo de trabajo del kit, casi siempre una o dos horas.
+Brush the edges, then roll.	Pinta los bordes con brocha y luego usa el rodillo.
+Sized for your floor	Del tamaño de tu piso
+Spiked shoes	Zapatos de clavos
+To walk on it wet	Para caminar encima mojado
+Anti-slip additive	Aditivo antideslizante
+Optional	Opcional
+Or wait	O espera
+Many sealers wear off outside in a year or two.	Muchos selladores se desgastan afuera en un año o dos.
+Then do the water test again	Luego haz otra vez la prueba del agua
+It should soak in and darken.	Debe absorberse y oscurecer.
+Damp or darker under it means moisture is coming through.	Si debajo está húmedo o más oscuro, está pasando humedad.
+Check gutters, downspouts and the slope of the ground.	Revisa las canaletas, las bajantes y la pendiente del terreno.
+Most of the water starts there.	Casi toda el agua empieza ahí.
+If it stays damp, skip coatings	Si sigue húmedo, no uses recubrimientos
+Use a penetrating sealer, which lets it breathe, or leave it bare.	Usa un sellador penetrante, que lo deja respirar, o déjalo desnudo.
+Plastic sheet and tape	Plástico y cinta
+For the test	Para la prueba
+To keep it painted	Para dejarlo pintado
+Clean it, scuff it, and repaint with porch & floor paint.	Límpialo, ráspalo y vuelve a pintar con pintura para porches y pisos.
+To go back to bare	Para volver al concreto desnudo
+Use a concrete paint stripper, or have it ground.	Usa un removedor de pintura para concreto, o haz que lo pulan.
+Concrete paint stripper	Removedor de pintura para concreto
+To repaint	Para volver a pintar
+Silane or siloxane	Silano o siloxano
+Keep it thin	Que quede delgada
+Thick coats turn white or slippery.	Las capas gruesas se ponen blancas o resbalosas.
+Concrete sealer	Sellador para concreto
+The same kind as the old one	Del mismo tipo que el viejo
+If it’s damp under it, fix the moisture first.	Si hay humedad debajo, arregla primero la humedad.
+Clean it with a degreaser.	Límpialo con un desengrasante.
+Etch smooth, shiny concrete so the paint grips.	Graba el concreto liso y brillante para que la pintura se adhiera.
+Fix the outside first	Arregla primero el exterior
+Gutters, downspouts, and ground sloping away from the house.	Canaletas, bajantes y terreno con pendiente hacia afuera de la casa.
+Plug holes and any trickles with hydraulic cement.	Tapa los hoyos y cualquier goteo con cemento hidráulico.
+It sets in minutes, even wet.	Fragua en minutos, incluso mojado.
+Hydraulic cement	Cemento hidráulico
+For holes and leaks	Para hoyos y goteras
+Clean it, scrape what’s loose, and repaint with a masonry paint.	Límpialo, raspa lo suelto y vuelve a pintar con pintura para mampostería.
+To waterproof it	Para impermeabilizarlo
+Strip or wire-brush the paint off, then use masonry waterproofing paint.	Quita la pintura con removedor o cepillo de alambre y luego usa pintura impermeabilizante para mampostería.
+Masonry paint	Pintura para mampostería
+On bare block	Sobre block desnudo
+Exterior	Exterior
+Concrete etcher	Grabador para concreto
+For smooth concrete	Para concreto liso
+For steps	Para escalones
+Seal it with a water-based clear coat or wax.	Séllala con una capa transparente a base de agua o con cera.
+Clear Coat to Use has which.	Qué capa transparente usar te dice cuál.
+Paint stripper and a scraper	Removedor de pintura y un raspador
+To go back to wood	Para volver a la madera
+Gel stain and a clear coat	Tinte en gel y una capa transparente
+For a glaze over paint	Para una veladura sobre pintura
+Thin coats with a synthetic brush.	Capas delgadas con una brocha sintética.
+Don’t brush back over it.	No vuelvas a pasar la brocha encima.
+Clean off grease and polish with a degreaser.	Quita la grasa y el abrillantador con un desengrasante.
+Kitchen cabinets need a real scrub.	Los gabinetes de cocina necesitan una buena tallada.
+Two coats.	Dos capas.
+A cabinet and trim enamel holds up best on cabinets and furniture.	Un esmalte para gabinetes y molduras es el que mejor aguanta en gabinetes y muebles.
+Let it dry a full day.	Déjalo secar un día completo.
+Add a second coat to go darker.	Agrega una segunda capa para oscurecerlo más.
+Make sure there’s no clear coat on it	Asegúrate de que no tenga capa transparente
+A drop of water soaks in on stained wood and beads up on a clear coat.	Una gota de agua se absorbe en la madera teñida y forma gota sobre una capa transparente.
+Test the new stain on a hidden spot.	Prueba el tinte nuevo en una parte escondida.
+It comes out darker over the old one.	Queda más oscuro sobre el viejo.
+A darker color	Un color más oscuro
+Wait until the stain is completely dry.	Espera a que el tinte esté completamente seco.
+Dewaxed shellac	Goma laca sin cera
+Over oil stain	Sobre tinte de aceite
+Sand the primer lightly	Lija suave el imprimador
+It raises tiny fibers.	Levanta fibras pequeñas.
+120 and 180 grit	Grano 120 y 180
+Stain-blocking for knotty or red woods	Que bloquea manchas para maderas con nudos o rojizas
+Clear shellac	Goma laca transparente
+For knots	Para nudos
+Sand it lightly once it’s dry.	Líjalo suave cuando esté seco.
+180 and 220 grit	Grano 180 y 220
+120, then 150 or 180-grit.	Grano 120 y luego 150 o 180.
+Stop there: sanding finer makes the stain come out lighter.	Hasta ahí: lijar más fino hace que el tinte quede más claro.
+Pine, maple, birch and cherry blotch	El pino, el maple, el abedul y el cerezo se manchan
+Brush on a pre-stain wood conditioner first.	Aplica primero con brocha un acondicionador de madera antes del tinte.
+Pine, maple, birch, cherry	Pino, maple, abedul, cerezo
+First coat, let it dry, then sand lightly with 220	Primera capa, déjala secar y luego lija suave con grano 220
+The water raised tiny fibers.	El agua levantó fibras pequeñas.
+Sprinkle water on it.	Échale unas gotas de agua.
+If it soaks in, it’s ready.	Si se absorbe, está lista.
+If it beads up, wait and test again in a few weeks.	Si forma gotas, espera y vuelve a probar en unas semanas.
+Clean it with a deck cleaner.	Límpiala con un limpiador para terrazas.
+On new wood, a brightener opens it up to take stain.	En madera nueva, un avivador la abre para que tome el tinte.
+One thin coat, or two wet-on-wet.	Una capa delgada, o dos húmedo sobre húmedo.
+Back-brush so none sits on top.	Repasa con brocha para que nada se quede encima.
+Stain only soaks into bare wood	El tinte solo se absorbe en madera desnuda
+Sand or strip off any finish under the wax too.	Lija o quita también cualquier acabado debajo de la cera.
+Check for wax	Revisa si tiene cera
+A drop of water beads up on wax and soaks in on bare chalk paint.	Una gota de agua forma gota sobre la cera y se absorbe en la pintura tipo tiza sola.
+On dark colors, don’t overbrush or it can streak.	En colores oscuros, no pases la brocha de más o puede dejar rayas.
+Chalk paint wax	Cera para pintura tipo tiza
+Clear or dark	Transparente u oscura
+Rust-stopping spray paint	Pintura en aerosol que detiene el óxido
+Or a rusty-metal primer	O un imprimador para metal oxidado
+A cabinet and trim enamel holds up best.	Un esmalte para gabinetes y molduras es el que mejor aguanta.
+Plastic-bonding spray paint	Pintura en aerosol que se adhiere al plástico
+Or a bonding spray primer	O un imprimador de adherencia en aerosol
+Try a corner.	Prueba una esquina.
+If it peels off easily, take it all down and wash off the glue.	Si se despega fácil, quítalo todo y lava el pegamento.
+Staying up	Si se queda
+Glue down loose seams and edges, and let it dry.	Pega las uniones y los bordes sueltos, y deja secar.
+Seams show?	¿Se notan las uniones?
+Skim them with joint compound, sand and spot-prime.	Cúbrelas con una capa delgada de compuesto para juntas, lija y aplica imprimador ahí.
+Wallpaper remover and a scoring tool	Removedor de papel tapiz y un perforador
+To take it off	Para quitarlo
+To paint over it	Para pintar encima
+New concrete	Concreto nuevo
+A thick-nap roller gets into the texture.	Un rodillo de pelo largo entra en la textura.
+Thick-nap roller	Rodillo de pelo largo
+3/4 inch	3/4 de pulgada
+One thin coat.	Una capa delgada.
+Stay with solid stain	Sigue con tinte sólido
+Clean it and put on a fresh coat.	Límpiala y aplica una capa nueva.
+Clean it, scrape what’s loose, and put on a fresh coat.	Límpiala, raspa lo suelto y aplica una capa nueva.
+To stay solid	Para seguir con sólido
+Deck stain stripper and brightener	Removedor de tinte y avivador para terrazas
+Stain-blocking primer if there are water stains	Imprimador que bloquea manchas si hay manchas de agua
+Spot-prime the stain with a stain-blocking primer	Aplica imprimador solo sobre la mancha con un imprimador que bloquea manchas
+Shellac-based for the worst (water, smoke, knots, marker), oil-based for most.	A base de goma laca para las peores (agua, humo, nudos, marcador), a base de aceite para la mayoría.
+One or two coats until it no longer shows.	Una o dos capas hasta que ya no se vea.
+Stain-blocking primer	Imprimador que bloquea manchas
+Shellac-based, like Zinsser B-I-N, or oil-based, like KILZ Original	A base de goma laca, como Zinsser B-I-N, o de aceite, como KILZ Original
+Wash it with a mildew remover, or 1 part bleach to 3 parts water.	Lávalo con removedor de moho, o 1 parte de cloro por 3 de agua.
+Let it sit 10 to 15 minutes, scrub, then rinse well.	Déjalo actuar 10 a 15 minutos, talla y enjuaga bien.
+Mildew-resistant paint	Pintura resistente al moho
+Bath paint inside	Pintura para baño en interior
+Cut one open.	Abre una.
+Bare surface underneath means water: find and fix where it comes from.	Si abajo está la superficie desnuda, es agua: encuentra de dónde viene y arréglalo.
+Paint underneath means heat.	Si abajo hay pintura, es el calor.
+Small cracks	Grietas pequeñas
+Scrape and sand until the surface is smooth and sound.	Raspa y lija hasta que la superficie quede lisa y firme.
+All over	En todas partes
+It has to come off.	Hay que quitarla.
+Scrape or strip it to bare or solid paint.	Ráspala o quítala con removedor hasta la superficie o la pintura firme.
+Paint stripper	Removedor de pintura
+For wide areas	Para áreas grandes
+Give it time with air moving	Dale tiempo con aire circulando
+A fan, open windows, or a dehumidifier, at 60 to 85°F.	Un ventilador, ventanas abiertas o un deshumidificador, entre 60 y 85°F.
+Acrylic enamel for doors, trim and shelves	Esmalte acrílico para puertas, molduras y repisas
+If repainting	Si vuelves a pintar
+Roll a section in a W, fill it in, and always roll back into wet paint.	Pinta una sección en forma de W, rellénala y siempre regresa sobre la pintura fresca.
+The same color, sheen and line	El mismo color, brillo y línea
+Enough for two coats	Suficiente para dos capas
+Let it dry, then rub it with your hand.	Déjalo secar y luego pásale la mano.
+Still chalky?	¿Sigue calcáreo?
+Use a bonding primer made for chalky surfaces.	Usa un imprimador de adherencia para superficies calcáreas.
+For blotchy woods	Para maderas que se manchan
+Nail pops	Clavos salidos
+Drive a drywall screw 2 inches from the nail, then sink the nail.	Pon un tornillo para panel de yeso a 2 pulgadas del clavo y luego hunde el clavo.
+Small holes	Hoyos pequeños
+Fill with spackle, let it dry, and sand it flat.	Rellena con masilla, déjala secar y lija hasta que quede plana.
+Cracks	Grietas
+Cover with mesh tape and two thin coats of joint compound, sanding between.	Cúbrelas con cinta de malla y dos capas delgadas de compuesto para juntas, lijando entre capas.
+Mesh drywall tape and joint compound	Cinta de malla y compuesto para juntas
+For cracks	Para grietas
+Lay the paint on and finish with long, light strokes in one direction.	Aplica la pintura y termina con pasadas largas y ligeras en una dirección.
+Don’t keep going back.	No sigas volviendo a pasar.
+Paint conditioner	Acondicionador de pintura
+Like Floetrol	Como Floetrol
+Fine	Fina
+Paint two coats on a big piece of white poster board, about 2 feet square, or right on the wall.	Pinta dos capas en una cartulina blanca grande, de unos 2 pies por lado, o directo en la pared.
+A chip is too small to judge.	Una muestra pequeña no alcanza para juzgar.
+Let it dry for a few hours.	Déjala secar unas horas.
+Wet paint looks darker than it will be.	La pintura húmeda se ve más oscura de lo que quedará.
+Look at it on each wall, in the morning, the afternoon and at night with the lights on.	Mírala en cada pared, en la mañana, en la tarde y en la noche con las luces encendidas.
+Color changes a lot with the light.	El color cambia mucho con la luz.
+Hold it next to what’s staying	Ponla junto a lo que se queda
+The trim, floor, counters, cabinets and furniture.	Molduras, piso, cubiertas, gabinetes y muebles.
 `;
 })(typeof self !== 'undefined' ? self : this);

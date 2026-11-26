@@ -118,3 +118,20 @@ test('bulbs by number and the camera’s paper are in Spanish', () => {
 test('the question before closing a changed panel, and the page that follows the walls, are in Spanish', () => {
   for (const s of ['Are you sure you want to close?', 'The new color stays:', 'Put It Back changes it back to:', 'Put It Back changes it back to how it was.', 'Keep Changing', 'Put It Back', 'Close', 'or the closest paint to any color:', 'Changed in the picture from']) assert.ok(I.tr(s), s);
 });
+test('every bullet and sub-bullet of every step and shopping list is in Spanish (Quick Answers, Fix a Problem, samples)', () => {
+  const AN = require(path.join(ROOT, 'js/answers.js'));
+  require(path.join(ROOT, 'js/color.js'));
+  const FX = require(path.join(ROOT, 'js/fixes.js'));
+  const lists = [];
+  for (const T of AN.LIST) for (const p of AN.combos(T.id)) { const A = AN.answer(T.id, p); lists.push([A.steps, false], [A.buy, true]); }
+  for (const x of FX.LIST) { const f = FX.find(x.id) || x; lists.push([f.steps || [], false], [f.buy || [], true]); }
+  const app = fs.readFileSync(path.join(ROOT, 'js/app.js'), 'utf8');
+  const blk = app.slice(app.indexOf('const SAMPLE_STEPS = ['), app.indexOf('];', app.indexOf('const SAMPLE_STEPS = [')));
+  lists.push([[...blk.matchAll(/'((?:[^'\\]|\\.)*)'/g)].map(m => m[1]), false]);
+  const seen = new Set();
+  for (const [items, buy] of lists) for (const s of items) {
+    const b = AN.bullets(s, buy);
+    for (const piece of [b.main].concat(b.subs)) { if (seen.has(piece)) continue; seen.add(piece); const es = I.tr(piece); assert.ok(es, 'no Spanish for: ' + piece + '  (in: ' + s + ')'); }
+  }
+  assert.ok(seen.size > 500, seen.size + ' pieces');
+});
