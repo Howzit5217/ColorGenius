@@ -50,7 +50,7 @@ test('a color with the same name as a word (like “Navy”) keeps its name', ()
   assert.equal(I.tr('Navy'), null);
   I.keep.delete('Navy');
 });
-test('every home-screen tip, and the five home tiles, are in Spanish', () => {
+test('every home-screen tip, and the six home tiles, are in Spanish', () => {
   const app = fs.readFileSync(path.join(ROOT, 'js/app.js'), 'utf8');
   const block = app.slice(app.indexOf('const TIPS = ['), app.indexOf('];', app.indexOf('const TIPS = [')));
   // (the tips use curly apostrophes, so each one is two plain '…' strings)
@@ -58,5 +58,26 @@ test('every home-screen tip, and the five home tiles, are in Spanish', () => {
   assert.ok(tips.length >= 50, tips.length + ' tips');
   assert.equal(new Set(tips.map(t => t[0])).size, tips.length, 'no tip title twice');
   for (const [t, s] of tips) { assert.ok(I.tr(t), 'tip title: ' + t); assert.ok(I.tr(s), 'tip: ' + s); }
-  for (const s of ['Paint Colors', 'Stain Colors', 'Which Paint to Buy', 'Look Up a Color', 'Fix a Problem', 'Peeling, mildew, stains bleeding through or blotchy stain: why it happens, how to fix it and what to buy.']) assert.ok(I.tr(s), s);
+  for (const s of ['Paint Colors', 'Stain Colors', 'Spray Paint', 'Which Paint to Buy', 'Look Up a Color', 'Fix a Problem', 'Peeling, mildew, stains bleeding through or blotchy stain: why it happens, how to fix it and what to buy.',
+    'Colors from the brands the store carries, and the right can for metal, plastic, wood or a grill.']) assert.ok(I.tr(s), s);
+});
+test('spray paint is in Spanish: every question, answer, finish, family, size, product note and tip', () => {
+  globalThis.window = globalThis;
+  require(path.join(ROOT, 'js/color.js')); require(path.join(ROOT, 'data/sprays.js'));
+  const SP = require(path.join(ROOT, 'js/spray.js')); SP.init();
+  const want = new Set();
+  for (const j of Object.values(SP.JOBS)) want.add(j.label).add(j.sub);
+  for (const [t, s] of Object.values(SP.PLACES).concat(Object.values(SP.CONDITION))) want.add(t).add(s);
+  for (const f of Object.values(SP.FINISHES)) want.add(f.label).add(f.sub);
+  for (const [t] of Object.values(SP.FAMILIES)) want.add(t);
+  for (const z of Object.values(SP.SIZES)) want.add(z.label).add(z.sub);
+  for (const l of Object.values(SP.LINES)) want.add(l.why);
+  for (const b of SP.brands()) want.add(b.note);
+  for (const what of Object.keys(SP.JOBS)) for (const condition of ['new', 'painted', 'rusty', 'shiny']) for (const finish of ['', 'chalky', 'glitter']) {
+    const r = SP.recommend({ what, condition, finish, place: 'outside' }, {});
+    for (const t of r.tips) want.add(t.title).add(t.text);
+    // (a product's name is a brand and a line, which stay as they are)
+    for (const p of r.products) { if (p.why) want.add(p.why); if (p.supplies) { want.add(p.name); p.supplies.forEach(x => want.add(x)); } else if (!/^(Rust-Oleum|Krylon|Montana)/.test(p.name)) want.add(p.name); }
+  }
+  for (const s of want) assert.ok(I.tr(s), 'no Spanish for: ' + s);
 });

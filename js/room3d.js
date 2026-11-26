@@ -2119,6 +2119,76 @@
     b.contact(0, 0, 0.21, 0.06, 0, false); b.contact(0.125, -0.17, 0.04, 0.2, 0, false, 0.5);
     b.pop();
   }
+  // a spray can standing: a steel can with a printed label and color band, the rounded shoulder, and its cap in the
+  // paint's color (capName: a material of the scene's own for it), or the cap off, showing the white nozzle
+  function sprayCan(b, n, x, z, o) {
+    o = o || {};
+    const r = 0.033, h = 0.16;
+    b.mat(n + 'st', { color: 'C9CCCF', gloss: 0.85 });
+    b.mat(n + 'lb', { color: o.label || 'F3F1EC', gloss: 0.4 }); b.mat(n + 'bd', { color: o.band || o.color || '2F6B5E', gloss: 0.5 });
+    const cap = o.capName || (b.mat(n + 'cap', { color: o.color || '2F6B5E', gloss: 0.55 }), n + 'cap');
+    b.cyl(n + 'st', x, 0, z, r * 0.94, 0.006, 32, r, 'b');
+    b.cyl(n + 'st', x, 0.006, z, r, h - 0.006, 40, r, '');
+    b.cyl(n + 'lb', x, 0.024, z, r * 1.004, h - 0.052, 40, r * 1.004, '');
+    b.cyl(n + 'bd', x, 0.052, z, r * 1.007, 0.046, 40, r * 1.007, '');
+    b.lathe(n + 'st', x, h, z, [[r, 0], [r * 0.98, 0.006], [r * 0.8, 0.017], [r * 0.45, 0.023], [r * 0.38, 0.026], [0, 0.026]], 40);
+    if (o.cap !== false) b.cyl(cap, x, h - 0.008, z, r * 1.03, 0.06, 40, r * 1.0, 't');
+    else {
+      b.mat(n + 'nz', { color: 'F4F4F2', gloss: 0.4 }); b.mat(n + 'hole', { color: '2A2A2B', gloss: 0.1 });
+      b.cyl(n + 'nz', x, h + 0.024, z, 0.0095, 0.014, 24, 0.009, 't');
+      b.push().at(x, 0, z, o.nozzle || 0); b.cyl(n + 'hole', 0, h + 0.03, 0.0088, 0.0022, 0.0006, 10); b.pop();
+    }
+    b.contact(x, z, r * 2.2, r * 2.2, 0, true);
+  }
+  // a planter (with a little plant), a vase and a flat frame, all in material `m`
+  function sprayed(b, m, at) {
+    const P = at.pot, V = at.vase, F = at.frame;
+    if (P) {
+      b.lathe(m, P[0], 0, P[1], [[0, 0], [0.068, 0], [0.072, 0.006], [0.096, 0.15], [0.104, 0.152], [0.106, 0.17], [0.097, 0.172], [0.09, 0.165], [0, 0.16]], 48);
+      b.mat('soil', { color: '4A3626', pat: PAT.concrete, gloss: 0.05 }); b.cyl('soil', P[0], 0.158, P[1], 0.09, 0.004, 36, 0.09, 't');
+      b.mat('leafP', { color: '5E7A4C', pat: PAT.leaves, gloss: 0.2 });
+      for (const [dx, y, dz, r] of [[0, 0.215, 0, 0.05], [-0.04, 0.195, 0.025, 0.038], [0.042, 0.2, -0.01, 0.04], [0.01, 0.25, -0.02, 0.034], [-0.02, 0.235, -0.03, 0.03]]) b.sphere('leafP', P[0] + dx, y, P[1] + dz, r, r * 0.85, r, 14);
+      b.contact(P[0], P[1], 0.17, 0.17, 0, true);
+    }
+    if (V) {
+      b.lathe(m, V[0], 0, V[1], [[0, 0], [0.045, 0], [0.05, 0.006], [0.058, 0.06], [0.052, 0.15], [0.028, 0.215], [0.024, 0.25], [0.03, 0.262], [0.032, 0.268], [0.026, 0.27], [0.02, 0.262], [0, 0.255]], 48);
+      b.contact(V[0], V[1], 0.12, 0.12, 0, true);
+    }
+    if (F) {
+      b.push().at(F[0], 0, F[1], F[2] || 0);
+      const w = 0.085, d = 0.065, t = 0.024, h = 0.018;
+      b.rbox(m, -w, 0, -d, w, h, -d + t, 0.004); b.rbox(m, -w, 0, d - t, w, h, d, 0.004); b.rbox(m, -w, 0, -d + t, -w + t, h, d - t, 0.004); b.rbox(m, w - t, 0, -d + t, w, h, d - t, 0.004);
+      b.mat('mirrorP', { color: 'B9C3C8', gloss: 1 }); b.box('mirrorP', -w + t, 0.004, -d + t, w - t, 0.008, d - t);
+      b.contact(0, 0, w * 2, d * 2, 0, false, 0.8);
+      b.pop();
+    }
+  }
+  // how a spray paint's finish looks on the things in the picture
+  const SPRAY_GLOSS = { gloss: 0.78, semigloss: 0.62, satin: 0.4, matte: 0.1, flat: 0.04, chalky: 0.02, metallic: 0.92, mirror: 1, hammered: 0.62, textured: 0.12, glitter: 0.85, neon: 0.6, glow: 0.4, frosted: 0.3, glass: 0.8, effect: 0.7, chalkboard: 0.05 };
+  Object.assign(SCENES, {
+    // a spray paint on a planter, a vase and a frame, with its can: its color and its sheen (results and its page)
+    'spray-show'(b, ctx) {
+      studio(b, 'E9E4DC');
+      const f = (ctx.spray && ctx.spray.finish) || '';
+      b.mat('spray', { role: 'spray', color: '6F8F85', gloss: SPRAY_GLOSS[f] != null ? SPRAY_GLOSS[f] : 0.45, pat: f === 'hammered' ? PAT.stucco : f === 'textured' ? PAT.concrete : 0 });
+      sprayed(b, 'spray', { pot: [-0.17, 0.03], vase: [0.1, -0.1], frame: [0.15, 0.12, 0.3] });
+      sprayCan(b, 'sc', -0.02, -0.16, { capName: 'spray', label: 'F3F1EC', band: '9A9C9B' });
+      return { cam: { eye: [-0.01, 0.5, 0.74], target: [-0.01, 0.08, -0.01], fov: 36 }, studio: true, cast: true, sunSoftK: 3, shadowC: [-0.01, 0.08, -0.02], shadowR: 0.5 };
+    },
+    // the home screen's Spray Paint picture: three cans, one with its cap off, and what they painted
+    'tile-spray'(b) {
+      studio(b, 'E3E8EC');
+      b.mat('teal', { color: '1F7A8C', gloss: 0.78 }); b.mat('goldV', { color: 'C9A54A', gloss: 0.92 });
+      sprayed(b, 'teal', { pot: [-0.2, 0.0] });
+      sprayed(b, 'goldV', { vase: [0.19, -0.08] });
+      sprayCan(b, 'c1', -0.07, -0.12, { color: '1F7A8C', band: '1F7A8C' });
+      sprayCan(b, 'c2', 0.02, -0.17, { color: 'D9542F', band: 'D9542F' });
+      sprayCan(b, 'c3', 0.07, -0.04, { color: 'C9A54A', band: 'C9A54A', cap: false, nozzle: -0.3 });
+      // its cap, lying on its side in front
+      b.mat('c3capL', { color: 'C9A54A', gloss: 0.55 }); b.push().at(0.02, 0, 0.12, 0.5); b.rod('c3capL', 'x', 0, 0.034, 0, 0.034, 0.058, 40); b.contact(0, 0, 0.07, 0.07, 0, false, 0.8); b.pop();
+      return { cam: { eye: [0.0, 0.53, 0.74], target: [0.0, 0.085, -0.03], fov: 40 }, studio: true, cast: true, sunSoftK: 3, shadowC: [0.0, 0.08, -0.03], shadowR: 0.5 };
+    },
+  });
   Object.assign(SCENES, {
     'tile-icon'(b) { return iconScene(b, false); },
     'tile-icon-safe'(b) { return iconScene(b, true); },
@@ -2276,6 +2346,9 @@
       return { cam: { eye: [-0.04, 0.5, 0.54], target: [-0.04, 0.0, -0.02], fov: 40 }, studio: true, cast: true, sunSoftK: 3, shadowC: [-0.04, 0.04, -0.02], shadowR: 0.5 };
     },
   });
+  // the paint and stain pictures in 3 by 2 (three across on the home screen): the same things, the camera further back
+  SCENES['tile-paint-32'] = b => Object.assign(SCENES['tile-paint'](b), { cam: { eye: [0.02, 0.62, 0.84], target: [0.02, 0.0, 0.02], fov: 36 } });
+  SCENES['tile-stain-32'] = b => { const i = SCENES['tile-stain'](b), t = i.cam.target; return Object.assign(i, { cam: { eye: [t[0], 0.62, t[2] + 0.84], target: t, fov: 36 } }); };
   // where a stain goes, by the stain job
   const STAIN_PARTS = { floors: ['floor'], stairs: ['floor'], cabinets: ['cab'], builtins: ['cab'], furniture: ['furn'], tabletop: ['furn'], trim: ['trim', 'door'], doors: ['door'], paneling: ['wain'], deck: ['deck'], dock: ['deck'], outdoor: ['deck'], pergola: ['deck'], playset: ['deck'], fence: ['fence'], siding: ['body'], shed: ['body'], log: ['body'], front_door: ['xdoor'], garage_door: ['gdoor'], shutters: ['shut'] };
 
@@ -2312,6 +2385,7 @@
     if (o.floor) ctx.floor = o.floor;
     if (a.space === 'floor_paint') ctx.floor = 'concrete';
     if (['bathroom', 'powder', 'laundry'].includes(a.space)) ctx.floor = 'tile';
+    ctx.spray = o.spray || null;   // a spray paint's finish, for the things it's shown on
     return ctx;
   }
   function mount(container, o) {

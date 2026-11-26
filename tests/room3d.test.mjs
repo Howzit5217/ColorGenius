@@ -16,7 +16,7 @@ const R = globalThis.CG.room3d;
 const norm = v => { const l = Math.hypot(...v); return v.map(x => x / l); };
 // lines out every way from a spot, evenly spread
 const sphere = n => { const out = [], ga = Math.PI * (3 - Math.sqrt(5)); for (let i = 0; i < n; i++) { const y = 1 - (i + 0.5) / n * 2, r = Math.sqrt(1 - y * y); out.push([Math.cos(i * ga) * r, y, Math.sin(i * ga) * r]); } return out; };
-const ROOMS = R.scenes().filter(id => !R.build(id).info.outside);
+const ROOMS = R.scenes().filter(id => { const i = R.build(id).info; return !i.outside && !i.studio; });
 
 test('the camera checks: a line meets a box from the front outside it and from behind inside it, and knows what is near', () => {
   const { b } = R.build('living');

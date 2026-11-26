@@ -418,6 +418,7 @@
   const WEATHER_RULES = {
     paint: { lo: 50, hi: 90, after: 24, before: 0, what: 'paint' },
     stain: { lo: 50, hi: 90, after: 24, before: 24, what: 'stain' },
+    spray: { lo: 50, hi: 90, after: 24, before: 0, what: 'spray paint' },
   };
   // Each day: the temperatures while working (9 to 5), the chance of rain then and for the drying time after (and
   // the day before, for stain), the night after, and the wind. Good, okay (and why), or not good (and why).

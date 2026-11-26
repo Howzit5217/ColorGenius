@@ -343,8 +343,102 @@ if (stainBrands.length) {
   for (const b of stainBrands) { const r = stainRows[b.id]; const by = {}; for (const x of r) by[x[3]] = (by[x[3]] || 0) + 1; report.push(`${(b.name + ' (stains)').padEnd(35)} ${String(r.length).padStart(4)} stains  ${JSON.stringify(by)}`); }
 }
 
+// Spray paint: Rust-Oleum, Krylon and Montana GOLD, from each brand's own website (tools/fetch/spray_fetch.mjs).
+// Row: [code, name, hex, finish, line]. finish is gloss, semigloss, satin, matte, flat, metallic, hammered,
+// textured, glitter, chalky, frosted, mirror, glass, neon, glow, effect, chalkboard, clear or primer; line is a key of
+// `lines` ([brand, product line name]).
+const sprayBrands = [], sprayRows = {}, sprayLines = {};
+const SHEEN = s => { s = String(s || '').toLowerCase(); return /high gloss|^gloss|\bgloss\b/.test(s) && !/semi/.test(s) ? 'gloss' : /semi/.test(s) ? 'semigloss' : /satin/.test(s) ? 'satin' : /matte/.test(s) ? 'matte' : /flat/.test(s) ? 'flat' : /metallic/.test(s) ? 'metallic' : /hammered/.test(s) ? 'hammered' : ''; };
+// a can's name says its finish when nothing else does ("Gloss Black", "Satin Claret Wine", "Clear")
+const nameFinish = n => /\bprimer\b/i.test(n) ? 'primer' : /^clear\b|\bclear$/i.test(n) ? 'clear' : SHEEN(n.split(' ')[0] === 'High' ? 'gloss' : n.split(' ').slice(0, 2).join(' '));
+if (exists('rustoleum_sprays.json')) {
+  const chips = exists('spray_chips.json') ? readJSON('spray_chips.json') : {};
+  Object.assign(sprayLines, { pt2x: ['rustoleum', 'Painter’s Touch 2X Ultra Cover'], universal: ['rustoleum', 'Universal'], stopsrust: ['rustoleum', 'Stops Rust'], highheat: ['rustoleum', 'Specialty High Heat'], specialty: ['rustoleum', 'Specialty'], appliance: ['rustoleum', 'Specialty Appliance Epoxy'], chalked: ['rustoleum', 'Chalked Ultra Matte'], aa2x: ['rustoleum', 'American Accents 2X Ultra Cover'], lowodor: ['rustoleum', 'Low Odor Premium (water-based)'], rusto: ['rustoleum', 'Rust-O Artist'] });
+  // which line each product page is, and its finish when the page is all one finish (first match wins)
+  const LINE = [['painters-touch-2x-ultra-cover/primer', 'pt2x', 'primer'], ['painters-touch-2x-ultra-cover/', 'pt2x', ''],
+    ['universal/universal-clear', 'universal', 'clear'], ['universal/universal-forged-hammered', 'universal', 'hammered'], ['universal/universal-hammered', 'universal', 'hammered'], ['universal/universal-mist-metallic', 'universal', 'metallic'], ['universal/universal-flat-metallic', 'universal', 'metallic'], ['universal/universal-matte-metallic', 'universal', 'metallic'], ['universal/universal-metallic', 'universal', 'metallic'], ['universal/universal-aged-metallic', 'universal', 'metallic'], ['universal/', 'universal', ''],
+    ['stops-rust/hammered-spray', 'stopsrust', 'hammered'], ['stops-rust/metallic', 'stopsrust', 'metallic'], ['stops-rust/bright-coat', 'stopsrust', 'metallic'], ['stops-rust/textured-metallic', 'stopsrust', 'textured'], ['stops-rust/textured', 'stopsrust', 'textured'], ['stops-rust/multicolor-textured', 'stopsrust', 'textured'],
+    ['stops-rust/clean-metal-primer-spray', 'stopsrust', 'primer'], ['stops-rust/rusty-metal-primer-spray', 'stopsrust', 'primer'], ['stops-rust/automotive-primer-spray', 'stopsrust', 'primer'], ['stops-rust/universal-bonding-primer', 'stopsrust', 'primer'], ['stops-rust/protective-enamel', 'stopsrust', ''], ['stops-rust/stops-rust-protective-enamel-turbo-spray', 'stopsrust', ''],
+    ['specialty/high-heat', 'highheat', ''], ['specialty/metallic-spray', 'specialty', 'metallic'], ['specialty/glitter', 'specialty', 'glitter'], ['specialty/fluorescent-spray', 'specialty', 'neon'], ['specialty/glow-in-the-dark', 'specialty', 'glow'], ['specialty/color-shift', 'specialty', 'effect'], ['specialty/frosted-glass-spray', 'specialty', 'frosted'], ['specialty/mirror-effect', 'specialty', 'mirror'], ['specialty/lacquer-spray', 'specialty', ''], ['specialty/stone-spray', 'specialty', 'textured'], ['specialty/marble-spray-paint', 'specialty', 'effect'], ['specialty/appliance-epoxy', 'appliance', ''], ['specialty/plastic-primer-spray', 'specialty', 'primer'], ['specialty/chalkboard', 'specialty', 'chalkboard'],
+    ['chalked/ultra-matte-paint-aerosol', 'chalked', 'chalky'],
+    ['american-accents-2x/2x-clear', 'aa2x', 'clear'], ['american-accents-2x/2x-metallic', 'aa2x', 'metallic'], ['american-accents-2x/2x-primer', 'aa2x', 'primer'], ['american-accents-2x/2x-ultra-matte', 'aa2x', 'matte'], ['american-accents-2x/', 'aa2x', ''],
+    ['low-odor-premium-spray-paint/low-odor-premium-primers', 'lowodor', 'primer'], ['low-odor-premium-spray-paint/', 'lowodor', ''], ['rust-o/artist-spray-paint', 'rusto', '']];
+  const rows = [], seen = new Set();
+  let photo = 0;
+  for (const x of readJSON('rustoleum_sprays.json')) {
+    const L = LINE.find(([p]) => x.slug.startsWith(p)); if (!L || seen.has(x.sku)) continue;
+    // sprays only: no quarts, gallons, pens, kits or touch-up bottles
+    if (/quart|gallon|pint|kit|touch|pen|tool|fl oz/i.test(x.size) || !(/spray|aerosol/i.test(x.size) || /^(\d+(\.\d+)? oz\.?)?$/i.test(String(x.size).trim()))) continue;
+    let hex = normHex(x.hex);
+    if (!hex && chips[x.sku + '.jpg']) { hex = normHex(chips[x.sku + '.jpg']); photo++; }
+    if (!hex) continue;
+    const name = decode(x.name);
+    const finish = L[2] || (/\bclear\b/i.test(name) ? 'clear' : /\bprimer\b/i.test(name) ? 'primer' : SHEEN(x.sheen) || nameFinish(name) || 'gloss');
+    seen.add(x.sku);
+    rows.push([x.sku, name, hex, finish, L[1]]);
+  }
+  rows.sort((a, b) => a[4].localeCompare(b[4]) || a[1].localeCompare(b[1]));
+  sprayBrands.push({ id: 'rustoleum', name: 'Rust-Oleum', source: 'rustoleum.com product pages (the brand’s own color values; a few finishes averaged from their photos)', date: today,
+    note: 'Painter’s Touch 2X, Universal, Stops Rust, Specialty, Chalked, American Accents 2X and more. The number is the can’s SKU.' });
+  sprayRows.rustoleum = rows;
+  report.push(`${'Rust-Oleum (spray)'.padEnd(35)} ${String(rows.length).padStart(4)} cans (${photo} from photos)`);
+}
+if (exists('krylon_sprays.json')) {
+  Object.assign(sprayLines, { fusion: ['krylon', 'Fusion All-In-One'], colormaxx: ['krylon', 'COLORmaxx'], rusttough: ['krylon', 'Rust Tough'], kchalky: ['krylon', 'Chalky Finish'], harmony: ['krylon', 'Harmony'], kclassic: ['krylon', 'Classic'], decor: ['krylon', 'Décor Selects'], shortcuts: ['krylon', 'Short Cuts'], kmetal: ['krylon', 'Premium Metallic'], kspecial: ['krylon', 'Specialty Finishes'], krylon: ['krylon', 'Spray Paint'] });
+  const K = { 'Fusion All-In-One': ['fusion', ''], 'Fusion All-In-One Metallic': ['fusion', 'metallic'], 'Fusion All-In-One Hammered': ['fusion', 'hammered'], 'Fusion All-In-One Textured': ['fusion', 'textured'],
+    'COLORmaxx Spray Paint': ['colormaxx', ''], 'COLORmaxx Metallic Spray Paint': ['colormaxx', 'metallic'], 'Rust Tough Spray Paint': ['rusttough', ''], 'Chalky Finish Paint Spray': ['kchalky', 'chalky'], 'Harmony': ['harmony', ''], 'Classic': ['kclassic', ''],
+    'Décor Selects Spray Paint': ['decor', ''], 'Short Cuts Aerosol Paint Sprays': ['shortcuts', ''], 'Premium Metallic Spray Paint': ['kmetal', 'metallic'], 'Premium Foil Metallic Spray Paint': ['kmetal', 'metallic'], 'Brilliant Metallic Finishing Spray': ['kmetal', 'metallic'], 'Metallic Paint Finish': ['kmetal', 'metallic'],
+    'Glitter Blast Finish Spray': ['kspecial', 'glitter'], 'Glitter Shimmer Finish Spray': ['kspecial', 'glitter'], 'Shimmer Metallic Finish Spray': ['kspecial', 'glitter'], 'Color Morph Aerosol Paint': ['kspecial', 'effect'], 'Neon Colored Paint Spray': ['kspecial', 'neon'], 'Glowz Spray Paint': ['kspecial', 'glow'],
+    'Coarse Stone Textured Finish Spray': ['kspecial', 'textured'], 'Fine Stone Textured Finish Spray': ['kspecial', 'textured'], 'Marbelizing Paint Spray': ['kspecial', 'effect'], 'Crackle Base Coat Spray': ['kspecial', 'effect'], 'Crackle Top Coat Spray': ['kspecial', 'effect'],
+    'Stained Glass Paint Spray': ['kspecial', 'glass'], 'Sea Glass Finish Spray': ['kspecial', 'glass'], 'Frosted Glass Finishing Spray': ['kspecial', 'frosted'], 'Chalkboard Paint Finish': ['kspecial', 'chalkboard'] };
+  // tags the chart doesn't name: Rust Tough's safety colors, metallics and primer; primers; tractor colors (left out)
+  const TAG = { 'cbg:20856103': ['rusttough', ''], 'cbg:20856101': ['rusttough', 'metallic'], 'cbg:20856105': ['rusttough', 'metallic'], 'cbg:20856100': ['rusttough', 'primer'], 'cbg:12954478': ['krylon', 'primer'], 'cbg:9169776': ['krylon', 'primer'], 'cbg:9190330': ['kspecial', 'frosted'] };
+  const chips = exists('spray_chips.json') ? readJSON('spray_chips.json') : {};
+  const rows = [], seen = new Set();
+  for (const x of readJSON('krylon_sprays.json')) {
+    const hex = normHex(x.hex) || normHex(chips['kr-' + x.id + '.jpg']); if (!hex) continue;
+    let ls = x.lines.map(l => K[l]).filter(Boolean);
+    if (!ls.length) ls = x.tags.map(t => TAG[t]).filter(Boolean).slice(0, 1);
+    if (!ls.length && !x.lines.length && !x.tags.includes('cbg:25746674')) ls = [['krylon', '']];
+    for (const [line, f] of ls) {
+      const k = line + '|' + x.id; if (seen.has(k)) continue; seen.add(k);
+      const name = decode(x.name);
+      const finish = f || (x.kind.includes('Hammered') ? 'hammered' : x.kind.includes('Metallic') ? 'metallic' : x.kind.includes('Stone') ? 'textured' : x.kind.includes('Chalky') ? 'chalky' : /\bprimer\b/i.test(name) ? 'primer' : /^clear\b/i.test(name) ? 'clear' : '');
+      rows.push(['', name, hex, finish, line, x.id]);
+    }
+  }
+  rows.sort((a, b) => a[4].localeCompare(b[4]) || a[1].localeCompare(b[1]));
+  sprayBrands.push({ id: 'krylon', name: 'Krylon', codeless: true, source: 'krylon.com color chart (the brand’s own color values; metallics, glitters and textures averaged from their photos)', date: today,
+    note: 'Fusion All-In-One, COLORmaxx, Rust Tough, Chalky Finish, metallics and specialty finishes. Krylon goes by color name.' });
+  sprayRows.krylon = rows;
+  report.push(`${'Krylon (spray)'.padEnd(35)} ${String(rows.length).padStart(4)} cans`);
+}
+if (exists('montana_sprays.json')) {
+  sprayLines.mtngold = ['montana', 'Montana GOLD'];
+  const rows = [], seen = new Set();
+  for (const x of readJSON('montana_sprays.json')) {
+    const hex = normHex(x.hex); if (!hex) continue;
+    let code = x.code, name = decode(x.name);
+    // "CLASSIC 2100 Shrimp Pastel", "3000 100% Magenta": the number is the code
+    const m = name.match(/^(?:CLASSIC\s+)?(\d{3,5})\s+(.+)$/); if (!code && m) { code = m[1]; name = m[2]; }
+    if (!name || seen.has(code || name)) continue; seen.add(code || name);
+    rows.push([code, name, hex, /^F\d/.test(code) ? 'neon' : 'satin', 'mtngold']);
+  }
+  sprayBrands.push({ id: 'montana', name: 'Montana GOLD', source: 'montana-cans.com color pages (the brand’s own color values)', date: today,
+    note: 'Low-pressure artist spray paint with a satin finish, for murals, signs and crafts. Sold at art stores and some hardware stores.' });
+  sprayRows.montana = rows;
+  report.push(`${'Montana GOLD (spray)'.padEnd(35)} ${String(rows.length).padStart(4)} cans`);
+}
+if (sprayBrands.length) {
+  fs.writeFileSync(path.join(OUT, 'sprays.js'),
+    `/* Spray paint colors. Generated by tools/build-data.mjs on ${today}.\n   Row: [code, name, hex, finish, line (a key of lines: [brand, product line]), brand's own id]. */\n` +
+    `window.CG_SPRAYS = ${JSON.stringify({ brands: sprayBrands, lines: sprayLines, rows: sprayRows })};\n`);
+}
+
 // A brand with no new download in this folder keeps the file and entry it already has, so one brand can be added
-// or refreshed without downloading every brand again.
+// or refreshed without downloading every brand again. (A folder with no paint brands in it, like one with only the
+// spray paint downloads, leaves the brand list as it is.)
+const freshPaint = brands.length;
 try {
   const t = fs.readFileSync(path.join(OUT, 'brands.js'), 'utf8');
   for (const b of JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1))) {
@@ -354,9 +448,11 @@ try {
 const order = ['sw', 'bm', 'behr', 'valspar', 'ppg', 'glidden', 'hgsw', 'dutchboy', 'de', 'dv', 'ck', 'magnolia', 'kilz', 'vista', 'hl', 'colorhouse', 'resene', 'fb', 'duluxau', 'plascon', 'sico', 'nerolac', 'ral'];
 const rank = id => (order.includes(id) ? order.indexOf(id) : order.length - 1.5);   // anything new goes just before RAL
 brands.sort((a, b) => rank(a.id) - rank(b.id));
-fs.writeFileSync(path.join(OUT, 'brands.js'),
-  `/* Brand list. Generated by tools/build-data.mjs on ${today}. */\nwindow.CG_BRANDS = ${JSON.stringify(brands, null, 1)};\n`);
-// list of data files for the offline cache (sw.js)
-fs.writeFileSync(path.join(OUT, 'files.json'), JSON.stringify(brands.map(b => `data/colors/${b.id}.js`), null, 1) + '\n');
+if (freshPaint) {
+  fs.writeFileSync(path.join(OUT, 'brands.js'),
+    `/* Brand list. Generated by tools/build-data.mjs on ${today}. */\nwindow.CG_BRANDS = ${JSON.stringify(brands, null, 1)};\n`);
+  // list of data files for the offline cache (sw.js)
+  fs.writeFileSync(path.join(OUT, 'files.json'), JSON.stringify(brands.map(b => `data/colors/${b.id}.js`), null, 1) + '\n');
+}
 console.log(report.join('\n'));
 console.log('Total colors:', brands.reduce((s, b) => s + b.count, 0));

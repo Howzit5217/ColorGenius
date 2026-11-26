@@ -174,7 +174,7 @@ html.bar-on .main { padding-bottom: calc(var(--bar-h) + 48px); }
 /* the picture keeps its own shape at every width, so nothing in it is ever cropped off */
 .tile-art { aspect-ratio: 1080 / 510; position: relative; overflow: hidden; background: #ece8e1; }
 /* the pictures under the top two are 3:2; a little wider than that when they're on a row of their own */
-.tile.low .tile-art { aspect-ratio: 16 / 9; }
+.tile.low .tile-art, .tiles-top-3 .tile.top .tile-art { aspect-ratio: 16 / 9; }
 .tile-art img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .tile-text { display: grid; gap: 6px; padding: 18px 22px 22px; align-content: start; }
 .tile-title { font-size: 1.45rem; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
@@ -192,6 +192,12 @@ html.bar-on .main { padding-bottom: calc(var(--bar-h) + 48px); }
   .tiles-low-3 .tile.low .tile-text { padding: 14px 18px 18px; }
   .tiles-low-3 .tile.low .tile-title { font-size: 1.25rem; }
   .tiles-low-3 .tile.low .tile-sub { font-size: .97rem; }
+  /* three color jobs on top: the same size as the three helpers under them, a 3 by 2 grid */
+  .tiles-top-3 .tile.top { grid-column: span 2; }
+  .tiles-top-3 .tile.top .tile-art { aspect-ratio: 3 / 2; }
+  .tiles-top-3 .tile.top .tile-text { padding: 14px 18px 18px; }
+  .tiles-top-3 .tile.top .tile-title { font-size: 1.25rem; }
+  .tiles-top-3 .tile.top .tile-sub { font-size: .97rem; }
 }
 /* projects on the home screen: the open one, a big Start button, and the last few */
 .proj-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
@@ -1026,10 +1032,14 @@ html.bar-on .toast { bottom: calc(var(--bar-h) + 18px + env(safe-area-inset-bott
 .qs-foot { font-size: 11pt; margin: 14pt 0 0; color: #333; }
 /* older browsers: boxes that keep their shape get it from a spacer, since everything inside them is placed on top */
 @supports not (aspect-ratio: 1 / 1) {
-  .tile-art::before, .scene::before, .ba::before, .compass::before, .cp-q::before { content: ""; display: block; }
+  .tile-art::before, .scene::before, .ba::before, .compass::before, .cp-q::before, .spray-stage::before { content: ""; display: block; }
+  .spray-stage::before { padding-top: 60%; }
+  .spray-stage.big::before { padding-top: 75%; }
+  .spray-stage canvas.gl { position: absolute; top: 0; left: 0; }
   .tile-art::before { padding-top: 47.22%; }
   .tile.low .tile-art::before { padding-top: 56.25%; }
-  @media (min-width: 700px) { .tiles-low-3 .tile.low .tile-art::before { padding-top: 66.67%; } }
+  .tiles-top-3 .tile.top .tile-art::before { padding-top: 56.25%; }
+  @media (min-width: 700px) { .tiles-low-3 .tile.low .tile-art::before, .tiles-top-3 .tile.top .tile-art::before { padding-top: 66.67%; } }
   .scene::before { padding-top: 60%; }
   .ba::before { padding-top: 37.78%; }
   .compass::before, .cp-q::before { padding-top: 100%; }
@@ -1259,3 +1269,50 @@ html.cam-open { overflow: hidden; }
 @media (max-width: 600px) { .ph-controls .btn { min-height: 44px; padding: 0 12px; font-size: .92rem; } }
 /* ---------------- language button ---------------- */
 .lang-btn .lang-ab { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; border: 2px solid currentColor; font-size: .72rem; font-weight: 900; letter-spacing: .02em; line-height: 1; }
+
+/* ---------- spray paint ---------- */
+/* a spray color with its sheen (the background is drawn in app.js: gloss streak, metallic sheen, dimples, sparkle) */
+.spray-sw { display: block; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -3px 6px rgba(0, 0, 0, .14); }
+.choice .ic .spray-sw { width: 100%; height: 100%; }
+.choices.fams { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.spray-stage { position: relative; aspect-ratio: 5 / 3; border-radius: var(--r-lg); overflow: hidden; background: #e9e4dc; box-shadow: var(--shadow); isolation: isolate; }
+.spray-stage canvas.gl { width: 100%; height: 100%; display: block; touch-action: none; }
+.spray-stage canvas.gl.still { touch-action: auto; pointer-events: none; }
+.spray-stage.big { aspect-ratio: 4 / 3; }
+.spray-big { position: absolute; top: 14%; right: 22%; bottom: 14%; left: 22%; border-radius: 28px; box-shadow: 0 18px 40px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .4); }
+.spray-match .actions { align-items: center; }
+.spray-match .input { max-width: 280px; }
+.match-pill { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; font-size: 1.05rem; }
+.match-pill .sw { width: 34px; height: 34px; border-radius: 9px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.buy-list { display: grid; gap: 10px; }
+.buy-row { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; border: 1.5px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.buy-what { display: grid; gap: 3px; }
+.buy-what b { font-size: 1.08rem; }
+.buy-what span { color: var(--ink-2); }
+.buy-amt { flex: none; font-weight: 800; white-space: nowrap; background: var(--surface-2); padding: 6px 12px; border-radius: 999px; }
+.chip.static { cursor: default; }
+.id-why { font-size: 1.05rem; margin: 0; }
+.tk-also .tk-sw { display: inline-block; width: 18px; height: 18px; border-radius: 5px; vertical-align: -3px; margin-right: 8px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15); }
+
+/* ---------- facts as chips instead of a run-on paragraph ---------- */
+/* (a roller's cover, a brush's bristle, a paint's other lines: short things to scan, under what they belong to) */
+.facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 2px; }
+.facts .k { margin: 0 4px 0 0; }
+.fact { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font-size: .92rem; font-weight: 600; color: var(--ink); }
+.need-row .need-note { margin: 4px 0 0; font-size: .88rem; color: var(--ink-3); }
+.lines-why { margin: 0 0 10px; font-weight: 700; color: var(--ink-2); }
+.line-card .facts { margin-top: 8px; }
+.facts .k { font-size: .82rem; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ---------- Fix a Problem: the sections as cards, easy to scan, lines kept to a readable length ---------- */
+.fix-cards { display: grid; gap: 16px; margin-top: 22px; }
+@media (min-width: 900px) { .fix-cards { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); } }
+.fix-cards .fix-sec { margin-top: 0; }
+.fix-box { background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r-lg); padding: 18px 20px 20px; }
+.fix-box h2 { display: flex; align-items: center; gap: 10px; }
+.fix-box h2 .ic { width: 36px; height: 36px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; flex: none; }
+.fix-box.test { background: var(--accent-soft); border-color: transparent; }
+.fix-box.test h2 .ic { background: var(--surface); }
+.fix-box p, .fix-box li { max-width: 72ch; }
+.fix-box + .fix-box, .fix-cards + .fix-box { margin-top: 16px; }
+@media (min-width: 700px) { .fix-box .fix-buy { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

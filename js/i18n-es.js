@@ -1494,5 +1494,250 @@ Fix the wood outside	Arregla la madera de afuera
 Scrape loose paint and replace soft, rotten wood before you paint outside.	Raspa la pintura suelta y cambia la madera blanda o podrida antes de pintar afuera.
 Wait between coats	Espera entre capas
 Give the first coat the time on the can before the second, or it can drag and peel.	Dale a la primera capa el tiempo que indica la lata antes de la segunda, o se puede arrastrar y pelar.
+Spray Paint	Pintura en aerosol
+Colors from the brands the store carries, and the right can for metal, plastic, wood or a grill.	Colores de las marcas que vende la tienda, y la lata correcta para metal, plástico, madera o una parrilla.
+Show My Spray Paints	Ver mis pinturas en aerosol
+What are you spraying?	¿Qué vas a pintar con aerosol?
+It decides which kind of spray paint works.	Decide qué tipo de pintura en aerosol sirve.
+Where will it be?	¿Dónde va a estar?
+Outside, metal needs paint that stops rust.	Afuera, el metal necesita pintura que detenga el óxido.
+What shape is it in?	¿En qué estado está?
+It decides the prep, and whether it needs a primer.	Decide la preparación y si necesita imprimador.
+What finish do you want?	¿Qué acabado quieres?
+Optional. Any Finish shows every kind.	Opcional. Cualquier acabado muestra todos los tipos.
+Any Finish	Cualquier acabado
+Any finish	Cualquier acabado
+Every kind	Todos los tipos
+Which colors?	¿Qué colores?
+Pick up to two, or match a color you already have.	Elige hasta dos, o iguala un color que ya tienes.
+Any color	Cualquier color
+A spread of colors	Una variedad de colores
+Or match a color	O iguala un color
+A paint color, like SW 7029	Un color de pintura, como SW 7029
+A paint color to match	Un color de pintura para igualar
+Match It	Igualar
+Matching	Igualando
+Remove	Quitar
+How big is it?	¿Qué tan grande es?
+So you know how many cans to get.	Para saber cuántas latas llevar.
+Metal Furniture & Railings	Muebles de metal y barandales
+Patio sets, railings, gates, mailboxes	Juegos de patio, barandales, rejas, buzones
+Hardware & Light Fixtures	Herrajes y lámparas
+Knobs, pulls, hinges, lamps, fixtures	Perillas, jaladeras, bisagras, lámparas
+Wood Furniture & Decor	Muebles y decoración de madera
+Chairs, side tables, shelves, frames	Sillas, mesitas, repisas, marcos
+Plastic	Plástico
+Patio chairs, planters, bins, toys, shutters	Sillas de patio, macetas, botes, juguetes, contraventanas
+Wicker & Rattan	Mimbre y ratán
+Chairs, baskets, lamp shades	Sillas, canastas, pantallas de lámpara
+Glass & Ceramic	Vidrio y cerámica
+Vases, jars, bottles, ceramic decor	Floreros, frascos, botellas, adornos de cerámica
+Pots, Concrete & Stone	Macetas, concreto y piedra
+Terra cotta, concrete planters, garden decor	Barro, macetas de concreto, adornos de jardín
+Crafts, Signs & Art	Manualidades, letreros y arte
+Stencils, signs, murals, school projects	Plantillas, letreros, murales, proyectos escolares
+Grill, Fire Pit or Stove	Parrilla, fogata o estufa de leña
+Anything that gets hot	Cualquier cosa que se calienta
+Appliances	Electrodomésticos
+Fridge, dishwasher, washer and dryer fronts	Frentes de refrigerador, lavavajillas, lavadora y secadora
+In the house	En la casa
+Outdoors or on a porch	Afuera o en un porche
+New or Bare	Nuevo o sin pintar
+Never painted	Nunca se ha pintado
+Old paint or a factory finish	Pintura vieja o acabado de fábrica
+Rusty Metal	Metal oxidado
+Rust or flaking paint	Óxido o pintura descascarada
+Slick or Shiny	Liso o brillante
+Glossy, glazed or laminate	Brillante, esmaltado o laminado
+Shiny, easy to wipe clean	Brilla y se limpia fácil
+A soft sheen, hides flaws	Un brillo suave que disimula defectos
+Matte or Flat	Mate o plano
+No shine at all	Sin nada de brillo
+Metallic	Metálico
+Gold, silver, bronze, copper	Dorado, plateado, bronce, cobre
+Hammered	Martillado
+A dimpled metal look that hides dents	Un aspecto de metal martillado que disimula golpes
+Chalk-Style	Tipo tiza
+Ultra-matte, vintage furniture look	Ultra mate, estilo de mueble antiguo
+Stone & Textured	Piedra y texturizado
+Looks like granite or sandstone	Parece granito o arenisca
+Glitter & Special	Brillantina y especiales
+Glitter, neon, glow, frosted glass	Brillantina, neón, fosforescente, vidrio esmerilado
+Whites & Creams	Blancos y cremas
+Blacks	Negros
+Browns & Tans	Cafés y beiges
+Reds	Rojos
+Pinks	Rosas
+Oranges	Naranjas
+Yellows	Amarillos
+Blues & Teals	Azules y verde azulados
+Purples	Morados
+Greens & Olives	Verdes y oliva
+Drag to look around	Arrastra para mirar alrededor
+Outside spray paint needs a dry day between 50 and 90°F, with no rain for a day after.	La pintura en aerosol afuera necesita un día seco entre 50 y 90 °F, sin lluvia por un día después.
+Outside paint needs a dry day between 50 and 90°F, with no rain for a day after.	La pintura afuera necesita un día seco entre 50 y 90 °F, sin lluvia por un día después.
+Outside stain needs a dry day between 50 and 90°F, with no rain for a day after, and none the day before, so the wood is dry.	El tinte afuera necesita un día seco entre 50 y 90 °F, sin lluvia por un día después ni el día anterior, para que la madera esté seca.
+See which days this week work.	Mira qué días de esta semana sirven.
+Gold, Silver & Metal	Dorado, plateado y metal
+Knobs, a frame, a lamp, a vase	Perillas, un marco, una lámpara, un florero
+A chair, a side table, a planter	Una silla, una mesita, una maceta
+A bench, a table, a dresser	Una banca, una mesa, una cómoda
+A Set or a Long Railing	Un juego o un barandal largo
+Four chairs, a patio set, a railing	Cuatro sillas, un juego de patio, un barandal
+Textured	Texturizado
+Glittery	Con brillantina
+Frosted Glass	Vidrio esmerilado
+Mirror	Espejo
+Glass Tint	Tinte para vidrio
+Fluorescent	Fluorescente
+Glow in the Dark	Brilla en la oscuridad
+Special Effect	Efecto especial
+Chalkboard	Pizarrón
+Paint and primer in one, with twice the coverage. Sticks to wood, metal, plastic, wicker and unglazed ceramic.	Pintura e imprimador en uno, con el doble de cobertura. Se adhiere a madera, metal, plástico, mimbre y cerámica sin esmaltar.
+All-surface paint and primer: metal, wood, plastic, vinyl, wicker and concrete. Sprays at any angle, even upside down.	Pintura e imprimador para toda superficie: metal, madera, plástico, vinil, mimbre y concreto. Rocía en cualquier ángulo, aun de cabeza.
+A rust-stopping enamel for metal. Goes right over light rust once the loose rust is brushed off.	Un esmalte que detiene el óxido para metal. Va directo sobre óxido ligero, después de cepillar el óxido suelto.
+High-heat paint for grills, fire pits, wood stoves and radiators. Check the can for how hot it’s rated.	Pintura para altas temperaturas para parrillas, fogatas, estufas de leña y radiadores. Revisa en la lata hasta qué temperatura aguanta.
+A tough, washable epoxy for appliance fronts. Not for stove tops, ovens or anything that gets hot.	Un epóxico resistente y lavable para frentes de electrodomésticos. No es para estufas, hornos ni nada que se caliente.
+An ultra-matte chalk-style finish for furniture and decor. Add a clear top coat where it gets handled.	Un acabado ultra mate tipo tiza para muebles y decoración. Ponle una capa transparente donde se toca mucho.
+Rust-Oleum’s 2X Ultra Cover paint and primer, the same kind of can as Painter’s Touch 2X.	La pintura e imprimador 2X Ultra Cover de Rust-Oleum, el mismo tipo de lata que Painter’s Touch 2X.
+Water-based with a low odor, for small projects. Still spray outside or with plenty of fresh air.	A base de agua y con poco olor, para proyectos chicos. Aun así, rocía afuera o con mucho aire fresco.
+Specialty finishes: metallics, glitter, glow, frosted glass, mirror and stone looks.	Acabados especiales: metálicos, brillantina, fosforescentes, vidrio esmerilado, espejo y piedra.
+Artist spray paint for murals, signs and crafts.	Pintura en aerosol de artista para murales, letreros y manualidades.
+Paint and primer that bonds to plastic without sanding or priming, and to metal, wood, glass, ceramic and wicker.	Pintura e imprimador que se adhiere al plástico sin lijar ni imprimar, y a metal, madera, vidrio, cerámica y mimbre.
+Paint and primer for wood, metal, plastic, wicker and more, inside or out.	Pintura e imprimador para madera, metal, plástico, mimbre y más, adentro o afuera.
+A rust-stopping enamel for metal, in gloss and safety colors.	Un esmalte que detiene el óxido para metal, en brillante y en colores de seguridad.
+An ultra-matte chalky finish for furniture and decor. Add a clear top coat where it gets handled.	Un acabado ultra mate tipo tiza para muebles y decoración. Ponle una capa transparente donde se toca mucho.
+Krylon spray paint. Check the can for which surfaces it’s made for.	Pintura en aerosol Krylon. Revisa en la lata para qué superficies está hecha.
+Decorative colors for home decor and crafts.	Colores decorativos para la casa y manualidades.
+Small cans for crafts, touch-ups and little projects.	Latas chicas para manualidades, retoques y proyectos pequeños.
+Bright metallic and foil finishes for decor and crafts.	Acabados metálicos brillantes y de hoja metálica para decoración y manualidades.
+Specialty finishes: glitter, neon, glow, stone, crackle and glass looks.	Acabados especiales: brillantina, neón, fosforescente, piedra, craquelado y vidrio.
+Low-pressure artist spray paint with a satin finish, for art, murals, signs and crafts.	Pintura en aerosol de artista de baja presión con acabado satinado, para arte, murales, letreros y manualidades.
+The Right Day	El día correcto
+Spray on a dry, calm day. Most cans say between 50 and 90°F, with low humidity.	Rocía en un día seco y sin viento. Casi todas las latas dicen entre 50 y 90 °F, con poca humedad.
+Light Coats	Capas ligeras
+Shake a full minute after the ball rattles. Hold the can a foot away and spray thin coats: a heavy coat drips.	Agita un minuto completo después de que suene la bolita. Sostén la lata a unos 30 cm y rocía capas delgadas: una capa gruesa escurre.
+Second Coats	Segundas capas
+Many cans need the next coat within an hour, or after two days. In between, the paint can wrinkle.	Muchas latas necesitan la siguiente capa antes de una hora o después de dos días. En medio, la pintura se puede arrugar.
+Wipe it down to remove grease and dirt. Bare metal outside needs a primer or a rust-stopping enamel.	Límpialo para quitar la grasa y la suciedad. El metal sin pintar afuera necesita imprimador o un esmalte que detenga el óxido.
+Brush off loose rust and flaking paint, wipe off the dust, then prime what’s left.	Cepilla el óxido suelto y la pintura que se descascara, limpia el polvo y luego imprima lo que quede.
+Let It Cure	Deja que cure
+It’s dry to the touch in minutes, but give it a day before using it and about a week before heavy use.	Seca al tacto en minutos, pero dale un día antes de usarlo y como una semana antes de uso pesado.
+Save the Nozzle	Cuida la boquilla
+When you’re done, turn the can upside down and spray for a few seconds until it sprays clear.	Al terminar, voltea la lata y rocía unos segundos hasta que salga sin color.
+Air	Aire
+Spray outside or in a garage with the door open, with a respirator mask and gloves.	Rocía afuera o en un garaje con la puerta abierta, con mascarilla respiradora y guantes.
+Clean metal primer	Imprimador para metal limpio
+Bare metal outside lasts longest with a rust-stopping primer under the color.	El metal sin pintar afuera dura más con un imprimador contra el óxido debajo del color.
+Also Get	Lleva también
+Degreaser	Desengrasante
+Scuff pad	Fibra para lijar
+Drop cloth or cardboard	Lona o cartón
+Respirator mask and gloves	Mascarilla respiradora y guantes
+Fine sandpaper (220 grit)	Lija fina (grano 220)
+Clear matte top coat	Capa transparente mate
+Chalky paint scuffs easily; a clear coat protects it without adding shine.	La pintura tipo tiza se raya fácil; una capa transparente la protege sin dar brillo.
+Clear gloss top coat	Capa transparente brillante
+Seals the glitter in so it doesn’t rub off.	Sella la brillantina para que no se caiga.
+Rusty metal primer	Imprimador para metal oxidado
+After brushing off the loose rust, it seals what’s left so it can’t come back through.	Después de cepillar el óxido suelto, sella lo que queda para que no vuelva a salir.
+Bonding primer	Imprimador de adherencia
+Plastic primer	Imprimador para plástico
+Gives the paint something to grip on a slick surface. Scuff it with fine sandpaper first.	Le da a la pintura de dónde agarrarse en una superficie lisa. Lija primero con lija fina.
+Wood	Madera
+Sand lightly and wipe off the dust. Fill any holes first.	Lija un poco y limpia el polvo. Rellena primero los agujeros.
+Wash it with soapy water and let it dry. A paint made for plastic bonds without sanding.	Lávalo con agua y jabón y déjalo secar. Una pintura hecha para plástico se adhiere sin lijar.
+Wicker	Mimbre
+Spray from several angles, including from below, to reach the gaps in the weave.	Rocía desde varios ángulos, también desde abajo, para llegar a los huecos del tejido.
+Glass	Vidrio
+Clean it with rubbing alcohol first. Don’t spray anything that holds food or drinks, or the inside of a vase that holds water.	Límpialo primero con alcohol. No pintes nada que lleve comida o bebida, ni el interior de un florero con agua.
+Pots	Macetas
+For a pot that holds soil, paint the outside and just inside the rim.	En una maceta con tierra, pinta por fuera y solo un poco por dentro del borde.
+Stay Clean	Sin manchar
+A big cardboard box on its side makes a good spray booth.	Una caja de cartón grande de lado sirve como cabina de pintura.
+Grills	Parrillas
+Paint only the outside. Never paint the cooking grates or the inside of a grill. Most high-heat paint finishes curing when the grill is first heated.	Pinta solo por fuera. Nunca pintes las rejillas ni el interior de una parrilla. Casi toda pintura para altas temperaturas termina de curar la primera vez que se calienta la parrilla.
+Unplug it, clean it with a degreaser and tape off the handles and trim. Not for stove tops or ovens.	Desconéctalo, límpialo con desengrasante y cubre con cinta las manijas y molduras. No es para estufas ni hornos.
+The sheen is on the can: Krylon makes many colors in gloss, satin or matte.	El brillo viene en la lata: Krylon hace muchos colores en brillante, satinado o mate.
+Top Pick	La mejor opción
+Closest	El más parecido
+Close match	Muy cercano
+Similar	Parecido
+Not as close	No tan parecido
+Change My Answers	Cambiar mis respuestas
+Open Settings	Abrir Configuración
+No spray paints to show	No hay pinturas en aerosol para mostrar
+Try another finish or color, or turn on more spray paint brands in Settings.	Prueba otro acabado o color, o enciende más marcas de pintura en aerosol en Configuración.
+a planter, a frame and a vase	una maceta, un marco y un florero
+Spray paint	Pintura en aerosol
+Good For	Sirve para
+Closest Paint Colors	Colores de pintura más parecidos
+Spray Paints Like It	Pinturas en aerosol parecidas
+Screens show colors a little differently. Check the color on the cap before you buy.	Las pantallas muestran los colores un poco distintos. Revisa el color en la tapa antes de comprar.
+Spray paint not found	No se encontró la pintura en aerosol
+Its brand may be turned off.	Puede que su marca esté apagada.
+Spray Paints	Pinturas en aerosol
+Closest Spray Paints	Pinturas en aerosol más parecidas
+Spray paint colors and which can to use	Colores de pintura en aerosol y qué lata usar
+Spray Paint Brands	Marcas de pintura en aerosol
+Painter’s Touch 2X, Universal, Stops Rust, Specialty, Chalked, American Accents 2X and more. The number is the can’s SKU.	Painter’s Touch 2X, Universal, Stops Rust, Specialty, Chalked, American Accents 2X y más. El número es el SKU de la lata.
+Fusion All-In-One, COLORmaxx, Rust Tough, Chalky Finish, metallics and specialty finishes. Krylon goes by color name.	Fusion All-In-One, COLORmaxx, Rust Tough, Chalky Finish, metálicos y acabados especiales. Krylon va por nombre de color.
+Low-pressure artist spray paint with a satin finish, for murals, signs and crafts. Sold at art stores and some hardware stores.	Pintura en aerosol de artista de baja presión con acabado satinado, para murales, letreros y manualidades. Se vende en tiendas de arte y algunas ferreterías.
+Spray Paint From the Shelf	Pintura en aerosol del estante
+Email the Sign	Enviar el letrero por correo
+The Kiosk Sign	El letrero del quiosco
+why it happens, the steps to fix it and what to buy	por qué pasa, los pasos para arreglarlo y qué comprar
+the sign’s link, to print it or put it on a phone	el enlace del letrero, para imprimirlo o abrirlo en un teléfono
+Find Your Paint, Stain or Spray Paint Color	Encuentra tu color de pintura, tinte o pintura en aerosol
+Find Your Paint or Spray Paint Color	Encuentra tu color de pintura o pintura en aerosol
+Find Your Stain or Spray Paint Color	Encuentra tu color de tinte o pintura en aerosol
+Find Your Spray Paint Color	Encuentra tu color de pintura en aerosol
+For flat panel or board-and-batten shutters.	Para contraventanas de panel liso o de tabla y listón.
+High-density foam	Espuma de alta densidad
+High-density foam or fine microfiber	Espuma de alta densidad o microfibra fina
+Holds plenty of paint and gets into light texture without heavy stipple.	Carga bastante pintura y entra en texturas ligeras sin dejar mucho punteado.
+Optional for wide flat trim: lays enamel on fast, then tip it off with the brush.	Opcional para molduras anchas y lisas: aplica el esmalte rápido y luego empareja con la brocha.
+Short, dense covers leave the smoothest enamel finish on flat doors and sides.	Los rodillos cortos y densos dejan el esmalte más liso en puertas y costados planos.
+Use an extension pole	Usa una extensión
+Woven or microfiber, lint-free	Tejido o microfibra, sin pelusa
+A long nap reaches into deep texture so no spots are missed.	Un pelo largo llega a la textura profunda para no dejar huecos.
+A thick nap carries stain into rough-sawn and weathered wood.	Un pelo grueso lleva el tinte a la madera áspera y desgastada.
+A thick nap pushes paint into brick, mortar joints and stone.	Un pelo grueso mete la pintura en el ladrillo, las juntas y la piedra.
+Airless sprayer	Pistola de pintura sin aire
+Ceiling naps hold more paint and drip less overhead.	Los rodillos para techo cargan más pintura y gotean menos arriba.
+Covers deck boards quickly and evenly without bending over.	Cubre las tablas de la terraza rápido y parejo sin agacharte.
+Exterior woven synthetic	Sintético tejido para exterior
+Fast on deck boards. Back-brush so stain soaks in and doesn’t puddle.	Rápido en tablas de terraza. Repasa con brocha para que el tinte penetre y no se encharque.
+For cutting in along the ceiling, corners and trim.	Para recortar a lo largo del techo, las esquinas y las molduras.
+For cutting in where the ceiling meets the walls.	Para recortar donde el techo se junta con las paredes.
+For edges along the baseboards and in corners.	Para los bordes a lo largo de los zoclos y en las esquinas.
+For edges along the walls and steps.	Para los bordes junto a las paredes y los escalones.
+For panel edges and molding.	Para los bordes de los paneles y las molduras.
+For the panel edges and door edges.	Para los bordes de los paneles y de la puerta.
+For the polyurethane topcoat: pulls finish across the floor in thin, even coats.	Para la capa final de poliuretano: extiende el acabado sobre el piso en capas delgadas y parejas.
+For window trim, corner boards and fascia edges.	Para las molduras de ventanas, las esquineras y los bordes de la fascia.
+Lambswool or microfiber floor applicator	Aplicador de piso de lana de cordero o microfibra
+Lambswool or natural blend	Lana de cordero o mezcla natural
+Lays a smooth line on baseboards, casing and crown.	Deja una línea lisa en zoclos, marcos y cornisas.
+Mohair	Mohair
+Mohair or fine natural blend	Mohair o mezcla natural fina
+Natural (China) bristle	Cerda natural (china)
+Natural bristle is made for oil-based products. Water-based brushes go limp in them.	La cerda natural es para productos a base de aceite. Las brochas para agua se aflojan en ellos.
+Nylon/polyester	Nailon y poliéster
+Optional for a whole house. Spray, then back-roll or back-brush for the best bond.	Opcional para toda una casa. Rocía y luego repasa con rodillo o brocha para que adhiera mejor.
+Optional for long fascia and frieze boards.	Opcional para fascias y frisos largos.
+Pump sprayer	Rociador de bomba
+Reaches between louvers.	Llega entre las lamas.
+Rolls the flat boards after the grooves are brushed.	Pinta con rodillo las tablas planas después de pasar la brocha por las ranuras.
+Shed-resistant woven	Tejido que no suelta pelusa
+Stain pad applicator on a pole	Aplicador de almohadilla para tinte con mango
+Synthetic bristle keeps its shape in water-based products. Natural bristle goes limp in them.	La cerda sintética mantiene su forma en productos a base de agua. La cerda natural se afloja en ellos.
+Synthetic masonry cover	Rodillo sintético para mampostería
+The all-round wall nap: smooth finish with good paint pickup.	El rodillo para pared de uso general: acabado liso y buena carga de pintura.
+The fastest way to stain a fence or siding. Back-brush right after spraying.	La forma más rápida de teñir una cerca o un revestimiento. Repasa con brocha justo después de rociar.
+Wipe off extra stain and reach round spindles and slats.	Limpia el tinte de más y llega a los barrotes redondos y las tablillas.
+Works paint into beadboard grooves before rolling.	Mete la pintura en las ranuras del friso antes del rodillo.
+Woven or microfiber	Tejido o microfibra
+Stains and spray paint too.	También tintes y pintura en aerosol.
 `;
 })(typeof self !== 'undefined' ? self : this);

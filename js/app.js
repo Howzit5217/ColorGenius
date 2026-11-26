@@ -3,7 +3,7 @@
    Depends on CG.color, CG.engine, CG.stain, CG.wood, CG.tools, CG.scenes and CG.room3d. */
 (function () {
   'use strict';
-  const C = window.CG.color, E = window.CG.engine, S = window.CG.stain, WD = window.CG.wood, T = window.CG.tools, SC = window.CG.scenes;
+  const C = window.CG.color, E = window.CG.engine, S = window.CG.stain, SP = window.CG.spray, WD = window.CG.wood, T = window.CG.tools, SC = window.CG.scenes;
   const R3 = () => window.CG.room3d || { supported: () => false };
   const $ = (s, el) => (el || document).querySelector(s);
   const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
@@ -23,7 +23,7 @@
     askBulbs: true, askFixed: true, showWarnings: true, showLrv: true, showMatches: true, lightPreview: true,
     cal: { enabled: false, cct: 0, warmth: 0, brightness: 0, vividness: 0, ref: '' },
     theme: 'system', reduceMotion: false, lines: {}, collections: {}, audience: '', onboarded: false,
-    jobs: { paint: true, stain: true }, stainBrands: {}, chain: '',
+    jobs: { paint: true, stain: true, spray: true }, stainBrands: {}, sprayBrands: {}, chain: '',
     questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false, camTune: [], lang: 'en',
   };
   function merge(base, over) {
@@ -45,9 +45,9 @@
   // ---------------- what's on screen ----------------
   const state = {
     ready: false, view: 'home', screen: detectScreen(),
-    flows: { paint: null, stain: null, buy: null }, // { a: answers, step }
-    results: { paint: null, stain: null, buy: null },
-    pick: { paint: '', stain: '' }, light: 'daylight', sceneFor: {}, query: '', lookupHex: '', ftype: {}, duel: null, layout: null, furniture: {}, parts: {},
+    flows: { paint: null, stain: null, buy: null, spray: null }, // { a: answers, step }
+    results: { paint: null, stain: null, buy: null, spray: null },
+    pick: { paint: '', stain: '', spray: '' }, light: 'daylight', sceneFor: {}, query: '', lookupHex: '', ftype: {}, duel: null, layout: null, furniture: {}, parts: {},
     lastFlow: 'paint', depth: 0,
   };
 
@@ -81,6 +81,8 @@
   function engineSettings() {
     return { resultCount: settings.resultCount, showDiscontinued: settings.showDiscontinued, brands: brandsEnabled(), collections: settings.collections, storeBrand: settings.storeBrand, storeOnly: settings.storeOnly && !!settings.storeBrand, inStoreSamples: settings.inStoreSamples };
   }
+  // spray paint: the brands that are on, the store's own brands first
+  const spraySettings = () => ({ resultCount: settings.resultCount, sprayBrands: settings.sprayBrands, brandOrder: (CHAINS[settings.chain] && CHAINS[settings.chain].spray) || [] });
   const stainSettings = () => ({ resultCount: settings.resultCount, brands: brandsEnabled(), collections: settings.collections, storeBrand: settings.storeBrand, stainBrands: settings.stainBrands });
   const enabledCount = () => { const en = brandsEnabled(); return E.getIndex().colors.filter(c => en[c.brand] && (settings.showDiscontinued || !(c.flags & E.F.DISC))).length; };
   function findAny(id) { return E.findColor(id) || S.find(id) || null; }
@@ -186,6 +188,16 @@
     drop: '<path d="M16 4s-8.5 9.3-8.5 15.5a8.5 8.5 0 0017 0C24.5 13.3 16 4 16 4z"/>',
     dropFull: '<path d="M16 4s-8.5 9.3-8.5 15.5a8.5 8.5 0 0017 0C24.5 13.3 16 4 16 4z" fill="currentColor"/>',
     undo: '<path d="M8 12.5h13a6.5 6.5 0 010 13h-6"/><path d="M13 7l-5.5 5.5L13 18"/>',
+    // spray paint: the can, and the things it goes on
+    spray: '<path d="M10.5 13h10v14a2 2 0 01-2 2h-6a2 2 0 01-2-2z"/><path d="M12 13v-2.5h7V13M13.8 10.5V7h3.4v3.5"/><path d="M20 8h2.5M24.5 5.5l1.2-1.2M24.5 10.5l1.2 1.2M26.5 8h1.8"/>',
+    vase: '<path d="M12.5 4.5h7M13.5 4.5v3c0 2-4.5 4-4.5 10.5 0 5.5 3 9.5 7 9.5s7-4 7-9.5c0-6.5-4.5-8.5-4.5-10.5v-3"/>',
+    pot: '<path d="M7 11h18l-2.5 16h-13z"/><path d="M6 7h20v4H6z"/><path d="M16 7c0-2 1.3-3.2 3.5-3.2"/>',
+    fridge: '<rect x="9" y="3.5" width="14" height="25" rx="2"/><path d="M9 12.5h14M12 7v3M12 15.5v5"/>',
+    plastic: '<path d="M8 10h16l-1.8 17.5H9.8z"/><path d="M6.5 6.5h19V10h-19zM13 14v9M19 14v9"/>',
+    hardware: '<circle cx="16" cy="11.5" r="6"/><path d="M14 17.5V24h4v-6.5M10.5 27.5h11"/>',
+    grill: '<path d="M6.5 13.5h19a9.5 9.5 0 01-19 0z"/><path d="M11 22l-3 6.5M21 22l3 6.5M16 23v5.5M11 9.5c0-2 2-2 2-4M16 9.5c0-2 2-2 2-4M21 9.5c0-2 2-2 2-4"/>',
+    craft: '<path d="M6 25.5l11-11M17 14.5l3-8 5.5 5.5-8 3z"/><path d="M5 27l2.5-2.5"/><circle cx="8" cy="9" r="2.5"/><path d="M24 22l1.5 1.5M27 19l-2 1"/>',
+    wicker: '<path d="M6.5 13h19l-2 14h-15z"/><path d="M7.5 18h17M8.3 23h15.4M12 13l1 14M20 13l-1 14M16 13v14"/><path d="M10 13c0-5 12-5 12 0"/>',
   };
   const ic = (name, size) => `<svg viewBox="0 0 32 32" width="${size || 32}" height="${size || 32}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || P.unsure}</svg>`;
   const ICON_OF = { living: 'living', bedroom: 'bedroom', kitchen: 'kitchen', bathroom: 'bathroom', powder: 'powder', dining: 'dining', office: 'office', kids: 'kids', nursery: 'nursery', entry: 'entry', stairs: 'stairs', laundry: 'laundry', closet: 'closet', sunroom: 'sunroom', basement: 'basement', attic: 'attic', media: 'media', garage: 'garage', accent: 'accent', ceiling: 'ceiling', trim: 'trim', doors: 'doors', wainscot: 'wainscot', fireplace: 'fireplace', cabinets: 'cabinets', builtins: 'builtins', furniture: 'furniture', floor_paint: 'floor_paint', ext_body: 'ext_body', ext_trim: 'ext_trim', front_door: 'front_door', shutters: 'shutters', garage_door: 'garage_door', porch_floor: 'porch_floor', shed: 'shed' };
@@ -353,7 +365,7 @@
   function parseHash() {
     const h = decodeURIComponent((location.hash || '').replace(/^#\/?/, ''));
     const [a, b] = [h.split('/')[0], h.split('/').slice(1).join('/')];
-    if (['paint', 'stain', 'buy'].includes(a)) return b === 'results' ? { view: 'results', kind: a } : { view: 'flow', kind: a, step: Math.max(0, parseInt(b, 10) || 0) };
+    if (['paint', 'stain', 'buy', 'spray'].includes(a)) return b === 'results' ? { view: 'results', kind: a } : { view: 'flow', kind: a, step: Math.max(0, parseInt(b, 10) || 0) };
     if (a === 'color' && b) return { view: 'color', id: b };
     if (a === 'p' && b) return { view: 'shared', data: b };
     if (a === 't' && b) return { view: 'ticket', data: b };
@@ -511,14 +523,27 @@
     view().innerHTML = `<div class="page narrow fix-page">${backBtn()}
       <div class="page-head"><p class="eyebrow">Fix a Problem</p><h1 class="fix-h"><span class="fix-ic big">${fixIc(p.icon, 36)}</span>${esc(p.name)}</h1><p class="fix-see">${esc(p.see)}</p></div>
       ${p.lead ? `<p class="fix-warn"><b>Old house?</b> ${esc(FX.LEAD)}</p>` : ''}${p.safe ? `<p class="fix-warn"><b>Be safe.</b> ${esc(FX.SAFE)}</p>` : ''}
-      ${p.test ? `<section class="fix-sec"><h2>Quick Test</h2><p>${esc(p.test)}</p></section>` : ''}
-      <section class="fix-sec"><h2>Why It Happens</h2><ul class="fix-why">${p.why.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>
-      <section class="fix-sec"><h2>How to Fix It</h2><ol class="fix-steps">${p.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol></section>
-      <section class="fix-sec"><h2>What to Buy</h2><ul class="fix-buy">${p.buy.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>
+      <div class="fix-cards">
+        ${p.test ? `<section class="fix-sec fix-box test"><h2><span class="ic">${ic('search', 22)}</span>Quick Test</h2><p>${esc(p.test)}</p></section>` : ''}
+        <section class="fix-sec fix-box"><h2><span class="ic">${ic('unsure', 22)}</span>Why It Happens</h2><ul class="fix-why">${p.why.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>
+      </div>
+      <section class="fix-sec fix-box"><h2><span class="ic">${ic('list', 22)}</span>How to Fix It</h2><ol class="fix-steps">${p.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol></section>
+      <section class="fix-sec fix-box"><h2><span class="ic">${ic('can', 22)}</span>What to Buy</h2><ul class="fix-buy">${p.buy.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>
       ${p.tip ? `<p class="fix-tip"><b>Tip</b> ${esc(p.tip)}</p>` : ''}
-      <div class="actions stack"><button type="button" class="btn big primary${on ? ' done' : ''}" data-add="fix:${esc(p.id)}">${on ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-fix-print="${esc(p.id)}">${ic('print', 22)}Print</button></div>
+      <div class="actions stack"><button type="button" class="btn big primary${on ? ' done' : ''}" data-add="fix:${esc(p.id)}">${on ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-fix-print="${esc(p.id)}">${ic('print', 22)}Print</button><button type="button" class="btn big" data-fix-email="${esc(p.id)}">${mailIcon}Email</button></div>
       ${others.length ? `<section class="section"><h2>Other Problems</h2><div class="fix-grid">${others.map(x => `<button type="button" class="fix-card" data-go="fix/${x.id}"><span class="fix-ic">${fixIc(x.icon, 30)}</span><span class="fix-txt"><b>${esc(x.name)}</b><span>${esc(x.see)}</span></span></button>`).join('')}</div><div class="actions"><button type="button" class="btn" data-go="fix">See Every Problem</button></div></section>` : ''}
     </div>`;
+  }
+  // the same, as an email
+  function fixDoc(p) {
+    const lines = [p.name, p.see, ''];
+    if (p.lead) lines.push('Old house? ' + FX.LEAD, '');
+    if (p.safe) lines.push('Be safe. ' + FX.SAFE, '');
+    if (p.test) lines.push('QUICK TEST', p.test, '');
+    lines.push('WHY IT HAPPENS', ...p.why.map(x => '- ' + x), '', 'HOW TO FIX IT', ...p.steps.map((x, i) => `${i + 1}. ${x}`), '', 'WHAT TO BUY', ...p.buy.map(x => '- ' + x));
+    if (p.tip) lines.push('', 'Tip: ' + p.tip);
+    lines.push('', 'Ask at the paint desk if you’re not sure.');
+    return { title: p.name, subject: 'How to fix it: ' + p.name, what: 'why it happens, the steps to fix it and what to buy', text: lines.join('\n') };
   }
   // one problem on one page: black and white, the steps numbered and the shopping list with boxes to check
   function printFix(p) {
@@ -533,23 +558,30 @@
     const t = e.target.closest('button'); if (!t || !state.ready) return;
     if (t.dataset.fixWhere != null) { state.fixWhere = t.dataset.fixWhere; renderFix(''); }
     if (t.dataset.fixPrint) { const p = FX.find(t.dataset.fixPrint); if (p) printFix(p); }
+    if (t.dataset.fixEmail) { const p = FX.find(t.dataset.fixEmail); if (p) openEmail(null, fixDoc(p)); }
   });
   function renderHome() {
-    const tiles = [
+    // the color jobs go on top (paint, stain and spray paint, three across); the helpers share the row under them
+    // (tiles-top-1 … 3 and tiles-low-1 … 3 say how many in each)
+    const jobs = [
       jobOn('paint') && ['paint', 'Paint Colors', 'Find the right color for a room, cabinets, trim or the outside of a house.'],
       jobOn('stain') && ['stain', 'Stain Colors', 'See wood stains on real wood for floors, furniture, decks and fences.'],
+      jobOn('spray') && ['spray', 'Spray Paint', 'Colors from the brands the store carries, and the right can for metal, plastic, wood or a grill.'],
+    ].filter(Boolean);
+    const tiles = jobs.concat([
       jobOn('paint') && ['buy', 'Which Paint to Buy', 'Answer a few questions to get the paint, finish, primer, roller and brush, and how much.'],
       ['lookup', 'Look Up a Color', 'Have a color name, code or number? Find it and match it in any brand.'],
       ['fix', 'Fix a Problem', 'Peeling, mildew, stains bleeding through or blotchy stain: why it happens, how to fix it and what to buy.'],
-    ].filter(Boolean);
-    // the first two go on top, side by side; the rest share the row under them (tiles-1 … tiles-3 say how many)
-    const top = Math.min(2, tiles.length), low = tiles.length - top;
+    ].filter(Boolean));
+    const top = jobs.length, low = tiles.length - top;
+    // paint and stain have a wide picture for two across and a 3 by 2 one for three across; the rest are 3 by 2
+    const art = (k, i) => { const two = i < top && (k === 'paint' || k === 'stain'); const wide = two && top < 3; return { src: `img/tile-${k}${two && !wide ? '-32' : ''}.jpg`, w: wide ? 1080 : 960, h: wide ? 510 : 640 }; };
     const list = session.items;
     const tips = TIPS.slice().sort(() => Math.random() - 0.5).slice(0, 3);
     view().innerHTML = `<div class="home">
       <div class="home-head"><h1>${isKiosk() ? 'Welcome! What are you working on?' : 'What would you like to do?'}</h1><p>Tap one to start. Every step has a Back button, so you can always change your mind.</p></div>
       <div class="tiles tiles-top-${top} tiles-low-${low}">${tiles.map(([k, t, s], i) => `<button type="button" class="tile ${i < top ? 'top' : 'low'}" data-start="${k}">
-        <span class="tile-art"><img src="img/tile-${k}.jpg" alt="" width="${k === 'paint' || k === 'stain' ? 1080 : 960}" height="${k === 'paint' || k === 'stain' ? 510 : 640}" decoding="async"></span>
+        <span class="tile-art"><img src="${art(k, i).src}" alt="" width="${art(k, i).w}" height="${art(k, i).h}" decoding="async"></span>
         <span class="tile-text"><span class="tile-title">${esc(t)}${chev('right', 22)}</span><span class="tile-sub">${esc(s)}</span></span></button>`).join('')}</div>
       <section class="section" aria-labelledby="projH">
         <div class="page-head"><h2 id="projH">Projects</h2><p>Save the colors, stains and shopping lists for one job in one place, then print it or email it.</p></div>
@@ -582,7 +614,7 @@
   const houseIcon = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11L12 4l8.5 7"/><path d="M6 9.5V20h4.5v-5.5h3V20H18V9.5"/></svg>';
   const hasWork = () => Object.values(state.flows).some(f => f && f.a && f.a._picked && Object.keys(f.a._picked).length) || Object.values(state.results).some(Boolean) || !!state.query.trim();
   function clearWork() {
-    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null };
+    state.flows = { paint: null, stain: null, buy: null, spray: null }; state.results = { paint: null, stain: null, buy: null, spray: null };
     state.query = ''; state.lookupHex = ''; state.duel = null; state.duelPick = ''; state.pick = { paint: '', stain: '' }; state.ftype = {}; state.layout = null; state.furniture = {}; state.parts = {};
   }
   function homeAsk() {
@@ -611,6 +643,7 @@
   const FLOW_INFO = {
     paint: { title: 'Paint Colors', last: 'Show My Colors' },
     stain: { title: 'Stain Colors', last: 'Show My Stains' },
+    spray: { title: 'Spray Paint', last: 'Show My Spray Paints' },
     buy: { title: 'Which Paint to Buy', last: 'Show My Shopping List' },
   };
   const GROUPS = {
@@ -664,6 +697,7 @@
 
   function freshAnswers(kind) {
     if (kind === 'stain') return Object.assign(clone(S.DEFAULT), { inout: '', _picked: {} });
+    if (kind === 'spray') return Object.assign(clone(SP.DEFAULT), { _picked: {} });
     const a = Object.assign(clone(E.DEFAULT_ANSWERS), { where: '', _picked: {} });
     if (kind === 'buy') Object.assign(a, { surface: '', texture: '', issues: [], flaws: false, nowKind: '', going: '', kids: null, priority: '', amountSize: '' });
     return a;
@@ -687,6 +721,16 @@
   // clears the answer to any question that's gone, so it can't quietly change the picks.
   function flowSteps(kind) {
     const a = flowOf(kind).a;
+    if (kind === 'spray') {
+      // what it is decides the rest: a grill or an appliance comes in a few colors of one kind of paint
+      const job = SP.JOBS[a.what] || SP.JOBS.metal, list = ['swhat'];
+      if (!job.fixed) list.push('swhere');
+      if (!['hot', 'appliance', 'craft'].includes(job.on)) list.push('scond');
+      if (SP.finishesFor(a.what).length) list.push('sfinish');
+      if (job.on !== 'hot' && job.on !== 'appliance') list.push('scolor');
+      list.push('ssize');
+      return list;
+    }
     if (kind === 'stain') {
       // how much grain shows comes before the looks, so the look samples are solid stain when it's hidden
       const list = ['inout', 'target', 'wood', 'condition', 'grain', 'slook'];
@@ -766,6 +810,15 @@
   // longer offers are dropped (Knots once it isn't wood, Pets once it isn't a floor or a table).
   function pruneAnswers(kind) {
     const a = flowOf(kind).a, list = flowSteps(kind), on = id => list.includes(id);
+    if (kind === 'spray') {
+      const job = SP.JOBS[a.what] || SP.JOBS.metal;
+      if (job.fixed) a.place = job.place;
+      if (a.condition === 'rusty' && job.on !== 'metal') a.condition = 'new';
+      if (!on('scond')) a.condition = 'new';
+      if (a.finish && !SP.finishesFor(a.what).includes(a.finish)) a.finish = '';
+      if (!on('scolor')) { a.families = []; a.match = null; }
+      return;
+    }
     const D = kind === 'stain' ? S.DEFAULT : E.DEFAULT_ANSWERS;
     const reset = (...keys) => keys.forEach(k => { a[k] = clone(D[k]); });
     const forget = id => { if (a._picked) delete a._picked[id]; };
@@ -1064,6 +1117,84 @@
       pick: (a, v) => { a.amountSize = v; a.sizeCustom = null; },
     },
   };
+  // ---- spray paint ----
+  Object.assign(STEPS, {
+    swhat: {
+      title: () => 'What are you spraying?', sub: () => 'It decides which kind of spray paint works.', auto: true, need: 'swhat',
+      html: a => `<div class="choices">${Object.entries(SP.JOBS).map(([k, j]) => choice(`data-v="${k}"`, a.what === k && a._picked.swhat, j.label, j.sub, ic(j.icon))).join('')}</div>`,
+      pick: (a, v) => { const was = a.what; a.what = v; if (was !== v || SP.JOBS[v].fixed) a.place = SP.JOBS[v].place; },
+    },
+    swhere: {
+      title: () => 'Where will it be?', sub: () => 'Outside, metal needs paint that stops rust.', auto: true,
+      html: a => `<div class="choices two">${Object.entries(SP.PLACES).map(([k, [t, sub]]) => choice(`data-v="${k}"`, a.place === k, t, sub, ic(k === 'inside' ? 'living' : 'sun'))).join('')}</div>`,
+      pick: (a, v) => { a.place = v; },
+    },
+    scond: {
+      title: () => 'What shape is it in?', sub: () => 'It decides the prep, and whether it needs a primer.', auto: true,
+      html: a => { const on = (SP.JOBS[a.what] || {}).on; return `<div class="choices">${Object.entries(SP.CONDITION).filter(([k]) => k !== 'rusty' || on === 'metal').map(([k, [t, sub]]) => choice(`data-v="${k}"`, a.condition === k, t, sub, ic({ new: 'sparkle', painted: 'roller', rusty: 'weathered', shiny: 'glossy' }[k]))).join('')}</div>`; },
+      pick: (a, v) => { a.condition = v; },
+    },
+    sfinish: {
+      title: () => 'What finish do you want?', sub: () => 'Optional. Any Finish shows every kind.', auto: true,
+      html: a => `<div class="choices">${choice('data-v=""', !a.finish, 'Any Finish', 'Every kind', `<span class="spray-sw" ${sprayStyle('8FA6A0', 'satin')}></span>`)}${SP.finishesFor(a.what).map(k => choice(`data-v="${k}"`, a.finish === k, SP.FINISHES[k].label, SP.FINISHES[k].sub, `<span class="spray-sw" ${sprayStyle(FINISH_DEMO[k], k)}></span>`)).join('')}</div>`,
+      pick: (a, v) => { a.finish = v; },
+    },
+    scolor: {
+      title: () => 'Which colors?', sub: () => 'Pick up to two, or match a color you already have.',
+      html: a => sprayColorHtml(a),
+      click: (a, t) => sprayColorClick(a, t),
+    },
+    ssize: {
+      title: () => 'How big is it?', sub: () => 'So you know how many cans to get.', auto: true,
+      html: a => `<div class="choices">${Object.entries(SP.SIZES).map(([k, z]) => choice(`data-v="${k}"`, a.size === k, z.label, z.sub, ic(k === 'small' ? 'sizeS' : k === 'medium' ? 'sizeM' : 'sizeL'))).join('')}</div>`,
+      pick: (a, v) => { a.size = v; },
+    },
+  });
+  // a spray color as it looks on the can's cap: gloss catches a bright streak, satin a soft one, matte none; metallic
+  // has a sheen across it, hammered little dimples, texture a speckle and glitter a sparkle
+  const FINISH_DEMO = { gloss: '2D5F9A', satin: '6F8F85', matte: 'B5653F', metallic: 'C2A15A', hammered: '4A5157', chalky: 'D9CDB8', textured: '9C8F7E', glitter: 'B04A8C' };
+  function sprayBg(hex, finish) {
+    const c = paint(hex);
+    const hi = k => `linear-gradient(135deg, rgba(255,255,255,${k}) 0%, rgba(255,255,255,0) 42%, rgba(0,0,0,${(k / 3).toFixed(2)}) 100%)`;
+    if (finish === 'gloss' || finish === 'semigloss' || finish === 'neon') return `${hi(0.42)}, ${c}`;
+    if (finish === 'satin' || !finish) return `${hi(0.2)}, ${c}`;
+    if (finish === 'metallic' || finish === 'mirror') return `linear-gradient(115deg, rgba(0,0,0,.34) 0%, rgba(255,255,255,.55) 32%, rgba(255,255,255,0) 52%, rgba(0,0,0,.24) 78%, rgba(255,255,255,.3) 100%), ${c}`;
+    if (finish === 'hammered') return `radial-gradient(circle at 35% 35%, rgba(255,255,255,.3) 0 2px, rgba(0,0,0,.2) 4px, transparent 5px) 0 0 / 10px 10px, ${hi(0.25)}, ${c}`;
+    if (finish === 'textured') return `radial-gradient(rgba(0,0,0,.3) 1px, transparent 1.6px) 0 0 / 5px 5px, radial-gradient(rgba(255,255,255,.32) 1px, transparent 1.6px) 2px 3px / 7px 7px, ${c}`;
+    if (finish === 'glitter') return `radial-gradient(rgba(255,255,255,.9) 1px, transparent 1.8px) 0 0 / 9px 9px, radial-gradient(rgba(255,255,255,.6) 1px, transparent 1.6px) 4px 5px / 7px 7px, ${hi(0.3)}, ${c}`;
+    if (finish === 'frosted' || finish === 'glass') return `linear-gradient(160deg, rgba(255,255,255,.5), rgba(255,255,255,.08)), ${c}`;
+    return c;
+  }
+  const sprayStyle = (hex, finish) => `style="background:${sprayBg(hex, finish)}"`;
+  // the colors question: families to pick from, or a color to match (a paint color's code, or picked)
+  function sprayColorHtml(a) {
+    const fams = a.families || [], m = a.match;
+    return `<div class="choices fams">${choice('data-sfam="any"', !fams.length && !m, 'Any Color', 'A spread of colors', `<span class="swatches3">${['F4F2EA', '2D5F9A', 'B3262B'].map(h => `<span ${swStyle(h)}></span>`).join('')}</span>`)}${Object.entries(SP.FAMILIES).map(([k, [t, h]]) => choice(`data-sfam="${k}"`, fams.includes(k), t, '', `<span class="spray-sw" ${sprayStyle(h, k === 'metals' ? 'metallic' : 'satin')}></span>`)).join('')}</div>
+      <div class="q-group spray-match"><p class="q-label">Or match a color</p>
+        <div class="actions"><input type="text" id="sprayMatch" class="input" maxlength="60" placeholder="A paint color, like SW 7029" aria-label="A paint color to match" value="${esc(m && m.code ? m.code : '')}" enterkeyhint="search"><button type="button" class="btn" data-smatch="find">Match It</button><span class="muted">or</span>${colorHtml('sprayPick', (m && m.hex) || 'B5653F', 'Pick a color to match', (hex, done) => { if (!done) return; const f = flowOf('spray'); f.a.match = { hex, name: '#' + hex }; f.a.families = []; f.a._picked.scolor = true; redrawStep('spray'); })}</div>
+        ${m ? `<div class="match-pill"><span class="sw" ${swStyle(m.hex)}></span><span>Matching <b>${esc(m.name)}</b></span><button type="button" class="chip plain" data-smatch="clear">${xIcon}Remove</button></div>` : ''}
+        <p class="mail-msg" id="sprayMsg" role="status" aria-live="polite"></p></div>`;
+  }
+  function sprayColorClick(a, t) {
+    if (t.dataset.sfam) {
+      const k = t.dataset.sfam; a.match = null;
+      if (k === 'any') a.families = [];
+      else { a.families = a.families.filter(f => f !== k).concat(a.families.includes(k) ? [] : [k]); if (a.families.length > 2) a.families.shift(); }
+      return 'redraw';
+    }
+    if (t.dataset.smatch === 'clear') { a.match = null; return 'redraw'; }
+    if (t.dataset.smatch === 'find') {
+      const q = ($('#sprayMatch').value || '').trim();
+      const hex = E.parseColorValue(q), hit = hex ? null : (E.search(q, { brands: brandsEnabled(), limit: 1 })[0] || E.search(q, { limit: 1 })[0] || {}).color;
+      if (hex) a.match = { hex, name: '#' + hex, code: q };
+      else if (hit) a.match = { hex: hit.hex, name: `${brandName(hit.brand)} ${hit.name}`, code: q };
+      else { const m = $('#sprayMsg'); if (m) { m.textContent = `No paint color matches “${q}”. Try the number from the chip.`; m.classList.add('bad'); } return false; }
+      a.families = [];
+      return 'redraw';
+    }
+    return false;
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target && e.target.id === 'sprayMatch') { e.preventDefault(); const b = $('[data-smatch="find"]'); if (b) b.click(); } });
   // the question that needs an answer before Next works
   function stepReady(id, a) {
     const st = STEPS[id];
@@ -1076,7 +1207,7 @@
 
   let barAt = null;   // where the question progress bar was last shown
   function renderFlow(kind, step) {
-    if (kind === 'stain' && !jobOn('stain')) { go('', { replace: true }); return; }
+    if ((kind === 'stain' || kind === 'spray') && !jobOn(kind)) { go('', { replace: true }); return; }
     const f = flowOf(kind), a = f.a;
     const list = flowSteps(kind);
     // a step past the end (answers changed the list): go to the last one
@@ -1285,6 +1416,7 @@
     if (kind === 'paint') { state.results.paint = E.recommend(a, engineSettings()); state.light = E.lightForAnswers(a); state.pick.paint = (state.results.paint.results[0] || {}).color ? state.results.paint.results[0].color.id : ''; }
     if (kind === 'stain') { state.results.stain = S.recommend(a, stainSettings()); state.light = 'daylight'; state.pick.stain = (state.results.stain.results[0] || {}).id || ''; }
     if (kind === 'buy') state.results.buy = buyPlan(a);
+    if (kind === 'spray') { state.results.spray = SP.recommend(a, spraySettings()); state.pick.spray = (state.results.spray.results[0] || {}).id || ''; }
     state.duel = null;
     go(`${kind}/results`);
   }
@@ -1439,7 +1571,7 @@
   }
 
   const live = {};  // scene box id -> { spec, viewer }
-  function teardownScenes() { for (const k of Object.keys(live)) { if (live[k].viewer) live[k].viewer.destroy(); delete live[k]; } }
+  function teardownScenes() { for (const k of Object.keys(live)) { if (live[k].viewer) live[k].viewer.destroy(); delete live[k]; } if (sprayView) { sprayView.destroy(); sprayView = null; } }
   const sceneBox = id => `<div class="scene" id="${id}"><div class="pic" role="img"></div><span class="scene-tag" hidden></span><button type="button" class="scene-setup" data-room-setup="${id}" hidden>${ic('room', 20)}Set Up Room</button>${R3().supported() ? `<button type="button" class="scene-3d" data-toggle3d="1" aria-pressed="${!!settings.view3d}" aria-label="Turn in 3D">${ic('cube', 22)}3D</button>` : ''}</div><div class="scene-tools" id="${id}-tools"></div>`;
   // spec: { key, ids, roles(sceneId) -> role colors, tex (stain), stain, answers, label }
   function mountScene(id, spec) {
@@ -1820,6 +1952,15 @@
   function answerChips(kind) {
     const a = flowOf(kind).a, list = flowSteps(kind), out = [];
     const add = (id, label) => { const i = list.indexOf(id); if (i >= 0 && label) out.push([i, label]); };
+    if (kind === 'spray') {
+      add('swhat', (SP.JOBS[a.what] || {}).label);
+      add('swhere', (SP.PLACES[a.place] || [])[0]);
+      add('scond', (SP.CONDITION[a.condition] || [])[0]);
+      add('sfinish', a.finish ? SP.FINISHES[a.finish].label : 'Any finish');
+      add('scolor', a.match ? 'Match: ' + a.match.name : a.families.length ? a.families.map(f => SP.FAMILIES[f][0]).join(' + ') : 'Any color');
+      add('ssize', (SP.SIZES[a.size] || {}).label);
+      return out;
+    }
     if (kind === 'stain') {
       add('target', (S.JOBS[a.target] || {}).label);
       add('wood', spLabel(S.woodFor(a)) + (a.condition !== 'bare' ? ', ' + S.CONDITION[a.condition].toLowerCase() : ''));
@@ -1858,12 +1999,14 @@
     if (kind === 'paint') { state.results.paint = E.recommend(a, engineSettings()); state.light = E.lightForAnswers(a); }
     if (kind === 'stain') state.results.stain = S.recommend(a, stainSettings());
     if (kind === 'buy') state.results.buy = buyPlan(a);
+    if (kind === 'spray') state.results.spray = SP.recommend(a, spraySettings());
     return state.results[kind];
   }
   function renderResults(kind) {
     const R = ensureResults(kind);
     if (!R) { go('', { replace: true }); return; }
     if (kind === 'buy') { renderPlan(R); return; }
+    if (kind === 'spray') { renderSprayResults(R); return; }
     const stain = kind === 'stain';
     const list = R.results;
     if (!list.length) {
@@ -1895,6 +2038,86 @@
     const cur = list.find(r => idOf(r) === state.pick[kind]);
     mountScene('resScene', stain ? stainSceneSpec(R, cur) : paintSceneSpec(cur.color, a, true));
   }
+  // ---------------- spray paint results ----------------
+  const sprayMeta = r => [SP.fullLine(r), SP.codeLabel(r), SP.finishName(r.finish)].filter(Boolean).join(' · ');
+  const sprayPick = r => `<button type="button" class="pick" data-pick="${esc(r.id)}" aria-pressed="${r.id === state.pick.spray}"><span class="sw spray-sw" ${sprayStyle(r.hex, r.finish)}></span><span class="txt"><span class="role">${esc(r.role || '')}</span><span class="nm">${esc(r.name)}</span><span class="cd">${esc(SP.fullLine(r))}</span></span></button>`;
+  // what to buy: each can with why and how many; the supplies as a row of chips, not a long sentence
+  const buyRows = list => `<div class="buy-list">${list.map(p => `<div class="buy-row"><span class="buy-what"><b>${esc(p.name)}</b>${p.why ? `<span>${esc(p.why)}</span>` : ''}${p.supplies ? `<span class="chipset">${p.supplies.map(x => `<span class="chip plain static">${esc(x)}</span>`).join('')}</span>` : ''}</span>${p.amount ? `<span class="buy-amt">${esc(p.amount)}</span>` : ''}</div>`).join('')}</div>`;
+  function renderSprayResults(R) {
+    const list = R.results, a = R.answers, job = SP.JOBS[a.what] || SP.JOBS.metal;
+    if (!list.length) {
+      view().innerHTML = `<div class="page">${backBtn()}<div class="empty"><h1>No spray paints to show</h1><p class="muted">Try another finish or color, or turn on more spray paint brands in Settings.</p><div class="actions"><button type="button" class="btn primary big" data-go="spray/0">Change My Answers</button><button type="button" class="btn big" data-go="settings">Open Settings</button></div></div></div>`;
+      return;
+    }
+    if (!list.some(r => r.id === state.pick.spray)) state.pick.spray = list[0].id;
+    view().innerHTML = `<div class="results spray-res">
+      ${backBtn('Change Answers')}
+      <div class="results-head"><p class="eyebrow">${a.match ? `${list.length} spray paints closest to ${esc(a.match.name)}` : `${list.length} spray paints picked from ${fmt(R.poolSize)}`}</p><h1>${esc(`Spray Paint for ${job.label}`)}</h1>${chipsLine('spray')}</div>
+      <div class="res-grid">
+        <div class="res-scene"><div class="spray-stage" id="sprayStage"></div></div>
+        <div class="res-side">
+          <div class="section"><h2>Tap a color to see it</h2><div class="picks" id="picks">${list.map(sprayPick).join('')}</div>${list.length > 2 ? '<p class="swipe-hint muted">Swipe for more →</p>' : ''}</div>
+          <div class="chosen" id="chosen"></div>
+          <div class="actions"><button type="button" class="btn big ghost" data-restart="spray">Start Over</button></div>
+        </div>
+      </div>
+      <section class="section" aria-labelledby="sprayBuyH"><h2 id="sprayBuyH">What to Buy</h2>${buyRows(R.products)}</section>
+      ${a.place === 'outside' ? wxHtml('spray', true) : ''}
+      <section class="section" aria-labelledby="gtk"><h2 id="gtk">Good to Know</h2><div class="home-tips">${R.tips.map(t => `<div class="tipcard"><b>${esc(t.title)}</b><span>${esc(t.text)}</span></div>`).join('')}</div></section>
+    </div>`;
+    fillSprayChosen();
+    showSprayStage(list.find(r => r.id === state.pick.spray));
+  }
+  function fillSprayChosen() {
+    const R = state.results.spray, el = $('#chosen'); if (!R || !el) return;
+    const r = R.results.find(x => x.id === state.pick.spray) || R.results[0];
+    const onList = session.items.some(x => x.ref === r.id);
+    el.innerHTML = `<div class="chosen-top"><span class="chosen-sw spray-sw" ${sprayStyle(r.hex, r.finish)}></span><div><h2>${esc(r.name)}</h2><p class="meta">${esc(sprayMeta(r))}</p></div></div>
+      ${r.reasons.length ? `<ul class="why">${r.reasons.slice(0, 3).map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+      <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(r.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-go="color/${esc(encodeURIComponent(r.id))}">See Everything${chev('right')}</button></div>`;
+  }
+  // the color on things it's sprayed on, in 3D, with its sheen (a big swatch without 3D); turnable with 3D on
+  let sprayView = null;
+  function showSprayStage(r) {
+    const host = $('#sprayStage'); if (!host || !r) return;
+    if (sprayView) { sprayView.destroy(); sprayView = null; }
+    host.innerHTML = '';
+    host.setAttribute('aria-label', `${r.name} on a planter, a frame and a vase`);
+    if (R3().supported()) sprayView = R3().mount(host, { scene: 'spray-show', roles: { spray: r.hex }, spray: { finish: r.finish }, light: 'daylight', interactive: !!settings.view3d, reduced: reduced(), cal: settings.cal });
+    if (!sprayView) host.innerHTML = `<span class="spray-big" ${sprayStyle(r.hex, r.finish)}></span>`;
+  }
+  // a spray paint's own page: what it is, what it's for, the paint colors closest to it, and other cans like it
+  function renderSprayColor(id) {
+    const r = SP.find(id);
+    if (!r) { view().innerHTML = `<div class="page">${backBtn()}<div class="empty"><h1>Spray paint not found</h1><p class="muted">Its brand may be turned off.</p><button type="button" class="btn primary big" data-go="lookup">Look Up a Color</button></div></div>`; return; }
+    const R = state.results.spray, mine = R && R.results.some(x => x.id === id) ? R : null;
+    const onList = session.items.some(x => x.ref === id);
+    const L = SP.LINES[r.line] || {};
+    const goodFor = Object.values(SP.JOBS).filter(j => (SP.FOR[j.on] || []).includes(r.line)).map(j => j.label);
+    const near = jobOn('paint') ? E.closestByBrand(r.hex, { showDiscontinued: false, collections: settings.collections }).filter(x => x && x.color).sort((p, q) => p.dE - q.dE).slice(0, 4) : [];
+    const twins = SP.search('', { hex: r.hex, sprayBrands: settings.sprayBrands, limit: 8 }).filter(x => x.spray.id !== id).slice(0, 5);
+    view().innerHTML = `<div class="detail">
+      ${backBtn()}
+      <div class="detail-hero">
+        <div><div class="spray-stage big" id="sprayStage"></div></div>
+        <div class="id-card">
+          <div class="id-top"><span class="id-sw spray-sw" ${sprayStyle(r.hex, r.finish)}></span><div><h1>${esc(r.name)}</h1><p class="meta">${esc(SP.fullLine(r))}</p></div></div>
+          <div class="badges"><span class="badge">Spray paint</span>${SP.finishName(r.finish) ? `<span class="badge">${esc(SP.finishName(r.finish))}</span>` : ''}${SP.codeLabel(r) ? `<span class="badge mono">${esc(SP.codeLabel(r))}</span>` : ''}</div>
+          ${L.why ? `<p class="id-why">${esc(L.why)}</p>` : ''}
+          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-copy="${esc([r.name, SP.brandName(r.brand), r.lineName, SP.codeLabel(r)].filter(Boolean).join(', '))}">Copy Name &amp; Code</button></div>
+          <p class="muted small">Screens show colors a little differently. Check the color on the cap before you buy.</p>
+        </div>
+      </div>
+      <div class="blocks">
+        ${mine ? `<div class="block wide"><h2><span class="ic">${ic('spray', 24)}</span>What to Buy</h2>${buyRows(mine.products)}</div>` : ''}
+        ${goodFor.length ? `<div class="block"><h2><span class="ic">${ic('ok', 24)}</span>Good For</h2><div class="chipset">${goodFor.map(g => `<span class="chip plain static">${esc(g)}</span>`).join('')}</div></div>` : ''}
+        ${near.length ? `<div class="block"><h2><span class="ic">${ic('swatch', 24)}</span>Closest Paint Colors</h2><div class="rows">${near.map(x => colorRow(x.color, x.dE)).join('')}</div></div>` : ''}
+        ${twins.length ? `<div class="block"><h2><span class="ic">${ic('spray', 24)}</span>Spray Paints Like It</h2><div class="rows">${twins.map(x => sprayRow(x.spray, x.dE)).join('')}</div></div>` : ''}
+      </div>
+    </div>`;
+    showSprayStage(r);
+  }
+  const sprayRow = (s, dE) => `<button type="button" class="row" data-go="color/${esc(encodeURIComponent(s.id))}"><span class="sw spray-sw" ${sprayStyle(s.hex, s.finish)}></span><span><span class="nm">${esc(s.name)}</span><span class="sub">${esc(sprayMeta(s))}</span></span><span class="end">${dE != null ? `<span class="badge${dE < 2.5 ? ' good' : ''}">${esc(C.matchLabel(dE))}</span>` : ''}${chev('right')}</span></button>`;
   function withPaintTips(R) {
     const tips = R.tips.slice();
     const top = R.results[0] && R.results[0].color;
@@ -1927,6 +2150,12 @@
     if (state.view !== 'results') return;
     const t = e.target.closest('button'); if (!t) return;
     const kind = current.kind;
+    if (t.dataset.pick && kind === 'spray') {
+      state.pick.spray = t.dataset.pick;
+      $$('#picks .pick').forEach(b => b.setAttribute('aria-pressed', b.dataset.pick === t.dataset.pick));
+      fillSprayChosen(); showSprayStage(SP.find(t.dataset.pick));
+      return;
+    }
     if (t.dataset.pick) {
       state.pick[kind] = t.dataset.pick;
       $$('#picks .pick').forEach(b => b.setAttribute('aria-pressed', b.dataset.pick === t.dataset.pick));
@@ -1992,11 +2221,23 @@
     return `<div class="sample-note">Look for it in the ${esc(brandName(c.brand))} chip display or fan deck, or have a sample mixed.</div>`;
   }
   const lrvWords = lrv => lrv >= 80 ? 'Very light: bounces back most of the light' : lrv >= 60 ? 'Light: keeps a room bright' : lrv >= 40 ? 'Medium-light' : lrv >= 25 ? 'Medium: a room will feel a little darker' : lrv >= 10 ? 'Dark: cozy and dramatic' : 'Very dark: soaks up light';
-  function needRow(icon, k, title, text, extra) { return `<div class="need-row"><span class="need-ic">${ic(icon, 30)}</span><div><span class="k">${esc(k)}</span><b>${esc(title)}</b>${text ? `<p>${esc(text)}</p>` : ''}${extra || ''}</div></div>`; }
+  // the paint lines to pick from: the reason they were picked said once (not on every card), each line's own note,
+  // and the brand's other lines as chips
+  function lineCards(P) {
+    if (!P.lines.length) return `<div class="lines"><p class="muted">No paint lines are listed for the brands that are on. Any ${esc(P.type.toLowerCase())} made for this job works.</p></div>`;
+    const same = P.lines.length > 1 && P.lines.every(l => (l.why[0] || '') === (P.lines[0].why[0] || '')) ? P.lines[0].why[0] || '' : '';
+    return `${same ? `<p class="lines-why">${esc(same)}</p>` : ''}<div class="lines">${P.lines.map(l => `<div class="line-card"><div class="top"><b>${esc(lineLabel(l.brand, l.line))}</b><span class="tier t${l.line.tier}">${esc(E.TIERS[l.line.tier])}</span></div><span class="muted">${esc(!same && l.why[0] ? l.why[0] + '. ' : '')}${esc(l.line.note)}</span>${l.tiers.length > 1 ? `<span class="facts"><span class="k">${esc('Also from ' + brandName(l.brand))}</span>${l.tiers.filter(x => x.id !== l.line.id).map(x => `<span class="fact">${esc(x.name)} · ${esc(E.TIERS[x.tier])}</span>`).join('')}</span>` : ''}</div>`).join('')}</div>`;
+  }
+  // one thing to get: what it is, a few facts as chips (what it's made of), one line on why, and a quieter note
+  function needRow(icon, k, title, text, extra, facts) { return `<div class="need-row"><span class="need-ic">${ic(icon, 30)}</span><div><span class="k">${esc(k)}</span><b>${esc(title)}</b>${facts && facts.filter(Boolean).length ? `<span class="facts">${facts.filter(Boolean).map(f => `<span class="fact">${esc(f)}</span>`).join('')}</span>` : ''}${text ? `<p>${esc(text)}</p>` : ''}${extra || ''}</div></div>`; }
   function toolRows(tools) {
     let h = '';
-    if (tools.roller) h += needRow('roller', 'Roller', `${tools.roller.width} roller, ${tools.roller.nap} nap`, `${tools.roller.cover}. ${tools.roller.why}${tools.roller.pole ? ' Use an extension pole.' : ''}`);
-    if (tools.brush) h += needRow('brush', 'Brush', `${tools.brush.size} ${tools.brush.shape.toLowerCase()} brush`, `${tools.brush.fiber}. ${tools.brush.why}`);
+    // (the cover and the bristle as chips; why it's the right one in a line; the bristle's reason below it, quieter)
+    if (tools.roller) h += needRow('roller', 'Roller', `${tools.roller.width} roller, ${tools.roller.nap} nap`, tools.roller.why, '', [tools.roller.cover, tools.roller.pole && 'Use an extension pole']);
+    if (tools.brush) {
+      const ps = tools.brush.why.split('. '), use = ps[0] + (ps.length > 1 ? '.' : ''), more = ps.slice(1);
+      h += needRow('brush', 'Brush', `${tools.brush.size} ${tools.brush.shape.toLowerCase()} brush`, use, more.length ? `<p class="need-note">${esc(more.join('. '))}</p>` : '', [tools.brush.fiber]);
+    }
     for (const o of tools.other) h += needRow('swatch', 'Also handy', o.name, o.why);
     return h;
   }
@@ -2005,6 +2246,7 @@
 
   function renderColor(rawId) {
     const id = rawId;
+    if (String(id).startsWith('sp:')) { renderSprayColor(id); return; }
     const inStainResults = state.results.stain && state.results.stain.results.concat(state.results.stain.finalists || []).some(r => r.id === id);
     if (inStainResults || (!E.findColor(id) && S.find(id))) { renderStainColor(id); return; }
     const c = E.findColor(id);
@@ -2235,7 +2477,7 @@
       <div class="blocks">
         <div class="block"><h2><span class="ic">${ic('can', 24)}</span>The Paint</h2>
           <p class="muted">${esc(P.typeWhy)}</p>
-          <div class="lines">${P.lines.length ? P.lines.map(l => `<div class="line-card"><div class="top"><b>${esc(lineLabel(l.brand, l.line))}</b><span class="tier t${l.line.tier}">${esc(E.TIERS[l.line.tier])}</span></div><span class="muted">${esc(l.why[0] ? l.why[0] + '. ' : '')}${esc(l.line.note)}</span>${l.tiers.length > 1 ? `<span class="small muted">Other ${esc(brandName(l.brand))} choices: ${l.tiers.filter(x => x.id !== l.line.id).map(x => `${esc(x.name)} (${esc(E.TIERS[x.tier])})`).join(', ')}</span>` : ''}</div>`).join('') : `<p class="muted">No paint lines are listed for the brands that are on. Any ${esc(P.type.toLowerCase())} made for this job works.</p>`}</div>
+          ${lineCards(P)}
           <p class="muted small">Product lines change, so check the current label for the finish and coverage.</p></div>
         <div class="block"><h2><span class="ic">${ic('roller', 24)}</span>Roller &amp; Brush</h2>${P.tools.roller ? rollerArt(P.tools.roller.napId) : ''}<div class="need">${toolRows(P.tools)}</div>${P.tools.tips.map(t => `<div class="q-note">${ic('ok', 22)}<span>${esc(t)}</span></div>`).join('')}</div>
         <div class="block wide"><h2><span class="ic">${ic('list', 24)}</span>How Much to Buy</h2><div class="calc" id="calc">${calcInputs(kind, a, P)}<div class="calc-out"><span class="can">${ic('can', 44)}</span><span><b id="calcBuy">${esc(P.amount.buy)}</b><span id="calcWhat">${esc(amountLine(P.amount))}</span></span></div><p class="muted small">Coverage is about ${P.amount.coverage} sq ft per gallon for this job. Rough or porous surfaces soak up more.</p></div></div>
@@ -2338,7 +2580,7 @@
         <input type="search" id="lookupInput" aria-label="Search colors" placeholder="Agreeable Gray, SW 7029 or #D1CBC1" value="${esc(state.query)}" autocomplete="off" spellcheck="false" enterkeyhint="search">
         <button type="button" class="clear" id="lookupClear" aria-label="Clear" ${state.query ? '' : 'hidden'}>${xIcon}</button></div>
       <div class="actions"><button type="button" class="btn" data-camera="1">${ic('camera', 22)}Match With the Camera</button><span class="muted">or pick a color:</span>${colorHtml('lookupColor', state.lookupHex || 'D1CBC1', 'Match a color', hex => { state.lookupHex = hex; const i = $('#lookupInput'); i.value = '#' + hex; state.query = i.value; $('#lookupClear').hidden = false; clearTimeout(lookTimer); lookTimer = setTimeout(showLookup, 60); })}</div>
-      <p class="muted small">Searching ${fmt(enabledCount())} colors from ${Object.values(brandsEnabled()).filter(Boolean).length} brands. Stains too. Brand words work, like “behr swiss coffee” or “minwax early american”.</p>
+      <p class="muted small">Searching ${fmt(enabledCount())} colors from ${Object.values(brandsEnabled()).filter(Boolean).length} brands. ${jobOn('spray') ? 'Stains and spray paint too.' : 'Stains too.'} Brand words work, like “behr swiss coffee” or “minwax early american”.</p>
       <div id="lookupResults" class="section"></div></div>`;
     const input = $('#lookupInput'), clear = $('#lookupClear');
     input.addEventListener('input', () => { clear.hidden = !input.value; clearTimeout(lookTimer); lookTimer = setTimeout(() => { state.query = input.value; showLookup(); }, 90); });
@@ -2722,8 +2964,10 @@
       state.lookupHex = hex;
       const pick = $('#lookupColor'); if (pick) { COLORS.lookupColor.hex = hex; $('.sw', pick).style.background = '#' + hex; $('.mono', pick).textContent = '#' + hex; }
       const near = jobOn('stain') ? S.search('', { hex, stainBrands: settings.stainBrands, limit: 6 }) : [];
+      const sprays = jobOn('spray') ? SP.search('', { hex, sprayBrands: settings.sprayBrands, limit: 6 }) : [];
       host.innerHTML = exactCard(hex) + nearLists(E.closestByBrand(hex, { showDiscontinued: settings.showDiscontinued, collections: settings.collections }), 'Closest in Each Brand')
-        + (near.length ? `<h2>Closest Stains</h2><div class="rows">${near.map(r => stainRow(r.stain, r.dE)).join('')}</div>` : '');
+        + (near.length ? `<h2>Closest Stains</h2><div class="rows">${near.map(r => stainRow(r.stain, r.dE)).join('')}</div>` : '')
+        + (sprays.length ? `<h2>Closest Spray Paints</h2><div class="rows">${sprays.map(r => sprayRow(r.spray, r.dE)).join('')}</div>` : '');
       return;
     }
     let res = E.search(q, opts);
@@ -2731,18 +2975,22 @@
     // stains too (when the store does stain), in their own list
     const stains = jobOn('stain') ? S.search(q, { stainBrands: settings.stainBrands, limit: 24 }) : [];
     const stainList = (title, list) => list.length ? `<h2>${esc(title)}</h2><div class="rows">${list.map(r => stainRow(r.stain, r.dE)).join('')}</div>` : '';
-    if (!res.length && !stains.length) { host.innerHTML = `<div class="empty"><h2>No colors or stains match “${esc(q)}”</h2><p class="muted">Try just the number from the chip, or a color number like #D1CBC1.</p></div>`; return; }
-    if (!res.length) { host.innerHTML = stainList(stains.length === 1 ? '1 stain' : `${stains.length} stains`, stains); return; }
+    // and spray paints (when the store does spray paint), in their own list
+    const sprays = jobOn('spray') ? SP.search(q, { sprayBrands: settings.sprayBrands, limit: 24 }) : [];
+    const sprayList = list => list.length ? `<h2>Spray Paints</h2><div class="rows">${list.map(r => sprayRow(r.spray)).join('')}</div>` : '';
+    if (!res.length && !stains.length && !sprays.length) { host.innerHTML = `<div class="empty"><h2>No colors match “${esc(q)}”</h2><p class="muted">Try just the number from the chip, or a color number like #D1CBC1.</p></div>`; return; }
+    if (!res.length) { host.innerHTML = (sprays.length && sprays[0].score >= 95 ? sprayList(sprays) + stainList('Stains', stains) : stainList('Stains', stains) + sprayList(sprays)); return; }
     const top = res[0].color, norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, ''), nq = norm(q);
     const exact = nq && (norm(top.name) === nq || norm(E.codeLabel(top)) === nq || norm(top.code) === nq || norm(brandName(top.brand) + top.name) === nq || norm(brandName(top.brand) + top.code) === nq);
     if (exact) {
       host.innerHTML = exactCard(top.hex, top) + nearLists(E.matchesFor(top, { showDiscontinued: settings.showDiscontinued, collections: settings.collections }), 'Closest in Other Brands')
-        + (res.length > 1 ? `<h2>Other Names Like This</h2><div class="rows">${res.slice(1).map(r => colorRow(r.color)).join('')}</div>` : '') + stainList('Stains', stains);
+        + (res.length > 1 ? `<h2>Other Names Like This</h2><div class="rows">${res.slice(1).map(r => colorRow(r.color)).join('')}</div>` : '') + stainList('Stains', stains) + sprayList(sprays);
       return;
     }
     const paintList = `<h2>${res.length === 60 ? 'Top 60 paint colors' : res.length + ' paint color' + (res.length > 1 ? 's' : '')}</h2><div class="rows">${res.map(r => colorRow(r.color)).join('')}</div>`;
     // a stain named exactly (or by its number) comes first
-    host.innerHTML = stains.length && stains[0].score >= 95 ? stainList('Stains', stains) + paintList : paintList + stainList('Stains', stains);
+    // (a spray paint named exactly, like "gloss black" or its number, comes first too)
+    host.innerHTML = sprays.length && sprays[0].score >= 95 ? sprayList(sprays) + paintList + stainList('Stains', stains) : stains.length && stains[0].score >= 95 ? stainList('Stains', stains) + paintList + sprayList(sprays) : paintList + stainList('Stains', stains) + sprayList(sprays);
   }
 
   // ================================================================
@@ -2805,7 +3053,7 @@
   const cartLine = c => CAN_SIZES.filter(([k]) => c[k]).map(([k, one, many]) => `${c[k]} ${(c[k] === 1 ? one : many).toLowerCase()}`).join(' + ');
   const cartEmpty = c => !CAN_SIZES.some(([k]) => c[k]);
   // what a paint item still needs before it can be mixed
-  const needsInfo = x => { if (x.kind === 'fix') return false; const c = cartOf(x), onlySamples = c.sample && !c.quart && !c.gallon && !c.bucket; return cartEmpty(c) || (x.kind !== 'stain' && !x.finish && !onlySamples); };
+  const needsInfo = x => { if (x.kind === 'fix' || x.kind === 'spray') return false; const c = cartOf(x), onlySamples = c.sample && !c.quart && !c.gallon && !c.bucket; return cartEmpty(c) || (x.kind !== 'stain' && !x.finish && !onlySamples); };
   // the paint lines a color can be mixed in, for inside or outside
   function linesFor(x) {
     const c = x.kind !== 'stain' && E.findColor(x.ref), lb = c ? lineBrandFor(c) : null; if (!lb) return { lb: null, lines: [] };
@@ -3090,6 +3338,14 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     toast('Saved the picture');
   }
+  // a spray paint in a project: the can, how many, and the primer and supplies for the job it was picked for
+  function sprayItem(x) {
+    const R = state.results.spray, mine = R && R.results.some(r => r.id === x.id) ? R : null, a = mine ? mine.answers : null;
+    const c = a ? SP.cansFor(a) : { color: 1, primer: 0, clear: 0 };
+    const also = mine ? mine.products.slice(1).filter(p => !p.supplies).map(p => `${p.name} (${p.amount})`) : [];
+    return { kind: 'spray', ref: x.id, area: a ? (SP.JOBS[a.what] || {}).label || '' : 'Spray paint', place: 'none', brand: SP.brandName(x.brand), name: x.name, code: SP.codeLabel(x), hex: x.hex, lrv: '',
+      finish: SP.finishName(x.finish), product: x.lineName === SP.brandName(x.brand) ? '' : x.lineName, amount: `${c.color} can${c.color === 1 ? '' : 's'}`, primer: '', tools: also.join(', ') };
+  }
   function addToList(item) {
     if (!item) return;
     session.items.push(Object.assign({ id: newId() }, item));
@@ -3103,6 +3359,7 @@
     const i = session.items.findIndex(x => x.ref === ref);
     if (i >= 0) { const was = session.items[i]; session.items.splice(i, 1); saveSession(); updateListBtn(); toast(`Took ${was.name} off ${sessionTitle()}`); return; }
     if (ref.startsWith('#')) addToList(customItem(ref.slice(1)));
+    else if (ref.startsWith('sp:')) { const x = SP.find(ref); if (x) addToList(sprayItem(x)); }
     else if (ref.startsWith('fix:')) { const p = FX.find(ref.slice(4)); if (p) addToList(fixItem(p)); }
     else {
       const stainHit = state.results.stain && state.results.stain.results.concat(state.results.stain.finalists || []).some(r => r.id === ref);
@@ -3387,12 +3644,13 @@
     if ($('#modalTitle') && $('#modalTitle').textContent !== 'Paint Desk Ticket') return;   // closed or moved on
     openModal('Paint Desk Ticket', `${qr ? `<div class="ticket-qr">${qr}</div><p style="font-size:1.1rem;margin:0">Show this at the paint desk. They scan it with any phone or tablet and see exactly what to mix: every color’s code, the sheen, the paint and how much, to check off as each can is made.</p>` : '<p style="font-size:1.1rem">This project is too big for one code. Print it (the printout has the list), or email it to the desk.</p>'}
       ${missing.length ? `<p class="ticket-miss">${missing.length === 1 ? `<b>${esc(missing[0].name)}</b> still needs` : `<b>${missing.length} things</b> still need`} a sheen or how much. The desk can ask, or add it now with “Add sheen & amount” on the project.</p>` : ''}
-      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Close</button><span class="grow"></span>${qr ? '<button type="button" class="btn big" data-ticket-here="1">Open It Here</button>' : ''}<button type="button" class="btn big primary" data-list-print="1">${ic('print', 22)}Print</button></div>`);
+      <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Close</button><span class="grow"></span>${qr ? '<button type="button" class="btn big" data-ticket-here="1">Open It Here</button>' : ''}<button type="button" class="btn big" data-list-email="1">${mailIcon}Email</button><button type="button" class="btn big primary" data-list-print="1">${ic('print', 22)}Print</button></div>`);
   }
   document.addEventListener('click', async e => {
     const t = e.target.closest('#modal button'); if (!t) return;
     if (t.dataset.ticketHere) { const l = await ticketLink(session); closeModal(); go('t/' + l.split('#/t/')[1]); }
     if (t.dataset.listPrint) { closeModal(); printPreview(session); }
+    if (t.dataset.listEmail) { closeModal(); openEmail(session); }
   });
   // what the desk sees: big codes, one line per can to mix, each checked off as it's made (kept on that device)
   let ticket = null;
@@ -3423,13 +3681,15 @@
           ${x.primer ? `<span class="tk-facts">Primer: ${esc(x.primer)}</span>` : ''}${x.tools ? `<span class="tk-facts">Also: ${esc(x.tools)}</span>` : ''}</span>
         <span class="tk-amt">${cartEmpty(c) ? '<i class="tk-ask">How much: ask</i>' : esc(cartLine(c))}</span></li>`;
     };
-    const mix = P.items.map((x, i) => (x.kind === 'fix' ? -1 : i)).filter(i => i >= 0), fixes = P.items.filter(x => x.kind === 'fix');
+    const shelf = x => x.kind === 'fix' || x.kind === 'spray';
+    const mix = P.items.map((x, i) => (shelf(x) ? -1 : i)).filter(i => i >= 0), fixes = P.items.filter(x => x.kind === 'fix'), cans = P.items.filter(x => x.kind === 'spray');
     const left = mix.filter(i => !ticks.includes(i)).length;
     view().innerHTML = `<div class="page narrow ticket-page">
       <div class="page-head"><p class="eyebrow">Paint Desk Ticket</p><h1>${esc(P.name || 'Paint and Stain List')}</h1><p>${from ? esc(from) + ' · ' : ''}${mix.length} to mix${left && left < mix.length ? `, ${left} left` : !left && mix.length ? ', all done' : ''}</p>${P.notes ? `<p class="tk-notes"><b>Notes</b> ${esc(P.notes)}</p>` : ''}</div>
-      <ol class="tk-list">${P.items.map((x, i) => (x.kind === 'fix' ? '' : row(x, i))).join('')}</ol>
+      <ol class="tk-list">${P.items.map((x, i) => (shelf(x) ? '' : row(x, i))).join('')}</ol>
+      ${cans.length ? `<section class="tk-also"><h2>Spray Paint From the Shelf</h2>${cans.map(x => `<p><span class="tk-sw" ${x.hex ? swStyle(x.hex) : ''}></span><b>${esc([x.brand, x.product, x.name].filter(Boolean).join(' '))}</b>${x.code ? ` <span class="mono">${esc(x.code)}</span>` : ''} · ${esc([x.finish, x.amount].filter(Boolean).join(' · '))}${x.tools ? `<br><span class="muted">Also: ${esc(x.tools)}</span>` : ''}</p>`).join('')}</section>` : ''}
       ${fixes.length ? `<section class="tk-also"><h2>Also for This Job</h2>${fixes.map(x => `<p><b>${esc(x.name)}:</b> ${esc(x.tools)}</p>`).join('')}</section>` : ''}
-      <div class="actions stack">${mix.length ? `<button type="button" class="btn big primary" data-tk="all">${left ? 'Mark All Mixed' : 'Clear the Checks'}</button>` : ''}<button type="button" class="btn big" data-tk="print">${ic('print', 22)}Print</button><button type="button" class="btn big" data-tk="open">Open as a Project</button></div>
+      <div class="actions stack">${mix.length ? `<button type="button" class="btn big primary" data-tk="all">${left ? 'Mark All Mixed' : 'Clear the Checks'}</button>` : ''}<button type="button" class="btn big" data-tk="print">${ic('print', 22)}Print</button><button type="button" class="btn big" data-tk="email">${mailIcon}Email</button><button type="button" class="btn big" data-tk="open">Open as a Project</button></div>
       <p class="muted small">Colors on a screen are a guide. Mix by the code, and check the sheen and size with the customer.</p></div>`;
   }
   view().addEventListener('click', e => {
@@ -3439,8 +3699,9 @@
     let ticks = ticketTicks(code);
     if (t.dataset.tick != null) { const i = +t.dataset.tick; ticks = ticks.includes(i) ? ticks.filter(v => v !== i) : ticks.concat([i]); saveTicks(code, ticks); renderTicket(code); return; }
     const act = t.dataset.tk;
-    if (act === 'all') { const mix = P.items.map((x, i) => (x.kind === 'fix' ? -1 : i)).filter(i => i >= 0); saveTicks(code, mix.every(i => ticks.includes(i)) ? [] : mix); renderTicket(code); }
+    if (act === 'all') { const mix = P.items.map((x, i) => (x.kind === 'fix' || x.kind === 'spray' ? -1 : i)).filter(i => i >= 0); saveTicks(code, mix.every(i => ticks.includes(i)) ? [] : mix); renderTicket(code); }
     if (act === 'print') printPreview({ name: P.name || 'Paint and Stain List', notes: P.notes, items: P.items });
+    if (act === 'email') openEmail({ name: P.name || 'Paint and Stain List', notes: P.notes, items: P.items });
     if (act === 'open') go('p/' + code);
   });
   // the browser's own un-squeezing where it has it, the app's (js/inflate.js) where it doesn't
@@ -3460,7 +3721,7 @@
       SHARE_KEYS.forEach((k, j) => { x[k] = str(a[j], k === 'tools' ? 240 : k === 'product' ? 120 : 80); });
       x.hex = /^[0-9A-F]{6}$/i.test(x.hex) ? x.hex.toUpperCase() : '';
       if (x.product[0] === '@') x.product = lineMap().byId[x.product.slice(1)] || '';
-      if (!['paint', 'stain', 'custom', 'plan', 'fix'].includes(x.kind)) x.kind = '';
+      if (!['paint', 'stain', 'custom', 'plan', 'fix', 'spray'].includes(x.kind)) x.kind = '';
       // a color the app knows shows the app's own name, number and color
       const c = x.kind !== 'stain' && E.findColor(x.ref);
       if (c) Object.assign(x, { brand: brandName(c.brand), name: c.name, code: E.codeLabel(c), hex: c.hex, lrv: String(c.lrv) });
@@ -3470,7 +3731,7 @@
   }
   let shared = null;   // the project from the link being looked at
   const sharedColors = P => P.items.map(x => x.kind !== 'stain' && E.findColor(x.ref)).filter(Boolean);
-  const canOpenItem = x => !!x.ref && !x.ref.startsWith('#') && !!(E.findColor(x.ref) || S.find(x.ref));
+  const canOpenItem = x => !!x.ref && !x.ref.startsWith('#') && !!(E.findColor(x.ref) || S.find(x.ref) || SP.find(x.ref));
   async function renderShared(code) {
     view().innerHTML = '<div class="page narrow"><p class="muted">Opening the project…</p></div>';
     let P = null;
@@ -3491,7 +3752,7 @@
     view().innerHTML = `<div class="page narrow">
       <div class="page-head"><p class="eyebrow">Shared Project</p><h1>${esc(P.name || 'Paint and Stain List')}</h1><p>${from ? `From ${esc(from)}. ` : ''}Tap a color to see it in a room. Save the project to keep it on this device.</p>${P.notes ? `<p class="muted">Notes: ${esc(P.notes)}</p>` : ''}</div>
       ${P.items.length ? `<ol class="items">${P.items.map(row).join('')}</ol>` : '<p class="muted">There’s nothing in this project.</p>'}
-      <div class="actions stack"><button type="button" class="btn big primary" data-shared="save">${plusIcon}Save to My Projects</button>${sharedColors(P).length ? `<button type="button" class="btn big" data-shared="present">${expandIcon(20)}Show Colors Full Screen</button>` : ''}<button type="button" class="btn big" data-shared="print">${ic('print', 22)}Print</button></div>
+      <div class="actions stack"><button type="button" class="btn big primary" data-shared="save">${plusIcon}Save to My Projects</button>${sharedColors(P).length ? `<button type="button" class="btn big" data-shared="present">${expandIcon(20)}Show Colors Full Screen</button>` : ''}<button type="button" class="btn big" data-shared="print">${ic('print', 22)}Print</button><button type="button" class="btn big" data-shared="email">${mailIcon}Email</button></div>
       <section class="section"><h2>See More Colors</h2><p class="muted">Every color from the big paint brands is in here. Look one up, or answer a few questions to find the right one for a room.</p><div class="actions"><button type="button" class="btn big" data-go="lookup">Look Up a Color</button><button type="button" class="btn big" data-go="home">Find a Color for a Room</button></div></section>
     </div>`;
   }
@@ -3501,6 +3762,7 @@
     const P = shared, act = t.dataset.shared;
     if (act === 'present') openPresent(sharedColors(P));
     if (act === 'print') printPreview({ name: P.name || 'Paint and Stain List', notes: P.notes, items: P.items });
+    if (act === 'email') openEmail({ name: P.name || 'Paint and Stain List', notes: P.notes, items: P.items });
     if (act === 'save') {
       // the project that was open is kept under Earlier Projects, like starting a new one
       const s = Object.assign(blankSession(), { name: P.name, notes: P.notes, items: P.items.map(x => Object.assign({ id: newId() }, x)) });
@@ -3517,7 +3779,7 @@
   const mailCfg = () => { const m = (window.CG_CONFIG || {}).email || {}; return m.serviceId && m.templateId && m.publicKey ? m : null; };
   const MAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[a-z]{2,}$/i;
   const MAIL_PER_HOUR = 12;   // a shared screen shouldn't become a way to send lots of email
-  const mailSubject = s => 'Paint and stain list: ' + titleOf(s);
+  const mailSubject = s => (s.doc ? s.subject : 'Paint and stain list: ' + titleOf(s));
   // Most addresses are Gmail, so just the name is enough: "@gmail.com" is added (shown in grey after what's
   // typed). The buttons switch the ending; typing an @ means the whole address was typed.
   const MAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'icloud.com', 'hotmail.com'];
@@ -3542,18 +3804,20 @@
     $$('[data-mail-dom]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mailDom === dom)));
     const sr = $('#mailFull'); if (sr) sr.textContent = v ? 'Sends to ' + fullAddr() : '';
   }
-  function openEmail(s) {
+  // s: a project; doc: anything else that can be printed (a problem and its fix, the kiosk sign's link)
+  function openEmail(s, doc) {
     const cfg = mailCfg();
     const canShare = !cfg && !!(navigator.share && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
+    const title = doc ? doc.title : titleOf(s), what = doc ? doc.what : 'every color, code, finish and product, one per line';
     const intro = cfg
-      ? `<p style="font-size:1.1rem">Sends <b>${esc(titleOf(s))}</b> from ColorGenius’s do-not-reply address: every color, code, finish and product, one per line.</p>`
-      : `<p style="font-size:1.1rem">Your email app opens with <b>${esc(titleOf(s))}</b> written in: every color, code, finish and product, one per line. Check it, then press Send.</p>`;
+      ? `<p style="font-size:1.1rem">Sends <b>${esc(title)}</b> from ColorGenius’s do-not-reply address: ${esc(what)}.</p>`
+      : `<p style="font-size:1.1rem">Your email app opens with <b>${esc(title)}</b> written in: ${esc(what)}. Check it, then press Send.</p>`;
     const field = `<label class="field">Their email address<span class="mail-addr"><input type="email" class="input" id="mailTo" placeholder="name" autocomplete="email" inputmode="email" enterkeyhint="send" maxlength="120" aria-describedby="mailFull"><span class="mail-at ph" aria-hidden="true">@gmail.com</span><span class="mail-meas" aria-hidden="true"></span></span><span class="sr-only" id="mailFull" aria-live="polite"></span></label>
       <div class="mail-doms" role="group" aria-label="Email ends in">${MAIL_DOMAINS.map((d, i) => `<button type="button" class="chip plain" data-mail-dom="${d}" aria-pressed="${i === 0}">@${d}</button>`).join('')}</div>
       <p class="muted small" style="margin:0">Just type the name and the ending is added. For any other address, type all of it.${cfg ? '' : ' You can also leave it empty and type it in the email.'}</p>`;
     // a kiosk has no email app of its own, so it only gets the Send button
     const appBtn = cfg ? (isKiosk() ? '' : `<button type="button" class="btn big" data-mail-open="1">Use My Email App</button>`) : `<button type="button" class="btn big primary" data-mail-open="1">${mailIcon}Open Email</button>`;
-    openModal(`Email ${titleOf(s)}`, `${intro}${field}<p class="mail-msg" id="mailMsg" role="status" aria-live="polite"></p>
+    openModal(`Email ${title}`, `${intro}${field}<p class="mail-msg" id="mailMsg" role="status" aria-live="polite"></p>
       <div class="modal-foot"><button type="button" class="btn big ghost" data-modal-close="1">Cancel</button><span class="grow"></span>${canShare ? `<button type="button" class="btn big" data-mail-share="1">Share…</button>` : ''}${appBtn}${cfg ? `<button type="button" class="btn big primary" data-mail-send="1">${mailIcon}Send</button>` : ''}</div>`);
     const inp = $('#mailTo'); inp.focus();
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ($('[data-mail-send]') || $('[data-mail-open]')).click(); } });
@@ -3561,15 +3825,17 @@
     inp.addEventListener('scroll', syncAt);
     mailDomain = MAIL_DOMAINS[0];
     requestAnimationFrame(syncAt);
-    emailOf = s;
-    emailLink = shareLink(s).catch(() => '');
+    emailOf = doc ? Object.assign({ doc: true }, doc) : s;
+    emailLink = doc ? Promise.resolve(doc.link || '') : shareLink(s).catch(() => '');
   }
   let emailOf = null, emailLink = Promise.resolve('');
   function mailBody(s, link) {
+    if (s.doc) return s.text + '\n\nColorGenius: ' + siteUrl();
     return sheetText(s) + (link ? `\n\nSee these colors in ColorGenius: ${link}\nBrowse every color: ${siteUrl()}` : '') + '\n\nColors look different on screens and paper. Check a real chip or sample before buying.';
   }
   // the email itself: a friendly line, a big button to the project in the app, then the list
   function mailHtml(s, link) {
+    if (s.doc) return `<div style="white-space:pre-wrap;font-family:inherit">${esc(mailBody(s, ''))}</div>`;
     const where = storeName() ? `your visit to ${esc(storeName())}` : 'ColorGenius';
     const btn = link ? `<p style="margin:18px 0 6px"><a href="${esc(link)}" style="display:inline-block;background:#2f6b5e;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:bold">See These Colors in ColorGenius</a></p><p style="margin:4px 0 18px;font-size:13px;color:#555">Tap a color to see it in a room, or save the project on your phone. You can also <a href="${esc(siteUrl())}" style="color:#2f6b5e">browse every color</a>.</p>` : '';
     return `<p style="margin:0 0 4px">Here are the colors from ${where}.</p>${btn}<div style="white-space:pre-wrap;font-family:inherit">${esc(mailBody(s, ''))}</div>`;
@@ -3584,7 +3850,7 @@
       const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
         body: JSON.stringify({ service_id: cfg.serviceId, template_id: cfg.templateId, user_id: cfg.publicKey, template_params: {
-          to_email: to, subject: mailSubject(s), project_name: titleOf(s), from_name: cfg.fromName || 'ColorGenius (do not reply)',
+          to_email: to, subject: mailSubject(s), project_name: s.doc ? s.title : titleOf(s), from_name: cfg.fromName || 'ColorGenius (do not reply)',
           message: body, message_html: mailHtml(s, link),
         } }),
       });
@@ -3794,22 +4060,27 @@
   // SETTINGS
   // ================================================================
   const CHAINS = {
-    homedepot: { label: 'The Home Depot', paint: ['behr', 'glidden', 'ppg', 'kilz'], stain: ['minwax', 'varathane', 'olympic'], main: 'behr' },
-    lowes: { label: 'Lowe’s', paint: ['valspar', 'hgsw'], stain: ['cabot', 'minwax'], main: 'valspar' },
-    ace: { label: 'Ace Hardware', paint: ['bm', 'ck', 'magnolia'], stain: ['minwax', 'varathane', 'cabot'], main: '' },
-    menards: { label: 'Menards', paint: ['dutchboy'], stain: ['minwax', 'varathane'], main: 'dutchboy' },
-    walmart: { label: 'Walmart', paint: ['glidden', 'kilz'], stain: ['minwax', 'varathane'], main: '' },
-    sw: { label: 'Sherwin-Williams', paint: ['sw'], stain: ['swstain', 'minwax'], main: 'sw' },
-    bm: { label: 'Benjamin Moore Store', paint: ['bm'], stain: ['minwax'], main: 'bm' },
-    ppg: { label: 'PPG Paints Store', paint: ['ppg', 'glidden'], stain: ['olympic'], main: 'ppg' },
-    de: { label: 'Dunn-Edwards', paint: ['de'], stain: [], main: 'de' },
-    dv: { label: 'Diamond Vogel', paint: ['dv'], stain: [], main: 'dv' },
+    // spray: the spray paint brands on the shelf, the store's main one first
+    homedepot: { label: 'The Home Depot', paint: ['behr', 'glidden', 'ppg', 'kilz'], stain: ['minwax', 'varathane', 'olympic'], spray: ['rustoleum', 'krylon'], main: 'behr' },
+    lowes: { label: 'Lowe’s', paint: ['valspar', 'hgsw'], stain: ['cabot', 'minwax'], spray: ['rustoleum', 'krylon'], main: 'valspar' },
+    ace: { label: 'Ace Hardware', paint: ['bm', 'ck', 'magnolia'], stain: ['minwax', 'varathane', 'cabot'], spray: ['rustoleum', 'krylon'], main: '' },
+    menards: { label: 'Menards', paint: ['dutchboy'], stain: ['minwax', 'varathane'], spray: ['rustoleum', 'krylon'], main: 'dutchboy' },
+    walmart: { label: 'Walmart', paint: ['glidden', 'kilz'], stain: ['minwax', 'varathane'], spray: ['rustoleum', 'krylon', 'montana'], main: '' },
+    sw: { label: 'Sherwin-Williams', paint: ['sw'], stain: ['swstain', 'minwax'], spray: ['krylon'], main: 'sw' },
+    bm: { label: 'Benjamin Moore Store', paint: ['bm'], stain: ['minwax'], spray: [], main: 'bm' },
+    ppg: { label: 'PPG Paints Store', paint: ['ppg', 'glidden'], stain: ['olympic'], spray: [], main: 'ppg' },
+    de: { label: 'Dunn-Edwards', paint: ['de'], stain: [], spray: [], main: 'de' },
+    dv: { label: 'Diamond Vogel', paint: ['dv'], stain: [], spray: [], main: 'dv' },
     other: { label: 'Another Store', other: true },
   };
   function chainPreset(id, target) {
     const ch = CHAINS[id]; if (!ch || ch.other) return false;
     for (const b of brandList()) target.brands[b.id] = ch.paint.includes(b.id);
     for (const b of S.brands()) target.stainBrands[b.id] = ch.stain.includes(b.id);
+    // (a store with no spray paint has it switched off)
+    target.sprayBrands = target.sprayBrands || {};
+    for (const b of SP.brands()) { if ((ch.spray || []).includes(b.id)) delete target.sprayBrands[b.id]; else target.sprayBrands[b.id] = false; }
+    target.jobs = Object.assign({ paint: true, stain: true }, target.jobs, { spray: (ch.spray || []).length > 0 });
     target.storeBrand = ch.main && E.getIndex().brandById[ch.main] ? ch.main : '';
     return true;
   }
@@ -3827,6 +4098,7 @@
   // the "on" counts at the top of the brand lists, kept current as switches are flipped
   const paintOnText = () => { const en = brandsEnabled(), on = brandList().filter(b => en[b.id]).length; return `${on} of ${brandList().length} on · ${fmt(enabledCount())} colors`; };
   const stainOnText = () => `${S.brands().filter(b => settings.stainBrands[b.id] !== false).length} of ${S.brands().length} on`;
+  const sprayOnText = () => `${SP.brands().filter(b => settings.sprayBrands[b.id] !== false).length} of ${SP.brands().length} on`;
   function bumpCount(id, text) {
     const el = $('#' + id); if (!el || el.textContent === text) return;
     el.textContent = text;
@@ -3854,7 +4126,7 @@
       </div></div>
       ${home() ? '' : `<div class="set-group"><h2>No Kiosk? Use Shoppers’ Phones</h2><div class="set-card">
         <div class="set-row kq-row"><div class="kq" id="kioskQr">${kioskQrSvg()}</div><div class="set-text"><b>Shoppers scan this code</b><span>ColorGenius opens on their phone in kiosk mode, with this store’s brands and questions. Settings stay locked. Change the store or brands below and the code changes with them.</span></div></div>
-        <div class="set-row"><button type="button" class="btn primary" data-act="kiosk-sign">${ic('print', 20)}Print a Sign</button><button type="button" class="btn" data-act="kiosk-copy">Copy Link</button></div>
+        <div class="set-row"><button type="button" class="btn primary" data-act="kiosk-sign">${ic('print', 20)}Print a Sign</button><button type="button" class="btn" data-act="kiosk-email">${mailIcon}Email the Sign</button><button type="button" class="btn" data-act="kiosk-copy">Copy Link</button></div>
       </div></div>`}
       <div class="set-group"><h2>${home() ? 'Where You Shop' : 'Your Store'}</h2><div class="set-card">
         <div class="set-row"><div class="set-text"><b>Store</b><span>Turns on the brands that store carries</span></div>${selectHtml('setChain', [['', 'Choose a Store']].concat(Object.entries(CHAINS).filter(([, ch]) => !ch.other).map(([k, ch]) => [k, ch.label])), settings.chain, 'Store', v => { settings.chain = v; if (chainPreset(v, settings)) { settings.stainBrands = Object.fromEntries(Object.entries(settings.stainBrands).filter(([, on]) => on === false)); toast(`Brands set for ${CHAINS[v].label}`); } saveSettings(); afterSettingsChange(); renderKeep(); })}</div>
@@ -3862,6 +4134,7 @@
         ${sw('storeOnly', settings.storeOnly, home() ? 'Only suggest my favorite brand' : 'Only suggest the store brand', 'Other brands still show up as matches')}
         <div class="set-row"><div class="set-text"><b id="lbl-job-paint">Paint</b><span>Paint colors and which paint to buy</span></div><button type="button" class="switch" role="switch" aria-checked="${jobOn('paint')}" aria-labelledby="lbl-job-paint" data-job-switch="paint"></button></div>
         <div class="set-row"><div class="set-text"><b id="lbl-job-stain">Stain</b><span>Wood stains, shown on real wood</span></div><button type="button" class="switch" role="switch" aria-checked="${jobOn('stain')}" aria-labelledby="lbl-job-stain" data-job-switch="stain"></button></div>
+        <div class="set-row"><div class="set-text"><b id="lbl-job-spray">Spray Paint</b><span>Spray paint colors and which can to use</span></div><button type="button" class="switch" role="switch" aria-checked="${jobOn('spray')}" aria-labelledby="lbl-job-spray" data-job-switch="spray"></button></div>
       </div></div>
       <div class="set-group"><h2>Questions</h2><div class="set-card">
         ${segRow('questions', 'How many questions', settings.questions === 'detailed' ? 'Detailed: also asks about light bulbs, what’s on the wall now, the feeling you want and what’s staying in the room.' : 'Quick: about 6 easy questions, most need just one tap.', { quick: 'Quick', detailed: 'Detailed' }, settings.questions)}
@@ -3895,6 +4168,7 @@
           ${groups.map(([g, label]) => { const bs = brandsAZ().filter(b => b.group === g); if (!bs.length) return ''; return `<div class="brand-group" data-group="${g}"><div class="set-row"><div class="set-text"><b class="eyebrow">${label}</b></div><button type="button" class="link" data-brand-group="${g}" data-on="1">All On</button><button type="button" class="link" data-brand-group="${g}" data-on="0">All Off</button></div>${bs.map(b => `<div class="set-row brand-row" data-name="${esc(b.name.toLowerCase())}">${brandMark(b.id)}<div class="set-text"><b id="lbl-b-${esc(b.id)}">${esc(b.name)}</b><span>${fmt((E.getIndex().byBrand[b.id] || []).length)} colors</span></div><button type="button" class="switch" role="switch" aria-checked="${!!en[b.id]}" aria-labelledby="lbl-b-${esc(b.id)}" data-brand="${esc(b.id)}"></button></div>`).join('')}</div>`; }).join('')}
         </details>
         ${S.brands().length ? `<details class="set-card"><summary>Stain Brands <span class="muted on-count" id="stainOn" aria-live="polite">${stainOnText()}</span></summary>${S.brands().slice().sort((a, b) => azCmp(a.name, b.name)).map(b => `<div class="set-row brand-row">${stainMark(b.id, b.name)}<div class="set-text"><b id="lbl-s-${esc(b.id)}">${esc(b.name)}</b><span>${b.use === 'exterior' ? 'Outside' : 'Inside'}${b.note ? ' · ' + esc(b.note) : ''}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.stainBrands[b.id] !== false}" aria-labelledby="lbl-s-${esc(b.id)}" data-sbrand="${esc(b.id)}"></button></div>`).join('')}</details>` : ''}
+        ${SP.brands().length ? `<details class="set-card"><summary>Spray Paint Brands <span class="muted on-count" id="sprayOn" aria-live="polite">${sprayOnText()}</span></summary>${SP.brands().map(b => `<div class="set-row brand-row">${stainMark(b.id, b.name)}<div class="set-text"><b id="lbl-p-${esc(b.id)}">${esc(b.name)}</b><span>${esc(b.note || '')}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.sprayBrands[b.id] !== false}" aria-labelledby="lbl-p-${esc(b.id)}" data-pbrand="${esc(b.id)}"></button></div>`).join('')}</details>` : ''}
         <details class="set-card"><summary>Color Collections</summary><div class="set-note" style="border-top:0">Turn off fan decks or collections the store doesn’t carry.</div>${brandsAZ().filter(b => en[b.id] && E.collectionsFor(b.id).length > 1).map(b => E.collectionsFor(b.id).slice().sort((p, q) => azCmp(p.label, q.label)).map(x => `<div class="set-row"><div class="set-text"><b id="lbl-c-${esc(b.id)}-${x.id}">${esc(b.name)}: ${esc(x.label)}</b><span>${fmt(x.count)} colors${x.note ? ' · ' + esc(x.note) : ''}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.collections[b.id + ':' + x.id] !== false}" aria-labelledby="lbl-c-${esc(b.id)}-${x.id}" data-coll="${esc(b.id + ':' + x.id)}"></button></div>`).join('')).join('')}</details>
         <details class="set-card"><summary>Paint Lines ${home() ? 'I’d Buy' : 'the Store Carries'}</summary><div class="set-note" style="border-top:0">Which Paint to Buy suggests a line for each job. Turn off lines ${home() ? 'you don’t want' : 'the store doesn’t stock'}.</div>${Object.keys(E.PAINT_LINES).filter(id => E.getIndex().brandById[id] && (en[id] || id === settings.storeBrand)).sort((a, b) => azCmp(brandName(a), brandName(b))).map(id => E.PAINT_LINES[id].map(l => `<div class="set-row"><div class="set-text"><b id="lbl-l-${esc(l.id)}">${esc(brandName(id))} ${esc(l.name)}</b><span>${esc(E.TIERS[l.tier])} · ${l.use === 'interior' ? 'Inside' : l.use === 'both' ? 'Floors' : 'Outside'} · ${esc(l.note)}</span></div><button type="button" class="switch" role="switch" aria-checked="${settings.lines[l.id] !== false}" aria-labelledby="lbl-l-${esc(l.id)}" data-line="${esc(l.id)}"></button></div>`).join('')).join('')}</details>
         <p class="muted small brand-none" hidden>No brand matches that search.</p>
@@ -3950,6 +4224,7 @@
     }
     if (t.dataset.brand) { const on = t.getAttribute('aria-checked') !== 'true'; t.setAttribute('aria-checked', on); settings.brands[t.dataset.brand] = on; saveSettings(); afterSettingsChange('brands'); bumpCount('paintOn', paintOnText()); return; }
     if (t.dataset.sbrand) { const on = t.getAttribute('aria-checked') !== 'true'; t.setAttribute('aria-checked', on); if (on) delete settings.stainBrands[t.dataset.sbrand]; else settings.stainBrands[t.dataset.sbrand] = false; saveSettings(); afterSettingsChange('brands'); bumpCount('stainOn', stainOnText()); return; }
+    if (t.dataset.pbrand) { const on = t.getAttribute('aria-checked') !== 'true'; t.setAttribute('aria-checked', on); if (on) delete settings.sprayBrands[t.dataset.pbrand]; else settings.sprayBrands[t.dataset.pbrand] = false; saveSettings(); afterSettingsChange('brands'); bumpCount('sprayOn', sprayOnText()); refreshKioskQr(); return; }
     if (t.dataset.line) { const on = t.getAttribute('aria-checked') !== 'true'; t.setAttribute('aria-checked', on); if (on) delete settings.lines[t.dataset.line]; else settings.lines[t.dataset.line] = false; saveSettings(); afterSettingsChange('lines'); return; }
     if (t.dataset.coll) {
       const on = t.getAttribute('aria-checked') !== 'true', id = t.dataset.coll.split(':')[0];
@@ -3958,9 +4233,10 @@
       t.setAttribute('aria-checked', on); saveSettings(); afterSettingsChange('collections'); return;
     }
     if (t.dataset.jobSwitch) {
-      const j = t.dataset.jobSwitch, other = j === 'paint' ? 'stain' : 'paint';
-      settings.jobs = Object.assign({ paint: true, stain: true }, settings.jobs);
-      if (settings.jobs[j] && !settings.jobs[other]) { toast('Keep paint or stain on'); return; }
+      const j = t.dataset.jobSwitch;
+      settings.jobs = Object.assign({ paint: true, stain: true, spray: true }, settings.jobs);
+      // paint or stain stays on (spray paint can be the only one off or on with either)
+      if (j !== 'spray' && settings.jobs[j] && !settings.jobs[j === 'paint' ? 'stain' : 'paint']) { toast('Keep paint or stain on'); return; }
       settings.jobs[j] = !settings.jobs[j]; t.setAttribute('aria-checked', settings.jobs[j]); saveSettings(); refreshKioskQr(); return;
     }
     if (t.dataset.brandGroup) { const on = t.dataset.on === '1'; for (const b of brandList()) if (b.group === t.dataset.brandGroup) settings.brands[b.id] = on; saveSettings(); afterSettingsChange('brands'); renderKeep(); return; }
@@ -3973,6 +4249,11 @@
     if (act === 'check-update') checkForUpdate();
     if (act === 'kiosk-sign') printKioskSign();
     if (act === 'kiosk-copy') copyText(kioskLink(), 'Kiosk link copied');
+    if (act === 'kiosk-email') {
+      const shop = storeName();
+      openEmail(null, { title: 'The Kiosk Sign', subject: `ColorGenius sign${shop ? ' for ' + shop : ''}`, what: 'the sign’s link, to print it or put it on a phone',
+        text: [`The ColorGenius sign${shop ? ' for ' + shop : ''}.`, '', 'Open this link on a phone to use ColorGenius with the store’s brands:', kioskLink(), '', 'To print the sign with its QR code, open ColorGenius on a computer and go to Settings, then Print a Sign.'].join('\n') });
+    }
     if (act === 'run-setup') openOnboarding();
     if (act === 'clear-custom') { const custom = store.get('custom', {}); store.set('custom', {}); for (const name of Object.keys(custom)) removeBrand(customMeta(name).id); afterSettingsChange('brands'); renderKeep(); toast('Imported colors removed'); }
     if (act === 'reset-all') {
@@ -4077,7 +4358,7 @@
   let ob = null;
   const obSteps = () => ['who', 'store', ob && ob.chain === 'other' ? 'brands' : '', 'done'].filter(Boolean);
   function openOnboarding() {
-    ob = { step: 0, audience: settings.audience || '', chain: settings.chain || '', jobs: Object.assign({ paint: true, stain: true }, settings.jobs), brands: Object.assign({}, brandsEnabled()), stainBrands: Object.fromEntries(S.brands().map(b => [b.id, settings.stainBrands[b.id] !== false])), storeBrand: settings.storeBrand || '' };
+    ob = { step: 0, audience: settings.audience || '', chain: settings.chain || '', jobs: Object.assign({ paint: true, stain: true, spray: true }, settings.jobs), brands: Object.assign({}, brandsEnabled()), sprayBrands: Object.assign({}, settings.sprayBrands), stainBrands: Object.fromEntries(S.brands().map(b => [b.id, settings.stainBrands[b.id] !== false])), storeBrand: settings.storeBrand || '' };
     closeModal();
     const el = $('#onboard'); el.innerHTML = ''; el.hidden = false; document.documentElement.classList.add('ob-open');
     drawOnboarding(0);
@@ -4094,7 +4375,7 @@
     if (id === 'store') {
       body = `<h1 id="obTitle">${ob.audience === 'home' ? 'Where will you shop?' : 'Which store is this?'}</h1><p class="muted" style="font-size:1.15rem">We’ll turn on the brands that store carries.</p>
         <div class="choices">${Object.entries(CHAINS).map(([k, ch]) => choice(`data-ob-chain="${k}"`, ob.chain === k, ch.label, ch.other ? 'Pick the brands yourself' : ch.paint.map(b => (E.getIndex().brandById[b] || {}).name).filter(Boolean).join(', '), null)).join('')}</div>
-        <div class="q-group"><p class="q-label">What do you need help with?</p><div class="chipset">${chipBtn('data-ob-job="paint"', ob.jobs.paint, 'Paint', null)}${chipBtn('data-ob-job="stain"', ob.jobs.stain, 'Stain', null)}</div></div>`;
+        <div class="q-group"><p class="q-label">What do you need help with?</p><div class="chipset">${chipBtn('data-ob-job="paint"', ob.jobs.paint, 'Paint', null)}${chipBtn('data-ob-job="stain"', ob.jobs.stain, 'Stain', null)}${chipBtn('data-ob-job="spray"', ob.jobs.spray, 'Spray Paint', null)}</div></div>`;
       nextOff = !ob.chain;
     }
     if (id === 'brands') {
@@ -4144,6 +4425,7 @@
       else { for (const b of brandList()) settings.brands[b.id] = !!ob.brands[b.id]; }
       settings.chain = ob.chain === 'other' ? '' : ob.chain;
       settings.jobs = ob.jobs;
+      if (ob.chain && ob.chain !== 'other') settings.sprayBrands = Object.assign({}, ob.sprayBrands);
       settings.inStoreSamples = settings.audience !== 'home';
       if (!settings.storeBrand) settings.storeOnly = false;
     } else if (!settings.audience) settings.audience = 'store';
@@ -4156,8 +4438,8 @@
   $('#onboard').addEventListener('click', e => {
     const t = e.target.closest('button'); if (!t || !ob) return;
     if (t.dataset.obAud) { ob.audience = t.dataset.obAud; obPicked('data-ob-aud', ob.audience); return; }
-    if (t.dataset.obChain) { ob.chain = t.dataset.obChain; if (ob.chain !== 'other') chainPreset(ob.chain, ob); obPicked('data-ob-chain', ob.chain); obDots(); return; }
-    if (t.dataset.obJob) { const j = t.dataset.obJob, other = j === 'paint' ? 'stain' : 'paint'; if (ob.jobs[j] && !ob.jobs[other]) { toast('Keep paint or stain on'); return; } ob.jobs[j] = !ob.jobs[j]; t.setAttribute('aria-pressed', ob.jobs[j]); return; }
+    if (t.dataset.obChain) { ob.chain = t.dataset.obChain; if (ob.chain !== 'other') { chainPreset(ob.chain, ob); const c = $('[data-ob-job="spray"]'); if (c) c.setAttribute('aria-pressed', ob.jobs.spray); } obPicked('data-ob-chain', ob.chain); obDots(); return; }
+    if (t.dataset.obJob) { const j = t.dataset.obJob, other = j === 'paint' ? 'stain' : 'paint'; if (j !== 'spray' && ob.jobs[j] && !ob.jobs[other]) { toast('Keep paint or stain on'); return; } ob.jobs[j] = !ob.jobs[j]; t.setAttribute('aria-pressed', ob.jobs[j]); return; }
     if (t.dataset.obBrand) { ob.brands[t.dataset.obBrand] = !ob.brands[t.dataset.obBrand]; t.setAttribute('aria-pressed', ob.brands[t.dataset.obBrand]); const n = $('#onboard [data-ob="next"]'); n.disabled = obView('brands').nextOff; return; }
     const a = t.dataset.ob;
     if (a === 'next') {
@@ -4332,7 +4614,7 @@
     clearInterval(kioskTick);
     closeModal(); closePresent(); closeCamera();
     session = blankSession(); saveSession(); updateListBtn();
-    state.flows = { paint: null, stain: null, buy: null }; state.results = { paint: null, stain: null, buy: null }; state.query = ''; state.duelPick = ''; state.unlocked = false; state.layout = null; state.furniture = {}; state.parts = {};
+    state.flows = { paint: null, stain: null, buy: null, spray: null }; state.results = { paint: null, stain: null, buy: null, spray: null }; state.query = ''; state.duelPick = ''; state.unlocked = false; state.layout = null; state.furniture = {}; state.parts = {};
     go('', { replace: true });
     window.scrollTo(0, 0);
     kioskArm();
@@ -4527,6 +4809,9 @@
     parts.push(on.length <= off.length ? 'b=' + on.join(',') : 'bx=' + off.join(','));   // whichever list is shorter
     const sOff = S.brands().map(b => b.id).filter(id => settings.stainBrands[id] === false);
     if (sOff.length) parts.push('sx=' + sOff.join(','));
+    const pOff = SP.brands().map(b => b.id).filter(id => settings.sprayBrands[id] === false);
+    if (pOff.length) parts.push('px=' + pOff.join(','));
+    if (!jobOn('spray')) parts.push('r=0');
     const cOff = Object.keys(settings.collections).filter(k => settings.collections[k] === false && !/^custom-/.test(k));
     if (cOff.length) parts.push('co=' + cOff.join(','));
     if (!jobOn('paint') || !jobOn('stain')) parts.push('j=' + (jobOn('paint') ? 'p' : 's'));
@@ -4551,11 +4836,13 @@
     if (p.b != null) for (const id of ids) next.brands[id] = list('b').includes(id);
     else if (p.bx != null) for (const id of ids) next.brands[id] = !list('bx').includes(id);
     for (const id of list('sx')) if (S.brands().some(b => b.id === id)) next.stainBrands[id] = false;
+    for (const id of list('px')) if (SP.brands().some(b => b.id === id)) next.sprayBrands[id] = false;
     for (const k of list('co')) if (/^[a-z0-9-]+:[a-z0-9-]+$/i.test(k)) next.collections[k] = false;
     if (CHAINS[p.c] && !CHAINS[p.c].other) next.chain = p.c;
     if (p.m && idx.brandById[p.m]) { next.storeBrand = p.m; next.brands[p.m] = true; next.storeOnly = p.o === '1'; }
     if (p.j === 'p') next.jobs = { paint: true, stain: false };
     if (p.j === 's') next.jobs = { paint: false, stain: true };
+    next.jobs.spray = p.r !== '0';
     next.questions = p.q === 'd' ? 'detailed' : 'quick';
     Object.assign(next, { audience: 'kiosk', kioskPhone: true, onboarded: true, inStoreSamples: true });
     settings = next; saveSettings();
@@ -4565,7 +4852,8 @@
     setTimeout(() => toast(shop ? `Welcome to ${shop}! Tap one to start.` : 'Welcome! Tap one to start.'), 1300);   // once the loading screen has lifted
   }
   function printKioskSign() {
-    const shop = storeName(), what = jobOn('paint') && jobOn('stain') ? 'Paint or Stain Color' : jobOn('stain') ? 'Stain Color' : 'Paint Color';
+    const shop = storeName(), on = [jobOn('paint') && 'Paint', jobOn('stain') && 'Stain', jobOn('spray') && 'Spray Paint'].filter(Boolean);
+    const what = (on.length === 3 ? 'Paint, Stain or Spray Paint' : on.join(' or ')) + ' Color';
     const site = kioskSite().replace(/^https?:\/\//, '').replace(/\/$/, '');
     printHtml(`<div class="qr-sign">
       <div class="qs-brand"><img src="icons/icon-192.png" alt="" width="56" height="56"><span>ColorGenius</span></div>
@@ -4623,6 +4911,7 @@
     await Promise.all(brands.map(b => loadScript(`data/colors/${b.id}.js`).then(() => { done++; $('#loadingText').textContent = `Getting the paint colors ready… ${done} of ${brands.length} brands`; }).catch(() => failed.push(b.name))));
     E.init(brands.filter(b => window.CG_COLORS && window.CG_COLORS[b.id]), window.CG_COLORS || {});
     S.init(window.CG_STAINS);
+    SP.init(window.CG_SPRAYS);
     const custom = store.get('custom', {});
     for (const name of Object.keys(custom)) E.addBrand(customMeta(name), custom[name]);
     // the brands' own Colors of the Year and popular colors, looked up every week from their websites
