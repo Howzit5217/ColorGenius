@@ -596,6 +596,26 @@
     cool: { sun: 0, el: 30, amb: 0.36, sky: [0.56, 0.58, 0.64], ground: [0.44, 0.42, 0.4], horizon: [0.12, 0.14, 0.22], skyTop: [0.04, 0.05, 0.1], win: [0.06, 0.08, 0.16], exp: 1.05, night: true, lampTint: [0.96, 0.97, 1] },
     dim: { sun: 0, el: 30, amb: 0.62, sky: [0.82, 0.84, 0.88], ground: [0.6, 0.58, 0.55], horizon: [0.7, 0.74, 0.8], skyTop: [0.55, 0.6, 0.68], win: [0.7, 0.74, 0.8], exp: 0.9, overcast: true },
   };
+  // A bulb from the slider (k2850: 2850K), between the four bulbs above: the lamps' tint and the room's light run
+  // smoothly from candle-warm at 2100K to cool daylight at 6000K.
+  const KBULBS = () => [
+    [2100, Object.assign({}, LIGHTS.warm, { amb: 0.28, lampTint: [1, 0.8, 0.58] })],
+    [2700, LIGHTS.warm], [3000, LIGHTS.soft], [4000, LIGHTS.bright], [5000, LIGHTS.cool],
+    [6000, Object.assign({}, LIGHTS.cool, { amb: 0.37, lampTint: [0.93, 0.96, 1] })],
+  ];
+  const K3D = {};
+  function light3d(id) {
+    if (LIGHTS[id]) return LIGHTS[id];
+    const m = /^k(\d{4})$/.exec(String(id || '')); if (!m) return LIGHTS.daylight;
+    if (K3D[id]) return K3D[id];
+    const k = Math.max(2100, Math.min(6000, +m[1])), list = KBULBS();
+    let i = 1; while (i < list.length - 1 && k > list[i][0]) i++;
+    const [k0, a] = list[i - 1], [k1, c] = list[i], t = Math.max(0, Math.min(1, (k - k0) / (k1 - k0)));
+    const mix = (x, y) => (Array.isArray(x) ? x.map((v, j) => v + (y[j] - v) * t) : typeof x === 'number' ? x + (y - x) * t : x);
+    const out = {};
+    for (const key of Object.keys(a)) out[key] = mix(a[key], c[key]);
+    return (K3D[id] = out);
+  }
   // a color as linear light, with the same light shift and screen tuning as the chips
   function linOf(hex, lightObj, cal) {
     let l = C.hexToLinear(String(hex || 'FFFFFF').replace('#', ''));
@@ -2411,9 +2431,9 @@
     let anim = null, raf = 0, dead = false;
     // the materials for the current look and light
     function resolve() {
-      const L = LIGHTS[lightId] || LIGHTS.daylight;
+      const L = light3d(lightId);
       const E3 = root.CG.engine;
-      const lightObj = lightId && lightId !== 'none' && E3 ? E3.LIGHTS.find(l => l.id === lightId) || null : null;
+      const lightObj = lightId && lightId !== 'none' && E3 ? (E3.lightFor ? E3.lightFor(lightId) : E3.LIGHTS.find(l => l.id === lightId)) || null : null;
       const gain = WD.gainFor(lightObj, cal);
       const out = {};
       for (const [name, d] of Object.entries(b.mats)) {
@@ -2570,7 +2590,7 @@
     function draw(now) {
       if (dead || !r.gl) return;
       size();
-      const L = LIGHTS[lightId] || LIGHTS.daylight;
+      const L = light3d(lightId);
       const aspect = canvas.width / canvas.height, e = eye(aspect);
       const vp = mmul(persp(fovFor(aspect), aspect, near0, info.outside ? 400 : 60), lookAt(e, orbit.target, [0, 1, 0]));
       // the sun

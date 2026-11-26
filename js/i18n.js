@@ -40,7 +40,18 @@
     [/ pairs of shutters/g, ' pares de contraventanas'], [/\b(\d+) coats\b/g, '$1 capas'], [/ at about /g, ' a unos '], [/ a gallon is /g, ' por galón son '], [/\bgallons\b/g, 'galones'], [/\bgallon\b/g, 'galón'], [/\bquarts\b/g, 'cuartos'], [/\bquart\b/g, 'cuarto'],
     [/ of primer/g, ' de imprimador'], [/\bplus\b/g, 'más'], [/ Buy it all at once so the color matches\./, ' Cómprala toda de una vez para que el color sea igual.']];
   const LRVW = { 'very light': 'muy claro', light: 'claro', 'light-mid': 'claro medio', mid: 'medio', medium: 'medio', 'mid-dark': 'medio oscuro', dark: 'oscuro', 'very dark': 'muy oscuro' };
+  const BULB_ES = { 'extra warm': 'extra cálidos', warm: 'cálidos', 'soft white': 'blanco suave', 'bright white': 'blanco brillante', daylight: 'luz de día' };
   const SHAPES = [
+    // bulbs by their number (the slider's too): "Warm Bulbs (2850K)", "Soft white bulbs, 3050K", "Warm 2850K bulbs"
+    [/^(Extra Warm|Warm|Soft White|Bright White|Daylight) Bulbs \((\d{4})K\)$/i, m => `Focos ${BULB_ES[m[1].toLowerCase()]} (${m[2]}K)`],
+    [/^(Extra Warm|Warm|Soft White|Bright White|Daylight) Bulbs, (\d{4})K$/i, m => `Focos ${BULB_ES[m[1].toLowerCase()]}, ${m[2]}K`],
+    [/^(Extra Warm|Warm|Soft White|Bright White|Daylight) (\d{4})K bulbs$/i, m => `focos ${BULB_ES[m[1].toLowerCase()]} de ${m[2]}K`],
+    [/^Light: (.+)$/, m => `Luz: ${part(m[1])}`],
+    [/^Screen tuning set for (.+)$/, m => `Ajuste de pantalla para ${part(m[1])}`],
+    // the camera's reading
+    [/^It has a white, a dark and (\d+) colorful chips\.$/, m => `Tiene una blanca, una oscura y ${m[1]} de color.`],
+    [/^Undo Tuning \((\d+) chips?\)$/, m => `Deshacer el ajuste (${m[1]} ${m[1] === '1' ? 'muestra' : 'muestras'})`],
+    [/^Read #([0-9A-F]{6})(, with the paper as #FFFFFF)?\. Check it against a real chip\.(.*)$/, m => `Leído: #${m[1]}${m[2] ? ', con el papel como #FFFFFF' : ''}. Compáralo con una muestra real.${m[3] ? ' ' + part(m[3].trim()) : ''}`],
     // the email window: its title, the line under it, and the messages after Send
     [/^Email (.+)$/, m => `Enviar por email: ${part(m[1])}`],
     [/^from ColorGenius’s do-not-reply address: (.+)\.$/, m => `desde la dirección de ColorGenius que no recibe respuestas: ${part(m[1])}.`],
@@ -128,10 +139,10 @@
   ];
   // names that must never be translated (a color called "Navy" or "Blush" stays one), filled by the app
   const keep = new Set();
-  function tr(s) {
+  function tr(s, ui) {
     if (!s) return null;
     const d = dict();
-    if (keep.has(s)) return null;
+    if (keep.has(s) && !(ui && d.has(s))) return null;
     if (d.has(s)) return d.get(s);
     for (const [re, fn] of SHAPES) { const m = s.match(re); if (m) { const t = fn(m); if (t != null) return t; } }
     // a line in parts ("Better · Inside · Durable, washable interior.") or several sentences
@@ -151,7 +162,7 @@
     if (n.__es === v) return;
     const p = n.parentElement; if (!p || p.closest(SKIP)) return;
     const t = v.replace(/\s+/g, ' ').trim(); if (!t) return;
-    const es = tr(t); if (es == null || es === t) return;
+    const es = tr(t, !!p.closest('[data-ui]')); if (es == null || es === t) return;
     const out = (v.match(/^\s*/) || [''])[0] + es + (v.match(/\s*$/) || [''])[0];
     n.__en = v; n.__es = out; n.nodeValue = out;   // (the English is kept, to put back)
   }

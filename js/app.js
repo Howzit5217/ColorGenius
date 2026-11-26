@@ -24,7 +24,7 @@
     cal: { enabled: false, cct: 0, warmth: 0, brightness: 0, vividness: 0, ref: '' },
     theme: 'system', reduceMotion: false, lines: {}, collections: {}, audience: '', onboarded: false,
     jobs: { paint: true, stain: true, spray: true }, stainBrands: {}, sprayBrands: {}, chain: '',
-    questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false, camTune: [], lang: 'en',
+    questions: 'quick', view3d: false, bigText: false, kioskPin: null, kioskPhone: false, camTune: [], camPaper: 'copy', lang: 'en',
   };
   function merge(base, over) {
     const out = clone(base);
@@ -59,9 +59,8 @@
   }
 
   // ---------------- color display ----------------
-  const LIGHT_BY_ID = Object.fromEntries(E.LIGHTS.map(l => [l.id, l]));
   function paint(hex, lightId) {
-    const light = lightId && lightId !== 'none' ? LIGHT_BY_ID[lightId] : null;
+    const light = lightId && lightId !== 'none' ? E.lightFor(lightId) : null;   // (a slider bulb too: k2850)
     return C.displayCss(hex, { light, cal: settings.cal, p3: state.screen.p3 });
   }
   function refreshSwatches(scope) { $$('[data-hex]', scope).forEach(el => { el.style.backgroundColor = paint(el.dataset.hex, el.dataset.light || 'none'); }); }
@@ -1618,21 +1617,59 @@
   const STAIN_ROLES = { wall: 'E7E2D8', side: 'E7E2D8', ceil: 'F4F2ED', trim: 'F2F1EC', door: 'F2F1EC', art: '5E6B73', art2: 'D9CFC0', cab: 'F2F1EC', counter: 'ECEAE5', tile: 'F6F5F1', hood: 'B9BDBF', rug: 'D6CDBE', curtain: 'ECE7DD', floor: 'A98661', body: 'D8D2C6', xtrim: 'F2F1EC', glass: '33404B', xdoor: '3E4A52', roof: '45484C', lawn: '6E8A4F', shrub: '4E6A3B', tree: '5D7649', walk: 'CFCAC0', step: 'BEB9B0' };
   const LIGHT_OPTS = () => [['none', 'Chip Color']].concat(E.LIGHTS.map(l => [l.id, l.label]));
   const LIGHT_SHORT = { none: 'Chip color', daylight: 'Daylight', north: 'North light', sun: 'Afternoon sun', golden: 'Golden hour', warm: 'Warm bulbs, 2700K', soft: 'Soft white bulbs, 3000K', bright: 'Bright white bulbs, 4000K', cool: 'Daylight bulbs, 5000K', dim: 'A dim corner' };
-  const lightLabel = id => (LIGHT_OPTS().find(o => o[0] === id) || [0, 'Daylight'])[1].replace(/ \(\d+K\)$/, '');
+  const kOf = id => { const l = E.lightFor(id); return l && l.bulb ? l.cct : 0; };   // a bulb's number, or 0 for daylight
+  const sliderBulb = id => /^k\d{4}$/.test(id || '');
+  const lightLabel = id => (sliderBulb(id) ? `${E.bulbName(kOf(id))} Bulbs, ${kOf(id)}K` : (LIGHT_OPTS().find(o => o[0] === id) || [0, 'Daylight'])[1].replace(/ \(\d+K\)$/, ''));
+  const lightShort = id => { if (!sliderBulb(id)) return LIGHT_SHORT[id] || ''; const n = E.bulbName(kOf(id)); return `${n.charAt(0) + n.slice(1).toLowerCase()} bulbs, ${kOf(id)}K`; };
   // The light picker: the bulbs that are in the room (by the number on the bulb or its box), or the daylight.
   // [light, big word, small word, the bulb's own glow]
   const BULB_TILES = [['warm', 'Warm', '2700K', '#ffd48f'], ['soft', 'Soft White', '3000K', '#ffe4b8'], ['bright', 'Bright White', '4000K', '#fff4e2'], ['cool', 'Daylight', '5000K', '#e8f0ff']];
   const DAY_TILES = [['daylight', 'Daytime', 'Sun from windows', '#dcebfa'], ['north', 'North Light', 'Soft and cool', '#d9e1ea'], ['sun', 'Afternoon Sun', 'Strong and warm', '#ffeccb'], ['golden', 'Golden Hour', 'Low orange sun', '#ffcf94'], ['dim', 'Dim Corner', 'Away from windows', '#c9cdd2'], ['none', 'Chip Color', 'No light at all', '#ffffff']];
   function lightTile([id, word, small, glow], yours, attr, on) {
     const bulb = BULB_TILES.some(t => t[0] === id);
-    return `<button type="button" class="lt-tile" ${attr || 'data-light-set'}="${id}" aria-pressed="${on == null ? state.light === id : !!on}"><span class="lt-ic" style="background:${glow}">${ic(bulb ? 'bulb' : id === 'none' ? 'swatch' : id === '' ? 'unsure' : 'sun', 22)}</span><b>${esc(word)}</b><small>${esc(small)}</small>${yours && yours === id ? '<span class="lt-yours">Yours</span>' : ''}</button>`;
+    return `<button type="button" class="lt-tile${bulb ? "" : " day"}" data-ui ${attr || 'data-light-set'}="${id}" aria-pressed="${on == null ? state.light === id : !!on}"><span class="lt-ic" style="background:${glow}">${ic(bulb ? 'bulb' : id === 'none' ? 'swatch' : id === '' ? 'unsure' : 'sun', 22)}</span><b>${esc(word)}</b><small>${esc(small)}</small>${yours && yours === id ? '<span class="lt-yours">Yours</span>' : ''}</button>`;
   }
-  // the short row inside the color adjuster: daytime and the four bulbs (and whatever else is picked now)
+  // the short row inside the color adjuster: daytime and the four bulbs (and whatever else is picked now), and the
+  // slider for any other bulb
   function lightRowHtml(yours) {
     const tiles = [DAY_TILES[0]].concat(BULB_TILES);
-    if (!tiles.some(t => t[0] === state.light)) tiles.push(DAY_TILES.find(t => t[0] === state.light) || DAY_TILES[0]);
-    return `<div class="lt-row">${tiles.map(t => lightTile(t, yours)).join('')}</div>`;
+    if (!tiles.some(t => t[0] === state.light) && !sliderBulb(state.light)) tiles.push(DAY_TILES.find(t => t[0] === state.light) || DAY_TILES[0]);
+    return `<div class="lt-row">${tiles.map(t => lightTile(t, yours)).join('')}</div>${bulbSlider('light', kOf(state.light))}`;
   }
+  // The slider: any bulb from 2100K to 6000K, for the number on a bulb that isn't one of the four buttons (which
+  // stay, for the usual ones). The track shows each bulb's glow. Before it's moved (daylight picked) it shows no
+  // number; moving it picks that bulb, and tapping a button moves it there.
+  const KS_GLOW = [[2100, '#ffb35c'], [2700, '#ffd48f'], [3000, '#ffe4b8'], [4000, '#fff4e2'], [5000, '#eef3ff'], [6000, '#dfe9ff']];
+  let ksN = 0;
+  function bulbSlider(kind, k) {
+    const R = E.BULB_RANGE, v = k || 3000, id = 'ks' + (++ksN);
+    const track = KS_GLOW.map(([kk, c]) => `${c} ${Math.round((kk - R.min) / (R.max - R.min) * 1000) / 10}%`).join(', ');
+    return `<div class="kslider${k ? '' : ' off'}" data-ui data-ks="${kind}"><div class="ks-top"><label for="${id}">Or slide to the number on the bulb</label><span class="ks-val" aria-hidden="true"><b>${k ? v + 'K' : '—'}</b><span class="ks-name">${k ? esc(E.bulbName(v)) : ''}</span></span></div>
+      <input type="range" id="${id}" class="ks-range" min="${R.min}" max="${R.max}" step="${R.step}" value="${v}" style="--ks-track: linear-gradient(90deg, ${track})" aria-valuetext="${k ? `${v}K, ${E.bulbName(v)}` : 'Not set'}">
+      <div class="ks-ends" aria-hidden="true"><span>2100K</span><span>4000K</span><span>6000K</span></div></div>`;
+  }
+  // every slider of a kind to a bulb's number (0: none picked)
+  function syncSliders(kind, k) {
+    $$(`[data-ks="${kind}"]`).forEach(box => {
+      box.classList.toggle('off', !k);
+      const r = $('.ks-range', box); if (k && document.activeElement !== r) r.value = k;
+      $('.ks-val b', box).textContent = k ? k + 'K' : '—'; $('.ks-name', box).textContent = k ? E.bulbName(k) : '';
+      r.setAttribute('aria-valuetext', k ? `${k}K, ${E.bulbName(k)}` : 'Not set');
+    });
+  }
+  // sliding: the picture follows (once a frame, so a quick slide stays smooth)
+  let ksFrame = 0, ksTimer = 0, ksNext = null;
+  // (a timer too, for a browser that holds back frames, like a page in the background)
+  const ksRun = () => { if (!ksFrame) return; cancelAnimationFrame(ksFrame); clearTimeout(ksTimer); ksFrame = 0; if (ksNext) setLight(ksNext); ksNext = null; };
+  document.addEventListener('input', e => {
+    const r = e.target.closest && e.target.closest('.ks-range'); if (!r) return;
+    const box = r.closest('[data-ks]'), kind = box.dataset.ks, k = +r.value;
+    syncSliders(kind, k);
+    if (kind === 'cal') { if (cal) { cal.draft.cct = k; $$('#modal [data-cal-light]').forEach(b => b.setAttribute('aria-pressed', 'false')); } return; }
+    if (kind === 'calhere') { $$('[data-cal-here]').forEach(b => b.setAttribute('aria-pressed', 'false')); return; }   // (saved when let go, below)
+    ksNext = E.bulbId(k);
+    if (!ksFrame) { ksFrame = requestAnimationFrame(ksRun); ksTimer = setTimeout(ksRun, 150); }
+  });
   // the bulbs the answers say are in the room
   const yourBulbs = id => { const L = id && live[id]; return L && L.spec.answers && !L.spec.stain ? E.bulbLight(L.spec.answers) : ''; };
   function openLight(id) {
@@ -1640,15 +1677,16 @@
     partPick = null; furnPick = null;
     const house = (SCN[state.sceneFor[L.spec.key]] || {}).kind === 'house', yours = yourBulbs(id);
     openModal(house ? 'Light on the House' : 'Light in the Room', `<p class="part-lead">${house ? 'Pick the light: the sun in the day, or the porch light’s bulbs at night.' : 'What light bulbs are in the room? The number is on the bulb or its box.'} The picture and its colors change right away.</p>
-      <div class="setup-group"><h3>${house ? 'Porch Light at Night' : 'Light Bulbs'}</h3><div class="lt-grid bulbs">${BULB_TILES.map(t => lightTile(t, yours)).join('')}</div></div>
-      <div class="setup-group"><h3>Daylight</h3><div class="lt-grid">${DAY_TILES.map(t => lightTile(t, yours)).join('')}</div></div>
+      <div class="setup-group"><h3>${house ? 'Porch Light at Night' : 'Light Bulbs'}</h3><div class="lt-grid bulbs">${BULB_TILES.map(t => lightTile(t, yours)).join('')}</div>${bulbSlider('light', kOf(state.light))}</div>
+      <div class="setup-group"><h3 data-ui>Daylight</h3><div class="lt-grid">${DAY_TILES.map(t => lightTile(t, yours)).join('')}</div></div>
       <div class="modal-foot"><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`, peekFor(id));
   }
   function setLight(v) {
-    if (!LIGHT_OPTS().some(o => o[0] === v)) return;
+    if (!LIGHT_OPTS().some(o => o[0] === v) && !E.lightFor(v)) return;
     state.light = v;
     for (const k of Object.keys(live)) relight(k);
     $$('[data-light-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lightSet === v)));
+    syncSliders('light', kOf(v));
   }
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-light-set], [data-light-open]'); if (!t) return;
@@ -1692,7 +1730,7 @@
     live[id] = { spec, viewer: null };
     $('#' + id + '-tools').innerHTML = [
       spec.ids.length > 1 ? selectHtml(id + '-scene', spec.ids.map(s => [s, SCN[s].label]), state.sceneFor[key], 'Scene', v => { state.sceneFor[key] = v; drawScene(id); }) : '',
-      settings.lightPreview ? `<button type="button" class="cg-select" id="${id}-light" data-light-open="${id}" aria-haspopup="dialog" aria-label="Light: ${esc(lightLabel(state.light))}"><span class="k">Light</span><span class="v">${esc(lightLabel(state.light))}</span>${chev('down', 18)}</button>` : '',
+      settings.lightPreview ? `<button type="button" class="cg-select" id="${id}-light" data-light-open="${id}" aria-haspopup="dialog" aria-label="Light: ${esc(lightLabel(state.light))}"><span class="k">Lighting</span><span class="v">${esc(lightLabel(state.light))}</span>${chev('down', 18)}</button>` : '',
     ].join('');
     drawScene(id);
   }
@@ -2019,7 +2057,7 @@
   });
   function setTag(id, text) {
     const tag = $('#' + id + ' .scene-tag'); if (!tag) return;
-    const t = text || LIGHT_SHORT[state.light] || '';
+    const t = text || lightShort(state.light);
     tag.textContent = t; tag.hidden = !settings.lightPreview || !t;
   }
   // a new color (or stain) on the same scene: the 3D view rolls it on; the drawing repaints
@@ -2756,6 +2794,7 @@
         <span>Hold the phone a little to one side, so its shadow doesn’t fall on the paper.</span>
         <span>Too dark? The light button turns on the phone’s light. Then a green edge means a good height; yellow or red, move the phone back a little.</span>
         <span>Drag a box to move it. Drag its corner to resize it.</span>
+        <span><b>The paper is the white:</b> every color is measured against it, so the light’s tint comes out. The Paper button (bottom right) shows the paper as the camera sees it, and the white it counts as: copy paper (#EFEFEF, true to paint chips) or pure white (#FFFFFF). Tap it to switch.</span>
         <span>Shiny paint? Hold the phone at a slight angle, not flat over it. A circle marks any shiny spot.</span>
         <span class="cam-tune-row" id="camTuneRow">${camTuneRow()}</span>
       </div>
@@ -2764,9 +2803,10 @@
       <div class="cam-bottom">
         <span class="cam-swatch"><span class="sw" id="camSw"></span><span class="mono" id="camHex">——</span></span>
         <button type="button" class="cam-shot" data-cam-read="1" aria-label="Read the color" disabled><span></span></button>
-        <span></span>
+        <button type="button" class="cam-paper" data-cam-paper="1" aria-pressed="false"><span class="cp-sws" aria-hidden="true"><span class="sw cp-seen" id="camPaperSeen"></span><span class="cp-arrow">${chev('right', 14)}</span><span class="sw cp-as"></span></span><span class="cp-txt"><small>Paper</small><span class="mono cp-hex">#EFEFEF</span></span></button>
       </div>`;
     document.body.appendChild(el);
+    camPaperBtn();
     document.documentElement.classList.add('cam-open'); syncBars();
     document.addEventListener('keydown', camKeys, true);
     camLayout();
@@ -2859,12 +2899,25 @@
     return { frame: { data: img.data, width: fw, height: fh }, toF, toScreen, px: k / sc };
   }
   const camTune = () => (settings.camTune && settings.camTune.length ? CM.fitTune(settings.camTune) : null);
+  // The paper is the white every color is measured against: the camera divides the color by the paper, channel by
+  // channel, which takes out the light's tint and the camera's own warmth. Then it counts the paper as copy paper
+  // (#EFEFEF, what plain paper really reflects, so colors match the chips) or, if picked, pure white #FFFFFF.
+  const camWhite = () => settings.camPaper === 'white';
+  const camPaperR = () => (camWhite() ? CM.PAPER_WHITE : CM.PAPER);
+  const camPaperHex = () => '#' + CM.hexOf([0, 1, 2].map(() => camPaperR()));
+  function camPaperBtn() {
+    const b = $('[data-cam-paper]'); if (!b) return;
+    b.setAttribute('aria-pressed', String(camWhite()));
+    b.setAttribute('aria-label', camWhite() ? 'The paper counts as pure white, #FFFFFF. Tap to count it as copy paper.' : 'The paper counts as copy paper, #EFEFEF. Tap to count it as pure white.');
+    $('.cp-hex', b).textContent = camPaperHex();
+    $('.cp-as', b).style.background = camPaperHex();
+  }
   function camSample() {
     if (!cam || !cam.video.videoWidth || !document.contains(cam.video)) return null;
     const F = camFrame(); if (!F) return null;
     const cb = $('#camWrap .cam-c'), pb = $('#camWrap .cam-p');
     const layout = camMode === 'wall' && pb ? { mode: 'wall', color: F.toF(cb.getBoundingClientRect()), paper: F.toF(pb.getBoundingClientRect()) } : { mode: 'paper', color: F.toF(cb.getBoundingClientRect()) };
-    const r = CM.analyze(F.frame, layout, { tune: camTune() });
+    const r = CM.analyze(F.frame, layout, { tune: camTune(), paper: camPaperR() });
     r.F = F;
     return r;
   }
@@ -2942,6 +2995,7 @@
     } else { if (screen) delete screen.dataset.height; if (meter) meter.hidden = true; }
     const sw = $('#camSw'), hx = $('#camHex'), btn = $('[data-cam-read]');
     if (r.hex && !r.problem) { if (sw) sw.style.background = '#' + r.hex; if (hx) hx.textContent = '#' + r.hex; }
+    const seen = $('#camPaperSeen'); if (seen && r.seen) seen.style.background = '#' + r.seen.paper;
     if (r.problem) camNote(camSay(r.problem), r.problem === 'glare' ? 'glare' : '');
     else camNote(cam.tuning ? 'Ready. Tap the round button to read the chip you know.' : 'Ready. Tap the round button.', 'ready');
     if (btn) btn.disabled = !!r.problem;
@@ -3009,6 +3063,11 @@
       return;
     }
     if (d.camTune) { cam && (cam.tuning = true); const tips = $('#camTips'); if (tips) tips.hidden = true; $('#camera').classList.remove('tips-open'); $$('[data-cam-help]').forEach(b => b.setAttribute('aria-expanded', 'false')); toast('Lay a chip you know on the paper, fit the box in it, then tap the round button.'); return; }
+    if (d.camPaper) {
+      settings.camPaper = camWhite() ? 'copy' : 'white'; saveSettings(); camPaperBtn();
+      toast(camWhite() ? 'The paper now counts as pure white, #FFFFFF. Colors read a little lighter than against copy paper.' : 'The paper now counts as copy paper, #EFEFEF, the closest to real paint chips.', 4200);
+      return;
+    }
     if (d.camUntune) { settings.camTune = []; saveSettings(); const row = $('#camTuneRow'); if (row) row.innerHTML = camTuneRow(); toast('Camera tuning undone'); return; }
     if (d.camTuneCancel) { if (cam) { cam.tuning = false; cam.tuneRead = null; } const box = $('#camTune'); if (box) { box.hidden = true; box.innerHTML = ''; } return; }
     if (d.camTunePick) { camTuneDone(d.camTunePick); return; }
@@ -3032,7 +3091,7 @@
       let c = null;
       for (let i = 0; i < 40; i++) {
         const r = camSample(); if (r) got.push(r);
-        if (got.length >= 10) { const run = CM.combine(got.slice(-10)); if (run && run.n >= 8 && (!c || run.spread < c.spread)) c = run; if (c && c.spread <= 1.2) break; }
+        if (got.length >= 10) { const run = CM.combine(got.slice(-10), { paper: camPaperR() }); if (run && run.n >= 8 && (!c || run.spread < c.spread)) c = run; if (c && c.spread <= 1.2) break; }
         await new Promise(res => setTimeout(res, 70));
         if (!cam) return;
       }
@@ -3046,7 +3105,7 @@
       if (state.view === 'lookup') renderLookup(); else go('lookup');
       const lit = C.hexToLab(c.hex)[0], k = tuneKinds();
       const tip = lit > 85 && !k.light ? ' Whites read closer once the camera is tuned with a white chip (in the camera’s ? tips).' : lit < 32 && !k.dark ? ' Dark colors read closer once the camera is tuned with a dark chip (in the camera’s ? tips).' : '';
-      toast(`Read #${c.hex}. Check it against a real chip.${tip}`, tip ? 6500 : 2800);
+      toast(`Read #${c.hex}${camWhite() ? ', with the paper as #FFFFFF' : ''}. Check it against a real chip.${tip}`, tip ? 6500 : 2800);
     }
   });
   let lookTimer = 0;
@@ -4434,8 +4493,14 @@
   const CAL_DAY = ['daylight', 'Daytime', 'Window light', '#dcebfa'], CAL_UNSURE = ['', 'Not Sure', 'Use the slider', '#ece9e3'];
   const calCct = id => (E.LIGHTS.find(l => l.id === id) || {}).cct || 0;
   const calTile = cct => [CAL_DAY].concat(BULB_TILES).find(t => calCct(t[0]) === cct) || null;
-  const calLightName = cct => { const t = calTile(cct); return !t ? '' : t === CAL_DAY ? 'daylight' : `${t[1]} ${t[2]} bulbs`; };
-  const calTiles = (attr, cct) => `<div class="lt-stack"><div class="lt-grid bulbs">${BULB_TILES.map(t => lightTile(t, '', attr, calCct(t[0]) === cct)).join('')}</div><div class="lt-grid bulbs">${[CAL_DAY, CAL_UNSURE].map(t => lightTile(t, '', attr, t[0] ? calCct(t[0]) === cct : !cct)).join('')}</div></div>`;
+  const calLightName = cct => { const t = calTile(cct); return !t ? (cct ? `${E.bulbName(cct)} ${cct}K bulbs` : '') : t === CAL_DAY ? 'daylight' : `${t[1]} ${t[2]} bulbs`; };
+  const calTiles = (attr, cct) => `<div class="lt-stack"><div class="lt-grid bulbs">${BULB_TILES.map(t => lightTile(t, '', attr, calCct(t[0]) === cct)).join('')}</div><div class="lt-grid bulbs">${[CAL_DAY, CAL_UNSURE].map(t => lightTile(t, '', attr, t[0] ? calCct(t[0]) === cct : !cct)).join('')}</div></div>${bulbSlider(attr === 'data-cal-here' ? 'calhere' : 'cal', cct && cct <= E.BULB_RANGE.max ? cct : 0)}`;
+  // the screen tuning's slider in Settings: saved when it's let go, so the page doesn't redraw under a finger
+  document.addEventListener('change', e => {
+    const r = e.target.closest && e.target.closest('[data-ks="calhere"] .ks-range'); if (!r) return;
+    settings.cal.cct = +r.value; saveSettings(); afterSettingsChange('calEnabled'); renderKeep();
+    toast('Screen tuning set for ' + calLightName(settings.cal.cct));
+  });
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-cal-here]'); if (!t) return;
     settings.cal.cct = calCct(t.dataset.calHere); saveSettings(); afterSettingsChange('calEnabled'); renderKeep();
@@ -4465,7 +4530,7 @@
   $('#modal').addEventListener('input', e => { const k = e.target.dataset.cal; if (!k || !cal) return; cal.draft[k] = +e.target.value; $$(`[data-cal="${k}"]`).forEach(i => { if (i !== e.target) i.value = cal.draft[k]; }); const v = $('#calv-' + k); if (v) v.textContent = (cal.draft[k] > 0 ? '+' : '') + cal.draft[k]; paintCal(); });
   $('#modal').addEventListener('click', e => {
     const t = e.target.closest('button'); if (!t || !cal) return;
-    if (t.dataset.calLight != null) { cal.draft.cct = calCct(t.dataset.calLight); $$('#modal [data-cal-light]').forEach(b => b.setAttribute('aria-pressed', String(b === t))); return; }
+    if (t.dataset.calLight != null) { cal.draft.cct = calCct(t.dataset.calLight); $$('#modal [data-cal-light]').forEach(b => b.setAttribute('aria-pressed', String(b === t))); syncSliders('cal', cal.draft.cct && cal.draft.cct < 6500 ? cal.draft.cct : 0); return; }
     if (t.dataset.calPick) { cal.ref = E.findColor(t.dataset.calPick); $('#calChip .badge').textContent = cal.ref.name; $('#calHits').innerHTML = ''; paintCal(); return; }
     const a = t.dataset.calAct;
     if (a === 'back') { cal.step--; drawCal(); }

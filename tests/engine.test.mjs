@@ -774,3 +774,18 @@ test('fix a problem: every problem has what it looks like, why, the steps, what 
   assert.ok(FX.find('peeling').lead && FX.find('cracking').lead && FX.find('mildew').safe);
   assert.equal(FX.find('nope'), null);
 });
+
+test('bulbs by number: the slider’s 2100K to 6000K, the four named bulbs kept, and colors that warm smoothly', () => {
+  // the numbers on the four buttons keep their names; anything else is a bulb of its own
+  assert.equal(E.bulbId(2700), 'warm'); assert.equal(E.bulbId(3000), 'soft'); assert.equal(E.bulbId(4000), 'bright'); assert.equal(E.bulbId(5000), 'cool');
+  assert.equal(E.bulbId(2850), 'k2850'); assert.equal(E.bulbId(1500), 'k2100'); assert.equal(E.bulbId(9000), 'k6000'); assert.equal(E.bulbId(2862), 'k2850');
+  const k = E.lightFor('k2850');
+  assert.deepEqual([k.cct, k.bulb, k.label], [2850, true, 'Warm Bulbs (2850K)']);
+  assert.ok(k.intensity > E.lightFor('warm').intensity && k.intensity < E.lightFor('soft').intensity, 'brightness between its neighbours');
+  assert.equal(E.lightFor('k2100').label, 'Extra Warm Bulbs (2100K)'); assert.equal(E.lightFor('none'), null); assert.equal(E.lightFor('k12'), null);
+  // a white wall under each: warmer (more red than blue) the lower the number, with no jumps
+  const rb = k2 => { const [r, , b] = C.hexToRgb(C.displayCss('F2F1EC', { light: E.lightFor('k' + k2) }).replace('#', '')); return r - b; };
+  let last = Infinity;
+  for (let k2 = 2100; k2 <= 6000; k2 += 300) { const v = rb(k2); assert.ok(v <= last + 0.5, `${k2}K is warmer than the one before it`); last = v; }
+  assert.ok(rb(2100) - rb(6000) > 40, 'a real spread from candle-warm to daylight');
+});

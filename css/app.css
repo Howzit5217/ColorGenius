@@ -908,8 +908,30 @@ html.gate-open { overflow: hidden; }
 @media (max-width: 420px) { .adj-grid { gap: 6px; } .adj-undo-w { display: none; } .adj-undo { width: 44px; padding: 0; justify-content: center; border: 1.5px solid var(--line-2); } .adj-sw { width: 50px; height: 50px; } .adj { gap: 8px; min-height: 58px; padding: 6px 8px 6px 6px; } .adj-to { width: 36px; height: 36px; } .adj-w b { font-size: .95rem; } }
 /* light tiles: the bulbs in the room (by the number on the box), or the daylight */
 .lt-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 6px; }
+/* (in the short row the tiles are narrow: the bulbs keep their numbers, daylight just its name) */
+.lt-row .lt-tile.day small { display: none; }
 .lt-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .lt-grid.bulbs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* the bulb slider: any number from 2100K to 6000K, under the four bulb buttons; the track is the bulbs' glow */
+.kslider { display: grid; gap: 6px; margin-top: 12px; padding: 12px 14px 10px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); }
+.lt-row + .kslider { margin-top: 10px; }
+.ks-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+.ks-top label { font-weight: 700; font-size: .95rem; color: var(--ink-2); }
+.ks-val { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.ks-val b { font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ks-val .ks-name { font-size: .9rem; font-weight: 700; color: var(--ink-2); }
+.kslider.off .ks-val b { color: var(--ink-3); }
+.ks-range { -webkit-appearance: none; appearance: none; width: 100%; height: 40px; margin: 0; background: transparent; cursor: pointer; touch-action: pan-y; }
+.ks-range:focus { outline: none; }
+.ks-range::-webkit-slider-runnable-track { height: 14px; border-radius: 999px; background: #ffd9a0; background: var(--ks-track, #ffd9a0); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.ks-range::-moz-range-track { height: 14px; border-radius: 999px; background: #ffd9a0; background: var(--ks-track, #ffd9a0); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.ks-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 30px; height: 30px; margin-top: -8px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .3); }
+.ks-range::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .3); }
+.kslider.off .ks-range::-webkit-slider-thumb { border-color: var(--ink-3); }
+.kslider.off .ks-range::-moz-range-thumb { border-color: var(--ink-3); }
+.ks-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--focus); }
+.ks-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px var(--focus); }
+.ks-ends { display: flex; justify-content: space-between; font-size: .78rem; font-weight: 700; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 /* Settings: the light where the screen is tuned */
 .lt-stack { display: grid; gap: 8px; }
 .cal-here { gap: 12px; }
@@ -1139,6 +1161,17 @@ html.cam-open { overflow: hidden; }
 .cam-shot.busy span { animation: shotPulse 600ms ease infinite alternate; }
 @keyframes shotPulse { to { transform: scale(.82); } }
 @media (max-width: 420px) { .cam-swatch .mono { display: none; } .cam-swatch { padding: 6px; } }
+/* the paper: as the camera sees it, then the white it counts as (copy paper or pure #FFFFFF); a tap switches */
+.cam-paper { justify-self: start; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: rgba(20, 20, 19, .6); color: #fff; text-align: left; border: 2px solid transparent; }
+.cam-paper[aria-pressed="true"] { border-color: rgba(255, 255, 255, .85); }
+.cp-sws { display: inline-flex; align-items: center; gap: 2px; }
+.cam-paper .sw { width: 28px; height: 28px; border-radius: 50%; background: #777; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .7); }
+.cam-paper .cp-as { background: #efefef; }
+.cp-arrow { display: grid; place-items: center; opacity: .8; }
+.cp-txt { display: grid; line-height: 1.1; }
+.cp-txt small { font-size: .72rem; font-weight: 700; opacity: .85; }
+.cp-txt .mono { font-size: .85rem; font-weight: 800; }
+@media (max-width: 420px) { .cam-paper { flex-direction: column-reverse; gap: 2px; padding: 4px 8px 6px; border-radius: 16px; } .cam-paper .cp-txt .mono { display: none; } .cp-txt small { font-size: .68rem; } }
 @media (prefers-reduced-motion: reduce) { .camera, .camera.closing, .cam-hint, .cam-tips, .cam-box.resetting, .cam-shot.busy span, .cam-glare, .tilt-ic .tilt-phone { animation: none; transition: none; } }
 
 /* the guessing-game tags on the style and color choices: how each one suits this room */

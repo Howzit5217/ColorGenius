@@ -102,3 +102,16 @@ test('Quick Answers are in Spanish: every question, choice, answer, step, wait, 
   assert.equal(I.tr('Sent to a@b.com'), 'Enviado a a@b.com');
   for (const s of ['Their email address', 'Use My Email App', 'Send', 'Sending…', 'written in: the answer, the steps and what to buy. Check it, then press Send.']) assert.ok(I.tr(s), s);
 });
+test('bulbs by number and the camera’s paper are in Spanish', () => {
+  assert.equal(I.tr('Warm Bulbs (2850K)'), 'Focos cálidos (2850K)');
+  assert.equal(I.tr('Soft white bulbs, 3050K'), 'Focos blanco suave, 3050K');
+  assert.equal(I.tr('Light: Warm Bulbs, 2850K'), 'Luz: Focos cálidos, 2850K');
+  assert.equal(I.tr('Screen tuning set for Warm 2850K bulbs'), 'Ajuste de pantalla para focos cálidos de 2850K');
+  assert.match(I.tr('Read #D1CBC1, with the paper as #FFFFFF. Check it against a real chip.'), /^Leído: #D1CBC1, con el papel como #FFFFFF\./);
+  // a word that's also a paint color's name ("Soft White") keeps the color's name, except in the app's own controls
+  const had = I.keep.has('Soft White'); I.keep.add('Soft White');
+  assert.equal(I.tr('Soft White'), null); assert.equal(I.tr('Soft White', true), 'Blanco suave');
+  if (!had) I.keep.delete('Soft White');
+  assert.equal(I.tr('Lighting'), 'Luz');
+  for (const s of ['Extra Warm', 'Soft White', 'Bright White', 'Daylight', 'Or slide to the number on the bulb', 'The paper counts as pure white, #FFFFFF. Tap to count it as copy paper.', 'The paper now counts as copy paper, #EFEFEF, the closest to real paint chips.']) assert.ok(I.tr(s), s);
+});

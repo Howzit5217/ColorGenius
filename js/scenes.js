@@ -7,7 +7,6 @@
   const $ = (s, el) => (el || document).querySelector(s);
   const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-  const LIGHT_BY_ID = Object.fromEntries(E.LIGHTS.map(l => [l.id, l]));
   // how a color is shown (light preview and screen calibration) comes from the app
   const cfg = { paint: (hex) => '#' + hex, cal: () => null };
   function configure(o) { Object.assign(cfg, o || {}); texCache.clear(); }
@@ -594,7 +593,7 @@
   };
   const FIXED_FILL = { wain: 'F2F1EC', fire: 'A65A44', shut: '2F3B4C', gdoor: 'F2F1EC', rug: 'CFC6B8', curtain: 'ECE7DD', counter: 'ECEAE5', cab: 'F2F1EC', body: 'CFC8BC', xtrim: 'F2F1EC', glass: '33404B', lawn: '6E8A4F', tree: '5D7649', shrub: '4E6A3B', roof: '45484C', floor: 'A9784B', frame: '2B2926', sofa: '8A857E', 'sofa-d': '77726B', 'sofa-l': '9A958E', shade: 'ECE6DA', duvet: 'F1F0EC', wood: 'A27B55' };
 
-  const lightOf = id => (id && id !== 'none' ? LIGHT_BY_ID[id] : null);
+  const lightOf = id => (id && id !== 'none' ? E.lightFor(id) : null);   // (a slider bulb too: k2850)
   const woodGain = id => WD.gainFor(lightOf(id), settings.cal);
   // an <image> that applyTextures() fills in, inside a tiling pattern
   const texImg = (spec, w, h) => `<image data-tex="${esc(JSON.stringify(spec))}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none"/>`;
@@ -759,7 +758,7 @@
   function paintScene(room, id) {
     if (!room) return '';
     const L = id === 'none' ? null : id;
-    const lt = LIGHT_BY_ID[id];
+    const lt = lightOf(id);
     let roles = {};
     try { roles = JSON.parse(room.dataset.roles || '{}'); } catch (e) { roles = {}; }
     const set = (sel, prop, val) => $$(sel, room).forEach(el => el.setAttribute(prop, val));
@@ -769,7 +768,7 @@
       set('.r-' + role, 'fill', v);
       set('.r-' + role + '-s', 'stroke', v);
     }
-    const sky = SKY[id] || SKY.daylight;
+    const sky = SKY[id] || (lt && lt.bulb ? SKY.soft : SKY.daylight);
     set('.r-sky-top', 'stop-color', sky[0]); set('.r-sky-bot', 'stop-color', sky[1]);
     const night = !!(lt && lt.bulb);
     const lampColor = lt ? C.displayCss('FFFFFF', { light: Object.assign({}, lt, { adapt: 0.85, intensity: 1 }) }) : '#fff4dc';

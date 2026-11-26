@@ -2601,5 +2601,30 @@ That’s a lot of email from this screen in an hour. Try again a little later, o
 This device is offline, so it can’t send right now. Try again when it’s back online, or print it.	Este aparato no tiene conexión, así que no puede enviar ahora. Vuelve a intentarlo cuando tenga conexión, o imprímelo.
 It didn’t send. Check the address and try again, or print it instead.	No se envió. Revisa la dirección y vuelve a intentarlo, o mejor imprímelo.
 every color, code, finish and product, one per line	cada color, código, acabado y producto, uno por línea
+Extra Warm	Extra cálido
+Soft White	Blanco suave
+Or slide to the number on the bulb	O desliza hasta el número del foco
+Porch Light at Night	Luz del porche de noche
+Window light	Luz de ventana
+daylight	luz de día
+any light	cualquier luz
+Screen tuning set for any light	Ajuste de pantalla para cualquier luz
+Camera tuning undone	Se deshizo el ajuste de la cámara
+Whites read closer once the camera is tuned with a white chip (in the camera’s ? tips).	Los blancos salen más exactos cuando la cámara se ajusta con una muestra blanca (en los consejos ? de la cámara).
+Dark colors read closer once the camera is tuned with a dark chip (in the camera’s ? tips).	Los colores oscuros salen más exactos cuando la cámara se ajusta con una muestra oscura (en los consejos ? de la cámara).
+The paper is the white:	El papel es el blanco:
+every color is measured against it, so the light’s tint comes out. The Paper button (bottom right) shows the paper as the camera sees it, and the white it counts as: copy paper (#EFEFEF, true to paint chips) or pure white (#FFFFFF). Tap it to switch.	cada color se mide contra él, así se quita el tono de la luz. El botón Papel (abajo a la derecha) muestra el papel como lo ve la cámara, y el blanco que cuenta: papel de copias (#EFEFEF, fiel a las muestras de pintura) o blanco puro (#FFFFFF). Tócalo para cambiar.
+The paper counts as pure white, #FFFFFF. Tap to count it as copy paper.	El papel cuenta como blanco puro, #FFFFFF. Toca para contarlo como papel de copias.
+The paper counts as copy paper, #EFEFEF. Tap to count it as pure white.	El papel cuenta como papel de copias, #EFEFEF. Toca para contarlo como blanco puro.
+The paper now counts as pure white, #FFFFFF. Colors read a little lighter than against copy paper.	Ahora el papel cuenta como blanco puro, #FFFFFF. Los colores salen un poco más claros que contra papel de copias.
+The paper now counts as copy paper, #EFEFEF, the closest to real paint chips.	Ahora el papel cuenta como papel de copias, #EFEFEF, lo más cercano a las muestras de pintura reales.
+tune the camera with chips you know.	ajusta la cámara con muestras que conozcas.
+Best: one white chip (for whites), one dark chip (for dark colors), and a few colorful ones, like a teal and a red-orange (for the colors in between).	Lo mejor: una muestra blanca (para los blancos), una oscura (para los colores oscuros) y unas de color, como un verde azulado y un rojo anaranjado (para los colores intermedios).
+Add a white or off-white chip too, for whites.	Agrega también una muestra blanca o blanquecina, para los blancos.
+Add a dark chip too, for dark colors.	Agrega también una muestra oscura, para los colores oscuros.
+Add a colorful chip or two, like a teal or a red-orange, for the colors in between.	Agrega una o dos muestras de color, como un verde azulado o un rojo anaranjado, para los colores intermedios.
+Tune With Another Chip	Ajustar con otra muestra
+The camera is blocked for this site. Allow it in the browser’s settings for this site, then try again.	La cámara está bloqueada para este sitio. Permítela en la configuración del navegador para este sitio y vuelve a intentarlo.
+Lighting	Luz
 `;
 })(typeof self !== 'undefined' ? self : this);

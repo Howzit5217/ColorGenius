@@ -280,6 +280,22 @@
     { id: 'cool', label: 'Daylight Bulbs (5000K)', cct: 5000, intensity: 0.92, bulb: true },
     { id: 'dim', label: 'Dim Corner', cct: 3600, intensity: 0.55 },
   ];
+  // Any bulb by the number on its box, from 2100K (candle-warm) to 6000K: "k2850" is a 2850K bulb. The four bulbs
+  // above keep their own names (k2700 is the Warm bulbs). Brightness runs between theirs, a little dimmer below.
+  const BULB_RANGE = { min: 2100, max: 6000, step: 50 };
+  const BULB_GLOW = [[2100, 0.78], [2700, 0.82], [3000, 0.86], [4000, 0.9], [5000, 0.92], [6000, 0.93]];
+  const clampK = k => Math.max(BULB_RANGE.min, Math.min(BULB_RANGE.max, Math.round(k / BULB_RANGE.step) * BULB_RANGE.step));
+  const bulbName = k => (k < 2500 ? 'Extra Warm' : k < 2900 ? 'Warm' : k < 3500 ? 'Soft White' : k < 4500 ? 'Bright White' : 'Daylight');
+  function bulbId(k) { k = clampK(+k || 3000); const named = LIGHTS.find(l => l.bulb && l.cct === k); return named ? named.id : 'k' + k; }
+  function lightFor(id) {
+    if (!id || id === 'none') return null;
+    const named = LIGHTS.find(l => l.id === id); if (named) return named;
+    const m = /^k(\d{4})$/.exec(String(id)); if (!m) return null;
+    const k = clampK(+m[1]);
+    let glow = BULB_GLOW[BULB_GLOW.length - 1][1];
+    for (let i = 1; i < BULB_GLOW.length; i++) { const [k0, g0] = BULB_GLOW[i - 1], [k1, g1] = BULB_GLOW[i]; if (k <= k1) { glow = g0 + (g1 - g0) * (k - k0) / (k1 - k0); break; } }
+    return { id: 'k' + k, label: `${bulbName(k)} Bulbs (${k}K)`, cct: k, intensity: Math.round(glow * 1000) / 1000, bulb: true };
+  }
 
   const DEFAULT_ANSWERS = { space: 'living', size: 'medium', siding: 'wood', facing: 'unsure', facings: [], amount: 'medium', bulbs: 'unsure', styles: [], families: [], depth: 'any', fixed: [], customFixed: [], whiteType: '', trimPaint: false, crown: false,
     mode: 'basic', feel: '', undertone: '', avoid: [], nowKind: '', nowHex: '', surface: '', issues: [], forWho: '' };
@@ -1513,7 +1529,7 @@
     return { brands, errors };
   }
 
-  const api = { WHO_FOR, popularity, isPopular, popularList, popularWhy, colorsOfYear, popularInfo, setPopular, parseColorValue, closestByBrand, F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
+  const api = { BULB_RANGE, bulbId, bulbName, lightFor, WHO_FOR, popularity, isPopular, popularList, popularWhy, colorsOfYear, popularInfo, setPopular, parseColorValue, closestByBrand, F, SPACES, SHEENS, STYLES, prosCons, PAINT_LINES, TIERS, recommendLines, FAMILY_CHOICES, DEPTHS, FACING, AMOUNTS, BULBS, SIDING, FIXED, FIXED_ITEMS, FIXED_KINDS, FIXED_GROUPS, SPACE_GROUPS, groupsFor, allowedFixed, WHITE_TYPES, fixedItems, fixedEffects, LIGHTS, DEFAULT_ANSWERS,
     init, addBrand, getIndex, findColor, codeLabel, target, familyMatch, styleMatch, scoreColor, warningsFor, roomTips, recommend,
     matchesFor, pairings, search, lightForAnswers, bulbLight, ADJUST, adjustStep, parseCustomCsv, allowedColor, facingsOf, facingPhrase, noWindows, DIRS,
     MOODS, UNDERTONES, NOW_COLORS, NOW_HEX, SURFACES, surfacesFor, ISSUES, PRIMERS, primerFor, nowHexOf,

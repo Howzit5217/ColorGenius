@@ -18,7 +18,10 @@
   root.CG = root.CG || {}; root.CG.cammatch = api;
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  const PAPER = 0.86;   // how much light plain white copy paper reflects (about L* 94)
+  const PAPER = 0.86;   // how much light plain white copy paper reflects (about L* 94, #EFEFEF)
+  // What the paper counts as. Copy paper (above) is what plain paper really is, so colors come out true to the chips;
+  // "pure white" counts the paper as #FFFFFF, so everything is measured against a perfect white instead.
+  const PAPER_WHITE = 1;
   const LIN = new Float64Array(256);
   for (let v = 0; v < 256; v++) { const x = v / 255; LIN[v] = x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }
   const toEnc = v => { v = Math.max(0, Math.min(1, v)); return Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055)); };
@@ -270,7 +273,9 @@
   }
 
   // One reading of one picture. layout: { mode: 'paper' | 'wall', color: rect, paper: rect (wall only) } in the
-  // picture's own pixels. opts.tune: powers from fitTune. Returns the color and anything that needs fixing first.
+  // picture's own pixels. opts.tune: powers from fitTune. opts.paper: what the paper counts as (PAPER, or PAPER_WHITE
+  // for #FFFFFF). Returns the color, what the camera saw on the paper and in the box before that, and anything that
+  // needs fixing first.
   function analyze(f, layout, opts) {
     opts = opts || {};
     const box = layout.color, w = box.x1 - box.x0, h = box.y1 - box.y0;
@@ -279,6 +284,7 @@
     if (!col) return { problem: 'small' };
     const white = layout.mode === 'wall' && layout.paper ? sideWhite(f, layout.paper, box) : ringWhite(f, box, col);
     const res = { col, white, problem: '' };
+    const pr = opts.paper || PAPER;
     if (white && white.clipped) { res.problem = 'bright'; return res; }
     if (!white || !white.ok) { res.problem = layout.mode === 'wall' ? 'paper' : 'ring'; return res; }
     // the order says what to fix first
@@ -291,19 +297,22 @@
     const raw = col.avg.map((v, i) => v / Math.max(1e-6, white.W[i]));
     res.raw = raw;
     res.rel = applyTune(raw, opts.tune);
-    res.hex = hexOf(res.rel.map(v => v * PAPER));
+    res.hex = hexOf(res.rel.map(v => v * pr));
+    // what the camera saw, before the paper put it right: the paper's own tint, and the color as it came in
+    res.seen = { paper: hexOf(white.W), color: hexOf(col.avg) };
     return res;
   }
   // several readings into one color: the middle value of each, and how much they agreed (in Lab units)
   function combine(list, opts) {
+    const pr = (opts && opts.paper) || PAPER;
     const good = list.filter(r => r && r.rel && !r.problem);
     if (!good.length) return null;
     const med = i => good.map(r => r.rel[i]).sort((a, b) => a - b)[good.length >> 1];
     const rel = [med(0), med(1), med(2)];
     const rawMed = i => good.map(r => r.raw[i]).sort((a, b) => a - b)[good.length >> 1];
-    const L0 = lab(rel.map(v => v * PAPER));
-    const spread = good.map(r => dE(lab(r.rel.map(v => v * PAPER)), L0)).sort((a, b) => a - b)[Math.floor(good.length * 0.75)] || 0;
-    return { rel, raw: [rawMed(0), rawMed(1), rawMed(2)], hex: hexOf(rel.map(v => v * PAPER)), spread, n: good.length };
+    const L0 = lab(rel.map(v => v * pr));
+    const spread = good.map(r => dE(lab(r.rel.map(v => v * pr)), L0)).sort((a, b) => a - b)[Math.floor(good.length * 0.75)] || 0;
+    return { rel, raw: [rawMed(0), rawMed(1), rawMed(2)], hex: hexOf(rel.map(v => v * pr)), spread, n: good.length };
   }
-  return { PAPER, analyze, combine, fitTune, applyTune, patch, hexOf, linOf, lab, linFromLab, dE, LIN, toEnc };
+  return { PAPER, PAPER_WHITE, analyze, combine, fitTune, applyTune, patch, hexOf, linOf, lab, linFromLab, dE, LIN, toEnc };
 });

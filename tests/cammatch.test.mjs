@@ -18,8 +18,8 @@ const err = (hex, want) => M.dE(M.lab(M.linOf(hex)), M.lab(M.linOf(want)));
 function read(o, opts) {
   const got = [];
   for (let s = 1; s <= 6; s++) { const { frame, layout } = shoot(Object.assign({}, o, { seed: s * 31 + (o.seed || 0) })); got.push(M.analyze(frame, layout, opts)); }
-  const c = M.combine(got);
-  return { c, problems: got.map(g => g.problem).filter(Boolean) };
+  const c = M.combine(got, opts);
+  return { c, raw: got, problems: got.map(g => g.problem).filter(Boolean) };
 }
 const CHIPS = ['227459', '5D9A85', 'D1CBC1', 'EDEAE0', '2F3B4C', 'B23C1C', 'E8C547', '7A6E62', '3A3A3C', 'C9D6E3'];
 
@@ -181,4 +181,24 @@ test('without the phone’s light: its shadow over part of the paper doesn’t t
     const { c, problems } = read({ hex, phoneShadow });
     assert.ok(c ? err(c.hex, hex) < 2.2 : problems.length, `${hex} ${JSON.stringify(phoneShadow)} read ${c && c.hex}`);
   }
+});
+test('the paper is the white: copy paper by default, or counted as pure #FFFFFF, and the light’s tint comes out either way', () => {
+  const asWhite = { paper: M.PAPER_WHITE };
+  assert.equal(M.hexOf([M.PAPER, M.PAPER, M.PAPER]), 'EFEFEF');
+  assert.equal(M.hexOf([M.PAPER_WHITE, M.PAPER_WHITE, M.PAPER_WHITE]), 'FFFFFF');
+  for (const hex of ['D1CBC1', '2F3B4C', 'B23C1C', '5D9A85']) for (const light of [[1.35, 1, 0.62], [0.85, 1, 1.2]]) {
+    // counted as copy paper (the default), the chip reads true under warm or cool light
+    const copy = read({ hex, light }).c;
+    assert.ok(err(copy.hex, hex) < 2, `${hex} under ${light}: ${copy.hex}`);
+    // counted as #FFFFFF: the same reading scaled to a perfect white, so the same color only lighter, with no tint
+    const white = read({ hex, light }, asWhite);
+    const c = M.combine(white.raw, asWhite);
+    const want = M.hexOf(M.linOf(hex).map(v => v / M.PAPER));
+    assert.ok(err(c.hex, want) < 2, `${hex} as #FFFFFF under ${light}: ${c.hex}, want ${want}`);
+    assert.ok(M.lab(M.linOf(c.hex))[0] > M.lab(M.linOf(copy.hex))[0], `${hex}: lighter against #FFFFFF`);
+  }
+  // what the camera saw on the paper is passed along (warm light: the paper looks warm before it's put right)
+  const { frame, layout } = shoot({ hex: 'D1CBC1', light: [1.35, 1, 0.62], seed: 5 });
+  const r = M.analyze(frame, layout, asWhite), seen = M.linOf(r.seen.paper);
+  assert.ok(seen[0] > seen[2], 'the paper looks warm to the camera (it does its own white balance, so only a little): ' + r.seen.paper);
 });
