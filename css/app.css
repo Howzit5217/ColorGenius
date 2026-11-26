@@ -1337,3 +1337,45 @@ html.cam-open { overflow: hidden; }
 .fix-box p, .fix-box li { max-width: 72ch; }
 .fix-box + .fix-box, .fix-cards + .fix-box { margin-top: 16px; }
 @media (min-width: 700px) { .fix-box .fix-buy { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------------- quick answers: the choices, and the answer under them (beside them on a wide screen) ---------------- */
+.ask-grid { display: grid; gap: 24px; margin-top: 6px; }
+@media (min-width: 1000px) { .ask-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 32px; } }
+.ask-choices { display: grid; gap: 20px; align-content: start; }
+.ask-q { border: 0; margin: 0; padding: 0; min-width: 0; }
+.ask-q legend { padding: 0; margin-bottom: 10px; font-weight: 800; font-size: 1.12rem; }
+.ask-hint { margin: -4px 0 10px; color: var(--ink-2); font-size: .95rem; line-height: 1.4; text-wrap: pretty; }
+.ask-chips { gap: 8px; }
+.ask-chips .chip { flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; min-height: 48px; padding: 7px 16px; border-radius: 16px; font-size: 1rem; line-height: 1.25; }
+.ask-chips .chip .n { font-size: .82rem; font-weight: 550; line-height: 1.25; }
+.ask-answer { display: grid; gap: 14px; align-content: start; scroll-margin-top: calc(var(--top-h) + 14px); }
+.ask-answer .fix-box + .fix-box, .ask-answer .fix-tip, .ask-answer .fix-warn, .ask-answer .actions { margin: 0; }
+.ans-card { padding: 20px 22px 22px; border-radius: var(--r-lg); background: var(--surface); border: 2px solid var(--ink); box-shadow: var(--shadow); }
+.ans-top { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.ans-verdict, .ans-sheen { display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border-radius: 999px; font-weight: 800; font-size: .9rem; white-space: nowrap; }
+.ans-verdict { background: var(--good-soft); color: var(--good); }
+.v-prep .ans-verdict, .v-caution .ans-verdict, .v-wait .ans-verdict, .v-notyet .ans-verdict { background: var(--caution-soft); color: var(--ink); }
+.v-no .ans-verdict { background: var(--headsup-soft); color: var(--ink); }
+.v-skip .ans-verdict { background: var(--surface-2); color: var(--ink); }
+.ans-sheen { background: var(--surface-2); color: var(--ink-2); }
+.ans-head { margin: 0 0 6px; font-size: 1.6rem; line-height: 1.2; text-wrap: balance; }
+/* phones: a touch smaller, so a long word ("impermeabilizante") doesn't leave the rest one word a line */
+@media (max-width: 480px) { .ans-card { padding: 18px 18px 20px; } .ans-head { font-size: 1.32rem; } }
+.ans-like { margin: 0 0 10px; color: var(--ink-2); font-size: 1rem; line-height: 1.4; }
+.ans-why { margin: 0; font-size: 1.08rem; line-height: 1.5; text-wrap: pretty; }
+.ans-alt { margin: 14px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); line-height: 1.45; }
+.ans-wait { display: flex; gap: 10px; align-items: flex-start; margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); line-height: 1.45; }
+.ans-wait svg { flex: none; margin-top: 1px; color: var(--ink-2); }
+.ans-note { margin: 12px 0 0; color: var(--ink-2); font-size: .97rem; line-height: 1.45; }
+/* phones: a bar at the bottom with the answer while it's below the screen */
+.ask-jump { position: fixed; z-index: 30; left: var(--gut); right: var(--gut-r); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 10px 14px 10px 16px; border-radius: 18px; background: var(--ink); color: var(--bg); box-shadow: var(--shadow-lg); text-align: left; }
+.ask-jump[hidden] { display: none; }
+/* (the verdict sits over the answer, so the answer keeps the bar's whole width) */
+.ask-jump .aj-txt { flex: 1; min-width: 0; display: grid; justify-items: start; gap: 4px; }
+.ask-jump b { font-size: 1rem; line-height: 1.25; }
+.ask-jump .ans-verdict { min-height: 24px; padding: 0 10px; font-size: .8rem; }
+.ask-jump svg { flex: none; }
+@media (min-width: 1000px) { .ask-jump { display: none; } }
+.ask-hit { margin-bottom: 22px; }
+.ask-hit .eyebrow { margin: 0 0 8px; }
+.pr-picks > span { display: block; }

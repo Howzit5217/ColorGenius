@@ -46,6 +46,7 @@
   const state = {
     ready: false, view: 'home', screen: detectScreen(),
     flows: { paint: null, stain: null, buy: null, spray: null }, // { a: answers, step }
+    ask: {},   // the picks on each Quick Answer screen
     results: { paint: null, stain: null, buy: null, spray: null },
     pick: { paint: '', stain: '', spray: '' }, light: 'daylight', sceneFor: {}, query: '', lookupHex: '', ftype: {}, duel: null, layout: null, furniture: {}, parts: {},
     lastFlow: 'paint', depth: 0,
@@ -370,11 +371,12 @@
     if (a === 'p' && b) return { view: 'shared', data: b };
     if (a === 't' && b) return { view: 'ticket', data: b };
     if (a === 'fix') return { view: 'fix', id: b || '' };
+    if (a === 'ask') return { view: 'ask', id: b || '' };
     if (a === 'kiosk' && b) return { view: 'kiosk', data: b };
     if (['lookup', 'list', 'settings', 'together'].includes(a)) return { view: a };
     return { view: 'home' };
   }
-  const pathOf = r => r.view === 'home' ? '' : r.view === 'flow' ? `${r.kind}/${r.step}` : r.view === 'results' ? `${r.kind}/results` : r.view === 'color' ? `color/${r.id}` : r.view === 'shared' ? `p/${r.data}` : r.view === 'ticket' ? `t/${r.data}` : r.view === 'fix' ? (r.id ? `fix/${r.id}` : 'fix') : r.view;
+  const pathOf = r => r.view === 'home' ? '' : r.view === 'flow' ? `${r.kind}/${r.step}` : r.view === 'results' ? `${r.kind}/results` : r.view === 'color' ? `color/${r.id}` : r.view === 'shared' ? `p/${r.data}` : r.view === 'ticket' ? `t/${r.data}` : r.view === 'fix' ? (r.id ? `fix/${r.id}` : 'fix') : r.view === 'ask' ? (r.id ? `ask/${r.id}` : 'ask') : r.view;
   let navDir = 0;
   function go(path, opts) {
     opts = opts || {};
@@ -427,6 +429,7 @@
     else if (r.view === 'shared') renderShared(r.data);
     else if (r.view === 'ticket') renderTicket(r.data);
     else if (r.view === 'fix') renderFix(r.id);
+    else if (r.view === 'ask') renderAsk(r.id);
     else if (r.view === 'settings') {
       // a locked kiosk keeps Settings behind the PIN
       if (isKiosk() && !state.unlocked) { go('', { replace: true }); openUnlock(); return; }
@@ -560,6 +563,110 @@
     if (t.dataset.fixPrint) { const p = FX.find(t.dataset.fixPrint); if (p) printFix(p); }
     if (t.dataset.fixEmail) { const p = FX.find(t.dataset.fixEmail); if (p) openEmail(null, fixDoc(p)); }
   });
+  // ================================================================
+  // QUICK ANSWERS: the questions whose answer depends on the job (which clear coat, which caulk, what goes on
+  // concrete, what goes over what). One screen each: tap what you have and the answer is right under it, with
+  // the steps, the wait and what to buy. The rules are in js/answers.js.
+  // ================================================================
+  const AN = window.CG.answers;
+  const askIc = (name, size) => `<svg viewBox="0 0 32 32" width="${size || 32}" height="${size || 32}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${AN.ICONS[name] || ''}</svg>`;
+  const clockIc = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+  const askCards = list => `<div class="fix-grid">${list.map(T => `<button type="button" class="fix-card" data-go="ask/${T.id}"><span class="fix-ic">${askIc(T.icon, 30)}</span><span class="fix-txt"><b>${esc(T.name)}</b><span>${esc(T.line)}</span></span></button>`).join('')}</div>`;
+  const askPicks = id => (state.ask[id] = AN.pick(id, state.ask[id]));
+  const askLabel = (g, v) => (g.opts.find(o => o[0] === v) || ['', ''])[1];
+  const askSheen = (id, v) => { const g = AN.TOOLS[id].asks.find(x => x.k === 'sheen'); return g && v ? askLabel(g, v) : ''; };
+  const askItem = (id, p) => { const A = AN.answer(id, p); return { kind: 'fix', ref: AN.refOf(id, p), area: AN.TOOLS[id].short, brand: '', name: A.head, code: '', hex: '', lrv: '', finish: askSheen(id, A.sheen), product: '', primer: '', loc: '', amount: '', tools: A.buy.join(', ') }; };
+  function askChoicesHtml(id, p) {
+    return AN.shown(id, p).map(g => `<fieldset class="ask-q"><legend>${esc(g.q)}</legend>${g.hint ? `<p class="ask-hint">${esc(g.hint)}</p>` : ''}<div class="chipset ask-chips">${g.opts.map(([v, l, sub]) => `<button type="button" class="chip plain" data-ask-k="${g.k}" data-ask-v="${v}" aria-pressed="${p[g.k] === v}"><span>${esc(l)}</span>${sub ? `<span class="n">${esc(sub)}</span>` : ''}</button>`).join('')}</div></fieldset>`).join('');
+  }
+  function askAnswerHtml(id, p) {
+    const A = AN.answer(id, p), ref = AN.refOf(id, p), on = session.items.some(x => x.ref === ref);
+    const link = A.link && (!A.link.start || jobOn(A.link.start)) ? A.link : null;
+    return `<section class="ans-card v-${A.v}" aria-labelledby="ansHead">
+        <p class="ans-top"><span class="ans-verdict">${esc(AN.VERDICTS[A.v])}</span>${A.sheen ? `<span class="ans-sheen">${esc(askSheen(id, A.sheen))}</span>` : ''}</p>
+        <h2 class="ans-head" id="ansHead">${esc(A.head)}</h2>
+        ${A.like ? `<p class="ans-like">${esc(A.like)}</p>` : ''}<p class="ans-why">${esc(A.why)}</p>
+        ${A.alt ? `<p class="ans-alt"><b>Or</b> <span>${esc(A.alt)}</span></p>` : ''}
+      </section>
+      ${A.warn ? `<p class="fix-warn"><b>Be safe.</b> <span>${esc(A.warn)}</span></p>` : ''}
+      ${A.test ? `<section class="fix-box test"><h2><span class="ic">${ic('search', 22)}</span>Quick Test</h2><p>${esc(A.test)}</p></section>` : ''}
+      <section class="fix-box"><h2><span class="ic">${ic('list', 22)}</span>How to Do It</h2><ol class="fix-steps">${A.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${A.wait ? `<p class="ans-wait">${clockIc}<span><b>How long to wait</b> <span>${esc(A.wait)}</span></span></p>` : ''}</section>
+      <section class="fix-box"><h2><span class="ic">${ic('can', 22)}</span>What to Buy</h2><ul class="fix-buy">${A.buy.map(x => `<li>${esc(x)}</li>`).join('')}</ul>${A.note ? `<p class="ans-note">${esc(A.note)}</p>` : ''}</section>
+      ${A.tips.map(t => `<p class="fix-tip"><b>Tip</b> <span>${esc(t)}</span></p>`).join('')}
+      ${A.lead ? `<p class="fix-warn"><b>Old house?</b> <span>${esc(FX.LEAD)}</span></p>` : ''}
+      <div class="actions stack">${link ? `<button type="button" class="btn big" ${link.start ? `data-start="${link.start}"` : `data-go="${link.go}"`}>${esc(link.label)}${chev('right')}</button>` : ''}<button type="button" class="btn big primary${on ? ' done' : ''}" data-add="${esc(ref)}">${on ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-ask-print="${id}">${ic('print', 22)}Print</button><button type="button" class="btn big" data-ask-email="${id}">${mailIcon}Email</button></div>`;
+  }
+  function renderAsk(id) {
+    const T = id ? AN.find(id) : null;
+    if (!T) {
+      view().innerHTML = `<div class="page">
+        <div class="page-head"><p class="eyebrow">Quick Answers</p><h1>What do you need to know?</h1><p>Tap what you have, and the answer shows up right away with the steps and what to buy.</p></div>${askCards(AN.LIST)}</div>`;
+      return;
+    }
+    const p = askPicks(id);
+    view().innerHTML = `<div class="page ask-page">${backBtn()}
+      <div class="page-head"><p class="eyebrow">Quick Answer</p><h1 class="fix-h"><span class="fix-ic big">${askIc(T.icon, 36)}</span>${esc(T.name)}</h1><p class="fix-see">${esc(T.line)}</p></div>
+      <div class="ask-grid"><div class="ask-choices" id="askChoices">${askChoicesHtml(id, p)}</div><div class="ask-answer" id="askAnswer" aria-live="polite">${askAnswerHtml(id, p)}</div></div>
+      <button type="button" class="ask-jump" id="askJump" hidden></button>
+      <section class="section"><h2>Other Quick Answers</h2>${askCards(AN.LIST.filter(x => x.id !== id))}</section>
+    </div>`;
+    requestAnimationFrame(askJump);
+  }
+  // a tap changes the answer in place; some questions come and go with the picks (a hole asks how big, not how wide)
+  view().addEventListener('click', e => {
+    if (state.view !== 'ask' || !current || !AN.find(current.id)) return;
+    const t = e.target.closest('[data-ask-k]'); if (!t) return;
+    const id = current.id, k = t.dataset.askK, v = t.dataset.askV, focused = document.activeElement === t;
+    state.ask[id] = AN.tap(id, askPicks(id), k, v);
+    $('#askChoices').innerHTML = askChoicesHtml(id, state.ask[id]);
+    $('#askAnswer').innerHTML = askAnswerHtml(id, state.ask[id]);
+    const again = $(`#askChoices [data-ask-k="${k}"][data-ask-v="${v}"]`); if (again && focused) again.focus({ preventScroll: true });
+    askJump();
+  });
+  // phones: while the answer is below the screen, a bar at the bottom shows it, and a tap goes to it
+  function askJump() {
+    const j = $('#askJump'), a = $('#askAnswer'); if (!j || !a || state.view !== 'ask') return;
+    const below = a.getBoundingClientRect().top > window.innerHeight - 70;
+    if (below) { const A = AN.answer(current.id, state.ask[current.id]); j.innerHTML = `<span class="aj-txt"><span class="ans-verdict">${esc(AN.VERDICTS[A.v])}</span><b>${esc(A.head)}</b></span>${chev('down')}`; j.className = 'ask-jump v-' + A.v; }
+    j.hidden = !below;
+  }
+  window.addEventListener('scroll', () => { if (state.view === 'ask') askJump(); }, { passive: true });
+  window.addEventListener('resize', () => { if (state.view === 'ask') askJump(); });
+  document.addEventListener('click', e => {
+    const t = e.target.closest('#askJump, [data-ask-print], [data-ask-email]'); if (!t || !state.ready || !current || !AN.find(current.id)) return;
+    const id = current.id, p = askPicks(id);
+    if (t.id === 'askJump') { const a = $('#askAnswer'); if (a) a.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' }); t.hidden = true; }
+    else if (t.dataset.askPrint) printAsk(id, p);
+    else openEmail(null, askDoc(id, p));
+  });
+  // the same answer as an email: what was picked, then the answer, the steps and the shopping list
+  function askDoc(id, p) {
+    const T = AN.TOOLS[id], A = AN.answer(id, p);
+    const lines = [T.name, ''].concat(AN.shown(id, p).map(g => `${g.q} ${askLabel(g, p[g.k])}`), ['', `${AN.VERDICTS[A.v].toUpperCase()}: ${A.head}${A.sheen ? ', ' + askSheen(id, A.sheen).toLowerCase() : ''}`]);
+    if (A.like) lines.push(A.like);
+    lines.push(A.why); if (A.alt) lines.push('Or: ' + A.alt);
+    if (A.warn) lines.push('', 'Be safe. ' + A.warn);
+    if (A.test) lines.push('', 'QUICK TEST', A.test);
+    lines.push('', 'HOW TO DO IT', ...A.steps.map((x, i) => `${i + 1}. ${x}`));
+    if (A.wait) lines.push('', 'HOW LONG TO WAIT', A.wait);
+    lines.push('', 'WHAT TO BUY', ...A.buy.map(x => '- ' + x)); if (A.note) lines.push(A.note);
+    A.tips.forEach(t => lines.push('', 'Tip: ' + t));
+    if (A.lead) lines.push('', 'Old house? ' + FX.LEAD);
+    lines.push('', 'Ask at the paint desk if you’re not sure.');
+    return { title: T.name, subject: `${T.name}: ${A.head}`, what: 'the answer, the steps and what to buy', text: lines.join('\n') };
+  }
+  // one answer on one page, like a Fix a Problem sheet
+  function printAsk(id, p) {
+    const T = AN.TOOLS[id], A = AN.answer(id, p);
+    printHtml(`<div class="pr-sheet pr-fix"><div class="pr-head"><div><div class="pr-title">${esc(T.name)}</div><div class="pr-sub pr-picks">${AN.shown(id, p).map(g => `<span><b>${esc(g.q)}</b> <span>${esc(askLabel(g, p[g.k]))}</span></span>`).join('')}</div></div><div class="pr-meta">${[storeName(), new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</div></div>
+      <h3><span>${esc(AN.VERDICTS[A.v])}</span> · <span>${esc(A.head)}</span>${A.sheen ? ` · <span>${esc(askSheen(id, A.sheen))}</span>` : ''}</h3>
+      ${A.like ? `<p>${esc(A.like)}</p>` : ''}<p>${esc(A.why)}</p>${A.alt ? `<p><b>Or</b> <span>${esc(A.alt)}</span></p>` : ''}
+      ${A.warn ? `<p class="pr-notes"><b>Be safe.</b> <span>${esc(A.warn)}</span></p>` : ''}${A.test ? `<h3>Quick Test</h3><p>${esc(A.test)}</p>` : ''}
+      <h3>How to Do It</h3><ol>${A.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>${A.wait ? `<p><b>How long to wait</b> <span>${esc(A.wait)}</span></p>` : ''}
+      <h3>What to Buy</h3><ul class="pr-check">${A.buy.map(x => `<li>${esc(x)}</li>`).join('')}</ul>${A.note ? `<p>${esc(A.note)}</p>` : ''}
+      ${A.tips.map(t => `<p><b>Tip</b> <span>${esc(t)}</span></p>`).join('')}${A.lead ? `<p class="pr-notes"><b>Old house?</b> <span>${esc(FX.LEAD)}</span></p>` : ''}
+      <div class="pr-foot"><span>Ask at the paint desk if you’re not sure.</span><span>ColorGenius</span></div></div>`, false);
+  }
   function renderHome() {
     // the color jobs go on top (paint, stain and spray paint, three across); the helpers share the row under them
     // (tiles-top-1 … 3 and tiles-low-1 … 3 say how many in each)
@@ -583,6 +690,10 @@
       <div class="tiles tiles-top-${top} tiles-low-${low}">${tiles.map(([k, t, s], i) => `<button type="button" class="tile ${i < top ? 'top' : 'low'}" data-start="${k}">
         <span class="tile-art"><img src="${art(k, i).src}" alt="" width="${art(k, i).w}" height="${art(k, i).h}" decoding="async"></span>
         <span class="tile-text"><span class="tile-title">${esc(t)}${chev('right', 22)}</span><span class="tile-sub">${esc(s)}</span></span></button>`).join('')}</div>
+      <section class="section" aria-labelledby="askH">
+        <div class="page-head"><h2 id="askH">Quick Answers</h2><p>The questions that depend on your job. Tap what you have and the answer is right there.</p></div>
+        ${askCards(AN.LIST)}
+      </section>
       <section class="section" aria-labelledby="projH">
         <div class="page-head"><h2 id="projH">Projects</h2><p>Save the colors, stains and shopping lists for one job in one place, then print it or email it.</p></div>
         <div class="proj-grid">
@@ -615,7 +726,7 @@
   const hasWork = () => Object.values(state.flows).some(f => f && f.a && f.a._picked && Object.keys(f.a._picked).length) || Object.values(state.results).some(Boolean) || !!state.query.trim();
   function clearWork() {
     state.flows = { paint: null, stain: null, buy: null, spray: null }; state.results = { paint: null, stain: null, buy: null, spray: null };
-    state.query = ''; state.lookupHex = ''; state.duel = null; state.duelPick = ''; state.pick = { paint: '', stain: '' }; state.ftype = {}; state.layout = null; state.furniture = {}; state.parts = {};
+    state.query = ''; state.lookupHex = ''; state.ask = {}; state.duel = null; state.duelPick = ''; state.pick = { paint: '', stain: '' }; state.ftype = {}; state.layout = null; state.furniture = {}; state.parts = {};
   }
   function homeAsk() {
     if (!state.ready) return;
@@ -2952,6 +3063,14 @@
     return `<h2>${esc(title)}</h2>${on.length ? `<div class="rows">${on.map(r => colorRow(r.color, r.dE)).join('')}</div>` : '<p class="muted">No brands are turned on.</p>'}${off.length ? `<details class="more"><summary>Brands That Are Turned Off (${off.length})</summary><div class="rows">${off.map(r => colorRow(r.color, r.dE)).join('')}</div></details>` : ''}`;
   }
   function showLookup() {
+    showLookupColors();
+    // a search that reads like one of the Quick Answers ("caulk", "polyurethane", "latex over oil") gets it on top
+    const host = $('#lookupResults'), q = state.query.trim(), id = host && q && !E.parseColorValue(q) ? AN.match(q) : null;
+    if (!id) return;
+    const none = $('.empty', host); if (none) none.remove();
+    host.insertAdjacentHTML('afterbegin', `<div class="ask-hit"><p class="eyebrow">Quick Answer</p>${askCards([AN.find(id)])}</div>`);
+  }
+  function showLookupColors() {
     const host = $('#lookupResults'); if (!host) return;
     const q = state.query.trim();
     const opts = { brands: brandsEnabled(), showDiscontinued: settings.showDiscontinued, limit: 60 };
@@ -3361,6 +3480,7 @@
     if (ref.startsWith('#')) addToList(customItem(ref.slice(1)));
     else if (ref.startsWith('sp:')) { const x = SP.find(ref); if (x) addToList(sprayItem(x)); }
     else if (ref.startsWith('fix:')) { const p = FX.find(ref.slice(4)); if (p) addToList(fixItem(p)); }
+    else if (ref.startsWith('ask:')) { const x = AN.fromRef(ref); if (x) addToList(askItem(x.id, x.picks)); }
     else {
       const stainHit = state.results.stain && state.results.stain.results.concat(state.results.stain.finalists || []).some(r => r.id === ref);
       const c = E.findColor(ref);
@@ -3541,6 +3661,7 @@
       const ref = t.dataset.openItem;
       if (ref.startsWith('#')) { state.query = ref; go('lookup'); }
       else if (ref.startsWith('fix:')) go('fix/' + ref.slice(4));
+      else if (ref.startsWith('ask:')) { const x = AN.fromRef(ref); if (x) { state.ask[x.id] = x.picks; go('ask/' + x.id); } }
       else if (E.findColor(ref) || S.find(ref)) go('color/' + encodeURIComponent(ref));
     }
     if (t.dataset.pastOpen) {

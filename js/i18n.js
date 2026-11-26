@@ -41,6 +41,12 @@
     [/ of primer/g, ' de imprimador'], [/\bplus\b/g, 'más'], [/ Buy it all at once so the color matches\./, ' Cómprala toda de una vez para que el color sea igual.']];
   const LRVW = { 'very light': 'muy claro', light: 'claro', 'light-mid': 'claro medio', mid: 'medio', medium: 'medio', 'mid-dark': 'medio oscuro', dark: 'oscuro', 'very dark': 'muy oscuro' };
   const SHAPES = [
+    // the email window: its title, the line under it, and the messages after Send
+    [/^Email (.+)$/, m => `Enviar por email: ${part(m[1])}`],
+    [/^from ColorGenius’s do-not-reply address: (.+)\.$/, m => `desde la dirección de ColorGenius que no recibe respuestas: ${part(m[1])}.`],
+    [/^written in: (.+)\. Check it, then press Send\.$/, m => `con esto escrito: ${part(m[1])}. Revísalo y luego toca Enviar.`],
+    [/^(.+) doesn’t look like an email address\. Check it and try again\.$/, m => `${m[1]} no parece una dirección de email. Revísala y vuelve a intentarlo.`],
+    [/^Sent to (.+)$/, m => `Enviado a ${m[1]}`],
     [/^About [\d,.]+ (?:sq ft|ft of|pairs of)/, m => FRAG.reduce((s, [re, to]) => s.replace(re, to), m.input)],
     [/^Coverage is about ([\d,]+) sq ft per gallon for this job\.(.*)$/, m => `El rendimiento es de unos ${m[1]} pies² por galón para este trabajo.${m[2] ? ' ' + part(m[2].trim()) : ''}`],
     [/^([\d,]+) colors?$/, m => `${m[1]} ${m[1] === '1' ? 'color' : 'colores'}`],

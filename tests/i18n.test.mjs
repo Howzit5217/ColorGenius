@@ -81,3 +81,24 @@ test('spray paint is in Spanish: every question, answer, finish, family, size, p
   }
   for (const s of want) assert.ok(I.tr(s), 'no Spanish for: ' + s);
 });
+test('Quick Answers are in Spanish: every question, choice, answer, step, wait, shopping line and tip', () => {
+  const AN = require(path.join(ROOT, 'js/answers.js'));
+  const want = new Set(Object.values(AN.VERDICTS));
+  const add = s => { if (s) want.add(s); };
+  for (const T of AN.LIST) {
+    [T.name, T.short, T.line].forEach(add);
+    for (const a of T.asks) { add(a.q); add(a.hint); for (const o of a.opts) { add(o[1]); add(o[2]); } }
+    for (const p of AN.combos(T.id)) {
+      const A = AN.answer(T.id, p);
+      ['head', 'like', 'why', 'alt', 'test', 'warn', 'wait', 'note'].forEach(k => add(A[k]));
+      A.steps.concat(A.buy, A.tips).forEach(add);
+      if (A.link) add(A.link.label);
+    }
+  }
+  for (const s of ['Quick Answers', 'Quick Answer', 'What do you need to know?', 'Other Quick Answers', 'How to Do It', 'How long to wait', 'Or', 'the answer, the steps and what to buy']) add(s);
+  for (const s of want) assert.ok(I.tr(s), 'no Spanish for: ' + s);
+  // the email window, which every Print button now has an Email button beside
+  assert.equal(I.tr('Email Clear Coat to Use'), 'Enviar por email: Qué capa transparente usar');
+  assert.equal(I.tr('Sent to a@b.com'), 'Enviado a a@b.com');
+  for (const s of ['Their email address', 'Use My Email App', 'Send', 'Sending…', 'written in: the answer, the steps and what to buy. Check it, then press Send.']) assert.ok(I.tr(s), s);
+});
