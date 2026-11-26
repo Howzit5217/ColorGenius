@@ -199,6 +199,16 @@ html.bar-on .main { padding-bottom: calc(var(--bar-h) + 48px); }
   .tiles-top-3 .tile.top .tile-title { font-size: 1.25rem; }
   .tiles-top-3 .tile.top .tile-sub { font-size: .97rem; }
 }
+/* tablets: three across leaves each title and line two or three words wide, so two across instead
+   (six tiles make three rows of two; an odd one out lies on its side across the whole row) */
+@media (min-width: 700px) and (max-width: 999px) {
+  .tiles-top-3 .tile.top, .tiles-low-3 .tile.low { grid-column: span 3; }
+  .tiles-top-3 .tile.top .tile-art, .tiles-low-3 .tile.low .tile-art { aspect-ratio: 3 / 2; }
+  .tiles-top-3 .tile.top .tile-text, .tiles-low-3 .tile.low .tile-text { padding: 18px 22px 22px; }
+  .tiles-top-3 .tile.top .tile-title, .tiles-low-3 .tile.low .tile-title { font-size: 1.45rem; }
+  .tiles-top-3 .tile.top .tile-sub, .tiles-low-3 .tile.low .tile-sub { font-size: 1.02rem; }
+  .tiles-low-3:not(.tiles-top-3) .tile.low:last-child { grid-column: span 6; grid-template-rows: auto; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
+}
 /* projects on the home screen: the open one, a big Start button, and the last few */
 .proj-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
 .proj-card, .proj-new { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; min-height: 92px; padding: 16px 18px; border-radius: var(--r-lg); text-align: left; background: var(--surface); border: 1.5px solid var(--line); box-shadow: var(--shadow); transition: transform var(--t2) var(--ease), box-shadow var(--t2) var(--ease), border-color var(--t1); }
@@ -239,9 +249,9 @@ button.proj-card > svg { color: var(--ink-3); }
 .q-body.slide-back { animation: qInBack var(--t3) var(--ease); }
 @keyframes qIn { from { opacity: 0; transform: translateX(26px); } }
 @keyframes qInBack { from { opacity: 0; transform: translateX(-26px); } }
-.choices { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
-.choices.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
-.choices.big { grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+.choices { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.choices.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.choices.big { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
 .choice { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: center; text-align: left; min-height: 76px; padding: 14px 44px 14px 14px; border-radius: var(--r); background: var(--surface); border: 2px solid var(--line); box-shadow: var(--shadow); transition: border-color var(--t1), transform var(--t1) var(--ease), box-shadow var(--t1), background var(--t1); }
 .choice:hover { border-color: var(--line-2); }
 .choice:active { transform: scale(.98); }
@@ -256,7 +266,7 @@ button.proj-card > svg { color: var(--ink-3); }
 .choice.tall { grid-template-columns: 1fr; grid-template-rows: auto auto auto; padding: 0; overflow: hidden; align-items: stretch; }
 .choice.tall .art { height: 130px; background: var(--surface-2); position: relative; }
 .choice.tall .art canvas, .choice.tall .art svg { width: 100%; height: 100%; object-fit: cover; display: block; }
-.choice.tall b { padding: 12px 44px 0 16px; }
+.choice.tall b { padding: 12px 16px 0; }
 .choice.tall .sub { grid-column: 1; padding: 2px 16px 14px; }
 /* ---------------- swatches that sit on the page ----------------
    A soft edge light and a shadow under them; their color is left exactly as it is, since that's what people
@@ -283,11 +293,11 @@ button.proj-card > svg { color: var(--ink-3); }
 @media (max-width: 520px) {
   .choices.has-tall { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .choice.tall .art { height: 78px; }
-  .choice.tall b { font-size: 1rem; padding: 10px 36px 0 12px; }
+  .choice.tall b { font-size: 1rem; padding: 10px 12px 0; }
   .choice.tall .sub { padding: 2px 12px 12px; font-size: .88rem; }
   .q-body .woods { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .q-body .wood-pick .art { height: 84px; }
-  .q-body .wood-pick b { padding: 8px 34px 0 12px; font-size: 1rem; }
+  .q-body .wood-pick b { padding: 8px 12px 0; font-size: 1rem; }
   .q-body .wood-pick .sub { padding: 2px 12px 10px; font-size: .86rem; }
 }
 .tick { position: absolute; top: 12px; right: 12px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line-2); background: var(--surface); display: grid; place-items: center; color: transparent; transition: background var(--t1), border-color var(--t1), transform var(--t2) var(--spring); z-index: 2; }
@@ -337,7 +347,7 @@ details.more > div { padding-top: 12px; }
 .wood-pick[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink) inset; }
 .wood-pick .art { height: 110px; background: #c9a77a; }
 .wood-pick .art canvas { width: 100%; height: 100%; display: block; object-fit: cover; }
-.wood-pick b { padding: 10px 40px 0 14px; font-size: 1.05rem; }
+.wood-pick b { padding: 10px 14px 0; font-size: 1.05rem; }
 .wood-pick .sub { padding: 2px 14px 12px; color: var(--ink-2); font-size: .92rem; }
 .wood-cv { opacity: 0; transition: opacity 260ms ease; }
 .wood-cv.ready { opacity: 1; }
@@ -406,23 +416,23 @@ details.more > div { padding-top: 12px; }
 .res-grid { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); align-items: start; }
 @media (min-width: 1000px) { .res-grid { grid-template-columns: minmax(0, 1.25fr) minmax(360px, 1fr); } .res-grid .res-scene { position: sticky; top: calc(var(--top-h) + 16px); } }
 .res-side { display: grid; gap: 18px; }
-.picks { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+.picks { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); }
 .swipe-hint { display: none; font-size: .92rem; margin-top: -6px; }
 /* phones: the colors are one swipeable row right under the room, so a tap changes the picture in view */
 @media (max-width: 999px) {
   .picks { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; margin: 0 calc(-1 * var(--gut-r)) 0 calc(-1 * var(--gut)); padding: 4px var(--gut-r) 12px var(--gut); scroll-padding-left: var(--gut); scrollbar-width: none; overscroll-behavior-x: contain; }
   .picks::-webkit-scrollbar { display: none; }
-  .picks .pick { flex: 0 0 140px; scroll-snap-align: start; }
+  .picks .pick { flex: 0 0 170px; scroll-snap-align: start; }
   .picks .pick:hover { transform: none; }
   .swipe-hint { display: block; }
 }
-@media (min-width: 640px) and (max-width: 999px) { .picks .pick { flex-basis: 170px; } .swipe-hint { display: none; } }
+@media (min-width: 640px) and (max-width: 999px) { .swipe-hint { display: none; } }
 .pick { position: relative; display: grid; grid-template-rows: 92px auto; text-align: left; border-radius: var(--r); background: var(--surface); border: 2px solid var(--line); overflow: hidden; box-shadow: var(--shadow); transition: border-color var(--t1), transform var(--t2) var(--ease); }
 .pick:hover { transform: translateY(-2px); }
 .pick[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink) inset, var(--shadow); }
 .pick .sw { position: relative; }
 .pick .sw canvas { width: 100%; height: 100%; display: block; }
-.pick .txt { display: grid; gap: 1px; padding: 10px 12px 12px; }
+.pick .txt { display: grid; gap: 1px; padding: 10px 10px 12px; }
 .pick .role { font-size: .78rem; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
 .pick .nm { font-weight: 750; font-size: 1.02rem; line-height: 1.2; }
 .pick .cd { color: var(--ink-2); font-size: .88rem; }
@@ -507,6 +517,15 @@ details.more > div { padding-top: 12px; }
 .row .nm { font-weight: 750; font-size: 1.05rem; display: block; line-height: 1.25; }
 .row .sub { color: var(--ink-2); font-size: .92rem; display: block; }
 .row .end { text-align: right; display: grid; gap: 2px; justify-items: end; font-size: .88rem; color: var(--ink-3); }
+/* phones: the name and brand get the whole width, and how close it is sits on a line under them */
+@media (max-width: 560px) {
+  .row { position: relative; grid-template-columns: 48px minmax(0, 1fr); column-gap: 12px; row-gap: 6px; }
+  .row .sw { width: 48px; height: 48px; grid-row: 1 / span 2; }
+  .row .end { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 4px 10px; text-align: left; }
+  .row .end:empty { display: none; }
+  .row .end > svg { position: absolute; right: 10px; top: 50%; margin-top: -10px; }
+  .row.has-go { padding-right: 36px; }
+}
 .pairs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
 .pair { display: grid; grid-template-rows: 70px auto; text-align: left; border-radius: var(--r); overflow: hidden; background: var(--surface); border: 1.5px solid var(--line); }
 .pair:hover { border-color: var(--line-2); }
@@ -1040,6 +1059,7 @@ html.bar-on .toast { bottom: calc(var(--bar-h) + 18px + env(safe-area-inset-bott
   .tile.low .tile-art::before { padding-top: 56.25%; }
   .tiles-top-3 .tile.top .tile-art::before { padding-top: 56.25%; }
   @media (min-width: 700px) { .tiles-low-3 .tile.low .tile-art::before, .tiles-top-3 .tile.top .tile-art::before { padding-top: 66.67%; } }
+  @media (min-width: 700px) and (max-width: 999px) { .tiles-top-3 .tile.top .tile-art::before, .tiles-top-3 .tile.low .tile-art::before { padding-top: 66.67%; } }
   .scene::before { padding-top: 60%; }
   .ba::before { padding-top: 37.78%; }
   .compass::before, .cp-q::before { padding-top: 100%; }
@@ -1205,7 +1225,7 @@ html.cam-open { overflow: hidden; }
 .fix-why li { line-height: 1.5; font-size: 1.05rem; }
 /* ---------------- try before you buy: samples ---------------- */
 .sample-plan > p { margin: 0 0 12px; color: var(--ink-2); line-height: 1.45; max-width: 62ch; }
-.sp-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+.sp-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 10px; }
 .sp-pick { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 10px; border-radius: var(--r); border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); text-align: left; }
 .sp-pick .sw { flex: none; width: 48px; height: 48px; border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
 .sp-txt { flex: 1; display: grid; gap: 2px; min-width: 0; }
@@ -1274,7 +1294,8 @@ html.cam-open { overflow: hidden; }
 /* a spray color with its sheen (the background is drawn in app.js: gloss streak, metallic sheen, dimples, sparkle) */
 .spray-sw { display: block; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -3px 6px rgba(0, 0, 0, .14); }
 .choice .ic .spray-sw { width: 100%; height: 100%; }
-.choices.fams { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.choices.fams { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+@media (max-width: 520px) { .choices.fams { gap: 8px; } .choices.fams .choice { min-height: 62px; padding-top: 9px; padding-bottom: 9px; } .choices.fams .choice .ic { width: 44px; height: 44px; } }
 .spray-stage { position: relative; aspect-ratio: 5 / 3; border-radius: var(--r-lg); overflow: hidden; background: #e9e4dc; box-shadow: var(--shadow); isolation: isolate; }
 .spray-stage canvas.gl { width: 100%; height: 100%; display: block; touch-action: none; }
 .spray-stage canvas.gl.still { touch-action: auto; pointer-events: none; }
