@@ -115,3 +115,6 @@ test('bulbs by number and the camera’s paper are in Spanish', () => {
   assert.equal(I.tr('Lighting'), 'Luz');
   for (const s of ['Extra Warm', 'Soft White', 'Bright White', 'Daylight', 'Or slide to the number on the bulb', 'The paper counts as pure white, #FFFFFF. Tap to count it as copy paper.', 'The paper now counts as copy paper, #EFEFEF, the closest to real paint chips.']) assert.ok(I.tr(s), s);
 });
+test('the question before closing a changed panel, and the page that follows the walls, are in Spanish', () => {
+  for (const s of ['Are you sure you want to close?', 'The new color stays:', 'Put It Back changes it back to:', 'Put It Back changes it back to how it was.', 'Keep Changing', 'Put It Back', 'Close', 'or the closest paint to any color:', 'Changed in the picture from']) assert.ok(I.tr(s), s);
+});

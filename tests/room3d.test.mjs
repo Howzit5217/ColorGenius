@@ -79,3 +79,28 @@ test('every scene builds, and each face knows whether it is drawn from both side
     }
   }
 });
+
+test('a new color rolls on once, and quick changes don’t start the roller over or cut it short', () => {
+  const { rollOn, rollAt, ROLL } = R;
+  // the first change: a sweep from the color that was there
+  const a = rollOn(null, 1000, { wall: ['D1CBC1', 'E3DDD3'] }, 0);
+  assert.deepEqual(a.prev, { wall: 'D1CBC1' }); assert.equal(a.start, 1000);
+  // another tap early in the sweep: the same sweep keeps going, with what was there before still ahead of it
+  const b = rollOn(a, 1300, { wall: ['E3DDD3', 'EFEBE4'], trim: ['F2F1EC', 'FFFFFF'] }, 1000);
+  assert.equal(b, a); assert.equal(b.start, 1000); assert.equal(b.prev.wall, 'D1CBC1');
+  assert.equal(b.prev.trim, 'F2F1EC', 'a part that joins in starts from its own color');
+  // a tap late in the sweep starts a new one from what's mostly showing
+  const c = rollOn(a, 1700, { wall: ['EFEBE4', 'C6C0B6'] }, 1300);
+  assert.notEqual(c, a); assert.equal(c.start, 1700); assert.deepEqual(c.prev, { wall: 'EFEBE4' });
+  // a color being dragged: late in the sweep it still keeps going; once it's done, the colors just show
+  const d = rollOn(a, 1700, { wall: ['EFEBE4', 'C6C0B6'] }, 1650);
+  assert.equal(d, a);
+  assert.equal(rollOn(a, 1000 + ROLL.dur + 50, { wall: ['C6C0B6', 'B9B2A6'] }, 1000 + ROLL.dur), null);
+  // after a pause, a new change rolls again; nothing changed keeps whatever is running
+  assert.ok(rollOn(null, 5000, { wall: ['B9B2A6', 'D1CBC1'] }, 4000));
+  assert.equal(rollOn(a, 1200, {}, 1100), a);
+  // the roller's spot: starts at the edge, eases across, ends at the other side
+  assert.equal(rollAt(a, 1000).k, 0); assert.equal(rollAt(a, 900).k, 0);
+  assert.ok(Math.abs(rollAt(a, 1000 + ROLL.dur / 2).k - 0.5) < 1e-9);
+  assert.equal(rollAt(a, 1000 + ROLL.dur).t, 1);
+});

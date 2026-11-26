@@ -866,6 +866,19 @@ html.gate-open { overflow: hidden; }
 /* ---------------- tap a part of the picture to change its color ---------------- */
 .modal.peek { background: transparent; align-items: end; justify-items: end; pointer-events: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .modal.peek.peek-left { justify-items: start; }
+/* the question before closing a panel that changed something: over the panel, which stays as it was under it */
+.modal-card.asking { position: relative; }
+.close-ask { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 5; display: grid; place-items: center; padding: 14px; background: rgba(15, 15, 14, .42); animation: fade var(--t2) ease; }
+.ca-box { width: min(440px, 100%); max-height: 100%; overflow-y: auto; display: grid; gap: 12px; padding: 20px; border-radius: var(--r-lg); background: var(--bg); box-shadow: var(--shadow-lg); animation: up var(--t2) var(--ease); }
+.ca-box h3 { font-size: 1.25rem; line-height: 1.25; }
+.ca-text { display: grid; gap: 8px; }
+.ca-text p { margin: 0; }
+.ca-new { display: flex; align-items: center; gap: 12px; font-size: 1.05rem; }
+.ca-sw { flex: none; width: 46px; height: 46px; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+.ca-btns { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+.ca-btns .btn { flex: 1 1 auto; }
+/* (on a phone: the three one above the other, Close on top, and the panel a little taller so they all fit) */
+@media (max-width: 480px) { .ca-btns { flex-direction: column-reverse; } .ca-btns .btn { flex: none; width: 100%; min-height: 50px; } .ca-box { padding: 16px; } .modal-card.asking { min-height: min(430px, 92vh); min-height: min(430px, 92dvh); } }
 .modal.peek .modal-card { pointer-events: auto; width: min(460px, 100%); max-height: min(72vh, 680px); box-shadow: var(--shadow-lg), 0 0 0 1px var(--line); }
 @media (max-width: 600px) { .modal.peek .modal-card { width: 100%; max-height: 54vh; max-height: 54dvh; } }
 .part-lead { font-size: 1.05rem; margin: 0 0 12px; line-height: 1.4; }

@@ -617,6 +617,27 @@
     return (K3D[id] = out);
   }
   // a color as linear light, with the same light shift and screen tuning as the chips
+  // The paint roller: one sweep that rolls a new color across the parts that changed. A change while it's still
+  // rolling doesn't start it over from the edge (that flashed, and an old sweep's timer cut the new one short):
+  // early in a sweep, or while a color is still being dragged, the roller keeps going with the newest color behind
+  // it and what was there before still ahead of it. Late in a sweep, a new one starts over what's mostly showing.
+  // Changes that keep coming right after a sweep (a color still being dragged) just show, with no roll.
+  // a: the sweep now, or null; changed: { part: [the color it showed, its new color] }; lastAt: the last change
+  const ROLL = { dur: 900, quick: 250 };
+  function rollOn(a, now, changed, lastAt) {
+    const names = Object.keys(changed);
+    if (!names.length) return a;
+    const p = a ? (now - a.start) / a.dur : 1, quick = !!lastAt && now - lastAt < ROLL.quick;
+    if (a && p < 1 && (p < 0.5 || quick)) {
+      for (const n of names) if (!(n in a.prev)) { a.prev[n] = changed[n][0]; a.names.push(n); }
+      return a;
+    }
+    if (quick) return null;
+    const prev = {}; for (const n of names) prev[n] = changed[n][0];
+    return { names, prev, start: now, dur: ROLL.dur };
+  }
+  // how far across the roller is (0 to 1), eased in and out
+  const rollAt = (a, now) => { const t = Math.max(0, Math.min(1, (now - a.start) / a.dur)); return { t, k: t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2 }; };
   function linOf(hex, lightObj, cal) {
     let l = C.hexToLinear(String(hex || 'FFFFFF').replace('#', ''));
     if (lightObj) l = C.applyLight(l, lightObj, cal);
@@ -2428,7 +2449,7 @@
     let lightId = o.light || 'daylight';
     const cal = o.cal || null;
     let mats = {};
-    let anim = null, raf = 0, dead = false;
+    let anim = null, raf = 0, dead = false, lastLook = 0;
     // the materials for the current look and light
     function resolve() {
       const L = light3d(lightId);
@@ -2456,8 +2477,8 @@
             else { const w = d.wood || { sp: 'white_oak', board: 12 }; m.tex = woodTexture({ sp: w.sp, stain: null, tint: hex, board: w.board || 12, vertical: w.vertical, cm: w.cm || 0.3, seed: w.seed || 2 }, gain); m.pat = 0; }
           }
         }
-        const prev = mats[name];
-        if (anim && prev && anim.names.includes(name)) { m.prev = anim.prev[name]; m.wipe = 0; }
+        // (what's still ahead of the roller, in the light there is now)
+        if (anim && anim.prev[name]) { m.prev = linOf(anim.prev[name], lightObj, cal); m.wipe = 0; }
         out[name] = m;
       }
       mats = out;
@@ -2638,9 +2659,9 @@
       // the paint roller sweeping a new color across
       let wipePlane = [1, 0, 0, 0];
       if (anim) {
-        const t = Math.min(1, ((now || performance.now()) - anim.start) / anim.dur);
-        const k = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-        wipePlane = [1, 0, 0, anim.x0 + (anim.x1 - anim.x0) * k];
+        const { t, k } = rollAt(anim, Math.max(now || 0, performance.now()));
+        const x0 = b.lo[0] - 0.3, x1 = b.hi[0] + 0.3;
+        wipePlane = [1, 0, 0, x0 + (x1 - x0) * k];
         if (t >= 1) { anim = null; for (const m of Object.values(mats)) { delete m.prev; delete m.wipe; } }
       }
       // outside in the sun, the shade takes on the sky's blue a little
@@ -2750,17 +2771,22 @@
       // for Set Up the Room: the walls this scene can have windows on, the ones it has, and whether it's a kitchen
       walls: (ctx.walls || []).slice(), winWalls: (ctx.winWalls || []).slice(), kitchen: o.scene === 'kitchen' || o.scene === 'island',
       setLook(next) {
-        const old = {}; for (const [n, m] of Object.entries(mats)) old[n] = m.lin;
         const oldHex = {}; for (const [n, m] of Object.entries(mats)) oldHex[n] = m.hex;
         const texChanged = JSON.stringify([next.tex || null, next.texParts || look.texParts || {}]) !== JSON.stringify([look.tex || null, look.texParts || {}]);
         look = { roles: Object.assign({}, next.roles || {}), tex: next.tex || null, texParts: Object.assign({}, next.texParts || look.texParts || {}), furn: look.furn };
         // the parts whose color changed roll on with the paint roller
-        const names = Object.keys(b.mats).filter(n => { const d = b.mats[n]; const hex = d.role && look.roles[d.role] ? look.roles[d.role] : d.color; return d.role && oldHex[n] && hex !== oldHex[n] && !d.emit; });
-        if (names.length && !o.reduced && !texChanged) {
-          anim = { names, prev: old, start: performance.now(), dur: 900, x0: b.lo[0] - 0.3, x1: b.hi[0] + 0.3 };
-          setTimeout(() => { if (anim) { anim.start = -1e9; draw(performance.now()); } }, 1000);
+        const changed = {};
+        for (const [n, d] of Object.entries(b.mats)) {
+          if (!d.role || d.emit || !oldHex[n]) continue;
+          const want = look.roles[d.role], hex = want && /^[0-9A-F]{6}$/i.test(want) ? want : d.color;
+          if (String(hex).toUpperCase() !== String(oldHex[n]).toUpperCase()) changed[n] = [oldHex[n], hex];
         }
-        resolve(); draw(performance.now());
+        const now = performance.now(), was = anim;
+        anim = o.reduced || texChanged ? null : rollOn(anim, now, changed, lastLook);
+        if (Object.keys(changed).length) lastLook = now;
+        // (a hidden page gets no animation frames: the sweep finishes on a timer, its own, so it can't end a newer one)
+        if (anim && anim !== was) { const a = anim; setTimeout(() => { if (anim === a) { a.start = -1e9; draw(performance.now()); } }, a.dur + 200); }
+        resolve(); draw(now);
       },
       setLight(id) { lightId = id; resolve(); draw(performance.now()); },
       // furniture set to its real color: { 'Sofa|upholstery': { hex, finish } }
@@ -2784,5 +2810,5 @@
   }
   // (build and collider are for the tests: a scene's shapes without drawing it, and what the camera checks against)
   const build = (scene, o) => { const b = new Builder(); const info = (SCENES[scene] || SCENES.living)(b, sceneCtx(Object.assign({ scene }, o || {}))) || {}; return { b, info }; };
-  root.CG.room3d = { supported, has: id => !!SCENES[id], mount, snapshot, scenes: () => Object.keys(SCENES).filter(k => !k.startsWith('tile-')), build, collider };
+  root.CG.room3d = { supported, has: id => !!SCENES[id], mount, snapshot, scenes: () => Object.keys(SCENES).filter(k => !k.startsWith('tile-')), build, collider, rollOn, rollAt, ROLL };
 })(window);

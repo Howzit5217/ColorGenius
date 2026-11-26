@@ -2626,5 +2626,12 @@ Add a colorful chip or two, like a teal or a red-orange, for the colors in betwe
 Tune With Another Chip	Ajustar con otra muestra
 The camera is blocked for this site. Allow it in the browser’s settings for this site, then try again.	La cámara está bloqueada para este sitio. Permítela en la configuración del navegador para este sitio y vuelve a intentarlo.
 Lighting	Luz
+Are you sure you want to close?	¿Seguro que quieres cerrar?
+The new color stays:	El color nuevo se queda:
+Put It Back changes it back to:	Con Regresarlo vuelve a:
+Put It Back changes it back to how it was.	Con Regresarlo vuelve a como estaba.
+Keep Changing	Seguir cambiando
+or the closest paint to any color:	o la pintura más cercana a cualquier color:
+Changed in the picture from	En la imagen se cambió de
 `;
 })(typeof self !== 'undefined' ? self : this);

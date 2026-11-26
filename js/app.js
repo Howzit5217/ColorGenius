@@ -405,6 +405,8 @@
   function render(scrollTo) {
     if (!state.ready) return;
     closePop();
+    // (a panel for the picture: the picture is going, so is the panel; what was changed stays)
+    if (!$('#modal').hidden && $('#modal').classList.contains('peek')) closeModal();
     teardownScenes();
     const r = parseHash();
     // the kiosk QR code: set this phone up, then start at home
@@ -1721,7 +1723,7 @@
 
   const live = {};  // scene box id -> { spec, viewer }
   function teardownScenes() { for (const k of Object.keys(live)) { if (live[k].viewer) live[k].viewer.destroy(); delete live[k]; } if (sprayView) { sprayView.destroy(); sprayView = null; } }
-  const sceneBox = id => `<div class="scene" id="${id}"><div class="pic" role="img"></div><span class="scene-tag" hidden></span><button type="button" class="scene-setup" data-room-setup="${id}" hidden>${ic('room', 20)}Set Up Room</button>${R3().supported() ? `<button type="button" class="scene-3d" data-toggle3d="1" aria-pressed="${!!settings.view3d}" aria-label="Turn in 3D">${ic('cube', 22)}3D</button>` : ''}</div><div class="scene-tools" id="${id}-tools"></div>`;
+  const sceneBox = id => `<div class="scene" id="${id}"><div class="pic" role="img"></div><span class="scene-tag" data-ui hidden></span><button type="button" class="scene-setup" data-room-setup="${id}" hidden>${ic('room', 20)}Set Up Room</button>${R3().supported() ? `<button type="button" class="scene-3d" data-toggle3d="1" aria-pressed="${!!settings.view3d}" aria-label="Turn in 3D">${ic('cube', 22)}3D</button>` : ''}</div><div class="scene-tools" id="${id}-tools"></div>`;
   // spec: { key, ids, roles(sceneId) -> role colors, tex (stain), stain, answers, label }
   function mountScene(id, spec) {
     const box = $('#' + id); if (!box) return;
@@ -1729,8 +1731,8 @@
     if (!spec.ids.includes(state.sceneFor[key])) state.sceneFor[key] = spec.ids[0];
     live[id] = { spec, viewer: null };
     $('#' + id + '-tools').innerHTML = [
-      spec.ids.length > 1 ? selectHtml(id + '-scene', spec.ids.map(s => [s, SCN[s].label]), state.sceneFor[key], 'Scene', v => { state.sceneFor[key] = v; drawScene(id); }) : '',
-      settings.lightPreview ? `<button type="button" class="cg-select" id="${id}-light" data-light-open="${id}" aria-haspopup="dialog" aria-label="Light: ${esc(lightLabel(state.light))}"><span class="k">Lighting</span><span class="v">${esc(lightLabel(state.light))}</span>${chev('down', 18)}</button>` : '',
+      spec.ids.length > 1 ? selectHtml(id + '-scene', spec.ids.map(s => [s, SCN[s].label]), state.sceneFor[key], 'Scene', v => { state.sceneFor[key] = v; if (modalAsk) closeModal(); drawScene(id); }) : '',
+      settings.lightPreview ? `<button type="button" class="cg-select" id="${id}-light" data-ui data-light-open="${id}" aria-haspopup="dialog" aria-label="Light: ${esc(lightLabel(state.light))}"><span class="k">Lighting</span><span class="v">${esc(lightLabel(state.light))}</span>${chev('down', 18)}</button>` : '',
     ].join('');
     drawScene(id);
   }
@@ -1763,6 +1765,9 @@
   };
   const FINISHES = { upholstery: [['fabric', 'Fabric'], ['leather', 'Leather'], ['velvet', 'Velvet']], wood: [['grain', 'Wood Grain'], ['painted', 'Painted']] };
   let furnPick = null;
+  // which panel is open, for the question before closing it: 'part' (walls, trim...) or 'furn' (the furniture)
+  let modalAsk = null;
+  const furnLook = f => String(f.hex || '').toUpperCase() + '|' + (f.finish || '');
   function applyFurniture() { for (const k of Object.keys(live)) if (live[k].viewer && live[k].viewer.setFurniture) live[k].viewer.setFurniture(state.furniture); }
   function openFurniture(what, id) {
     partPick = null;
@@ -1774,6 +1779,7 @@
         <div class="actions"><span class="muted">or any color:</span>${colorHtml('furnColor', furnPick.draft.hex, 'Pick its color', hex => { furnSet({ hex }); })}</div></div>
       ${fin ? `<div class="setup-group"><h3>What It's Made Of</h3><div class="chipset">${fin.map(([k, l]) => `<button type="button" class="chip plain" data-furn-finish="${k}" aria-pressed="${furnPick.draft.finish === k}">${l}</button>`).join('')}</div></div>` : ''}
       <div class="modal-foot"><button type="button" class="btn big ghost" data-furn-reset="1">Put It Back</button><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`, peekFor(id));
+    furnPick.start = furnLook(furnPick.draft); modalAsk = 'furn';
   }
 
   // ---- tap any part of the room or house to change its color ----
@@ -1916,7 +1922,8 @@
   function drawAdj() {
     if (!partPick) return;
     const focus = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.adj : '';
-    const now = $('#adjNow'); if (now) now.innerHTML = adjNowHtml();
+    const now = $('#adjNow');
+    if (now) { const was = $('.adj-sw', now); const from = was && was.style.backgroundColor; now.innerHTML = adjNowHtml(); fadeFrom($('.adj-sw', now), from); }
     const grid = $('#adjGrid'); if (grid) grid.innerHTML = adjGridHtml();
     const act = $('#adjAct'); if (act) act.innerHTML = adjActHtml();
     const u = $('#modal [data-adj-undo]');
@@ -1935,7 +1942,14 @@
     // a roof or a floor isn't paint: pick the one that's really there
     const paint = !(P.kind === 'roof' || (P.kind === 'floor' && !isTarget));
     const choices = partChoices(group, c, isTarget);
-    partPick = { id, key, group, choices, c, isTarget, baseHex, paint, hist: [], steps: {}, pickAt: 0 };
+    // The part showing the color itself: on a color's page the whole page follows it (its swatch, name, code and
+    // all), and on the results the chosen color's card does. It takes real paint colors only, so it has a name:
+    // any color picked for it goes to the closest one.
+    const real = isTarget && !!E.getIndex().byBrand[c.brand];
+    const follow = real && id === 'colorScene' && state.view === 'color' && !!pageVisit;
+    const snap = real && (follow || id === 'resScene');
+    partPick = { id, key, group, choices, c, isTarget, baseHex, paint, hist: [], steps: {}, pickAt: 0, follow, snap, start: '' };
+    partPick.start = follow ? c.id : partNow().hex;
     const what = P.label.toLowerCase(), house = (SCN[sceneId] || {}).kind === 'house';
     const lead = !paint ? (P.kind === 'roof' ? 'What color is your roof? Tap the closest one, so you see the paint with it.' : 'What floor do you have? Tap the closest one, so you see the paint with it.')
       : `Make the ${what} a little lighter, deeper, warmer and more. Each button shows the color you’ll get.`;
@@ -1945,8 +1959,9 @@
     openModal(P.label, `<p class="part-lead">${esc(lead)}</p>
       ${paint ? `<div class="adj-now" id="adjNow"></div>
       <div class="adj-grid" id="adjGrid" role="group" aria-label="Adjust the color"></div><div class="adj-acts" id="adjAct"></div>${light}${list}
-      <div class="actions"><span class="muted">or any color:</span>${colorHtml('partColor', baseHex || 'F2F1EC', 'Pick any color', hex => { const recent = Date.now() - partPick.pickAt < 2500; partPick.pickAt = Date.now(); partSet({ hex: hex.toUpperCase(), name: '#' + hex.toUpperCase(), id: '' }, recent); })}</div>` : `${list}${light}`}
+      <div class="actions"><span class="muted">${snap ? 'or the closest paint to any color:' : 'or any color:'}</span>${colorHtml('partColor', baseHex || 'F2F1EC', 'Pick any color', hex => { if (!partPick) return; const recent = Date.now() - partPick.pickAt < 2500; partPick.pickAt = Date.now(); partSet({ hex: hex.toUpperCase(), name: '#' + hex.toUpperCase(), id: '' }, recent); })}</div>` : `${list}${light}`}
       <div class="modal-foot"><button type="button" class="btn big ghost" data-part-reset="1">Put It Back</button><span class="grow"></span><button type="button" class="btn big primary" data-modal-close="1">Done</button></div>`, peekFor(id));
+    modalAsk = 'part';
     drawAdj();
   }
   // a change shows on every picture of the same color, rolled on like paint
@@ -1960,14 +1975,123 @@
   // choice null puts the part back to the scene's own color; noHist doesn't add an Undo step (Undo itself, or the
   // any-color picker still being dragged)
   function partSet(choice, noHist) {
-    if (!partPick) return;
-    const own = Object.assign({}, state.parts[partPick.key]), was = own[partPick.group] || null;
-    if (choice && was && was.hex.toUpperCase() === choice.hex.toUpperCase()) return;
-    if (!noHist) partPick.hist.push(was);
-    if (choice) own[partPick.group] = choice; else delete own[partPick.group];
-    state.parts[partPick.key] = own;
-    refreshParts(partPick.key);
+    const pp = partPick; if (!pp) return;
+    if (choice && pp.snap && !choice.id) { const x = nearestIn(pp.c.brand, C.hexToLab(choice.hex), new Set()); if (x) choice = { hex: x.hex.toUpperCase(), name: x.name, id: x.id }; }
+    if (pp.follow) { followSet(choice, noHist); return; }
+    // (back to the color the picture shows on its own: nothing to keep)
+    if (choice && pp.isTarget && pp.c && choice.id === pp.c.id) choice = null;
+    const own = Object.assign({}, state.parts[pp.key]), was = own[pp.group] || null;
+    if (choice ? was && was.hex.toUpperCase() === choice.hex.toUpperCase() : !was) { drawAdj(); return; }
+    if (!noHist) pp.hist.push(was);
+    if (choice) own[pp.group] = choice; else delete own[pp.group];
+    state.parts[pp.key] = own;
+    refreshParts(pp.key);
     drawAdj();
+    if (pp.isTarget && pp.id === 'resScene' && state.view === 'results') fillChosen(current.kind);
+  }
+  // On a color's page, the walls are the color: changing them changes the page to the new color, with the colors
+  // that go with it on the trim and ceiling (the parts changed by hand stay as they are). null goes back to the
+  // color the page opened with.
+  function followSet(choice, noHist) {
+    const pp = partPick, L = live[pp.id]; if (!L || !pageVisit) return;
+    const x = choice ? (choice.id ? E.findColor(choice.id) : null) : pageVisit.from;
+    if (!x || x.id === pp.c.id) { drawAdj(); return; }
+    if (!noHist) pp.hist.push({ hex: pp.c.hex.toUpperCase(), name: pp.c.name, id: pp.c.id });
+    const own = Object.assign({}, state.parts[partKey(L.spec)]); delete own[pp.group];
+    Object.assign(L.spec, paintSceneSpec(x, pageVisit.answers, pageVisit.fromResults));
+    const key = partKey(L.spec), mine = Object.assign({}, state.parts[key], own); delete mine[pp.group];
+    state.parts[key] = mine;
+    Object.assign(pp, { key, c: x, baseHex: x.hex.toUpperCase() });
+    refreshParts(key);
+    drawAdj();
+    followPage(x);
+  }
+  // the page changes to the new color: the card at once, what's under the picture a moment later (so dragging the
+  // any-color picker stays smooth), and its address, so a reload or a shared link shows the same color
+  let followTimer = 0;
+  function followPage(x) {
+    if (state.view !== 'color') return;
+    const card = $('#view .id-card');
+    if (card) { const sw = $('.id-sw', card), from = sw && sw.style.backgroundColor; card.outerHTML = colorCardHtml(x); fadeFrom($('#view .id-card .id-sw'), from); }
+    const L = live.colorScene, pic = $('#colorScene .pic');
+    if (L && pic) pic.setAttribute('aria-label', `${x.name} in a ${(SCN[state.sceneFor[L.spec.key]] || {}).label || 'room'}`);
+    try { history.replaceState(history.state, '', '#/color/' + encodeURIComponent(x.id)); } catch (e) { /* a page that can't change its address */ }
+    if (current) current.id = x.id;
+    clearTimeout(followTimer);
+    followTimer = setTimeout(() => {
+      const bl = $('#view .blocks'); if (state.view !== 'color' || !current || current.id !== x.id || !bl) return;
+      const open = $$('details', bl).map(d => d.open), res = colorRes(x);
+      bl.outerHTML = colorBlocksHtml(x, res, res ? state.results.paint.answers : pageVisit.answers);
+      $$('#view .blocks details').forEach((d, i) => { if (open[i]) d.open = true; });
+    }, 160);
+  }
+  // a swatch that was just redrawn fades from the color it showed (the page's own fade, so reduced motion skips it)
+  function fadeFrom(el, from) {
+    if (!el || !from || reduced()) return;
+    const to = el.style.backgroundColor; if (!to || to === from) return;
+    el.style.transition = 'none'; el.style.backgroundColor = from; void el.offsetWidth;
+    el.style.transition = 'background-color var(--t3) var(--ease)'; el.style.backgroundColor = to;
+  }
+  // Put It Back: the part goes back to the picture's own color (on a color's page, the color the page opened with)
+  function partReset() {
+    const pp = partPick; if (!pp) return;
+    if (pp.follow) followSet(null);
+    else {
+      const own = state.parts[pp.key]; if (own) delete own[pp.group];
+      refreshParts(pp.key);
+      if (pp.isTarget && pp.id === 'resScene' && state.view === 'results') fillChosen(current.kind);
+    }
+    partPick = null; closeModal(); toast('Put back');
+  }
+  function furnReset() { if (!furnPick) return; delete state.furniture[furnPick.key]; furnPick = null; applyFurniture(); closeModal(); toast('Back to the usual color'); }
+  // the name of what a part shows on its own, for "Put It Back changes it back to:"
+  function partBaseName() {
+    const pp = partPick, hx = pp.baseHex;
+    if (pp.isTarget && pp.c) return pp.c.name;
+    const plain = ROOF_COLORS.concat(FLOOR_COLORS, PLAIN_COLORS).find(x => x[0] === hx);
+    if (plain) return plain[1];
+    const c = pp.c && (E.getIndex().byBrand[pp.c.brand] || []).find(x => x.hex.toUpperCase() === hx);
+    return c ? c.name : '';
+  }
+  // Closing a panel after changing something (with the X, Escape or a tap outside) asks first. Done doesn't: it
+  // already says the change is wanted. Nothing changed, or changed and put back by hand: it just closes.
+  function panelChanged() {
+    if (modalAsk === 'part' && partPick) return partPick.follow ? partPick.c.id !== partPick.start : partNow().hex !== partPick.start;
+    if (modalAsk === 'furn' && furnPick) return furnLook(furnPick.draft) !== furnPick.start;
+    return false;
+  }
+  function askClose() {
+    if (!panelChanged()) return false;
+    const card = $('#modal .modal-card'); if (!card) return false;
+    if ($('.close-ask', card)) return true;
+    let hex, name, extra = '', back;
+    if (modalAsk === 'part') {
+      const n = partNow(); hex = n.hex; name = n.color ? n.color.name : (n.own && n.own.name) || '#' + n.hex;
+      back = partPick.follow ? pageVisit.from.name : partBaseName();
+    } else {
+      const f = state.furniture[furnPick.key] || furnPick.draft, fh = String(f.hex || '').toUpperCase();
+      hex = fh; name = ((FURN_SWATCHES[furnPick.part] || FURN_SWATCHES._).find(x => x[0] === fh) || [])[1] || '#' + fh;
+      const fin = ((FINISHES[furnPick.part] || []).find(x => x[0] === f.finish) || [])[1];
+      if (fin) extra = `, <span>${esc(fin)}</span>`;
+      back = '';
+    }
+    const el = document.createElement('div');
+    el.className = 'close-ask'; el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'closeAskH'); el.setAttribute('aria-describedby', 'closeAskP');
+    el.innerHTML = `<div class="ca-box"><h3 id="closeAskH">Are you sure you want to close?</h3>
+      <div id="closeAskP" class="ca-text"><p class="ca-new"><span class="ca-sw" ${swStyle(hex)}></span><span><span>The new color stays:</span> <b>${esc(name)}</b>${extra}</span></p>
+      <p class="muted">${back ? `<span>Put It Back changes it back to:</span> <b>${esc(back)}</b>` : 'Put It Back changes it back to how it was.'}</p></div>
+      <div class="ca-btns"><button type="button" class="btn big ghost" data-ask-stay="1">Keep Changing</button><button type="button" class="btn big" data-ask-reset="1">Put It Back</button><button type="button" class="btn big primary" data-ask-close="1">Close</button></div></div>`;
+    $$('.modal-head, .modal-body', card).forEach(x => { x.inert = true; x.setAttribute('aria-hidden', 'true'); });
+    card.classList.add('asking'); card.appendChild(el);
+    $('[data-ask-close]', el).focus({ preventScroll: true });
+    return true;
+  }
+  // Keep Changing: back to the panel as it was
+  function stayOpen() {
+    const card = $('#modal .modal-card'), el = card && $('.close-ask', card); if (!el) return;
+    el.remove(); card.classList.remove('asking');
+    $$('.modal-head, .modal-body', card).forEach(x => { x.inert = false; x.removeAttribute('aria-hidden'); });
+    const x = $('#modal .modal-head [data-modal-close]'); if (x) x.focus({ preventScroll: true });
   }
   document.addEventListener('click', e => {
     const t = e.target.closest('#modal button'); if (!t || !partPick) return;
@@ -1978,10 +2102,7 @@
       const c = partNow().color;
       if (c && !session.items.some(x => x.ref === c.id)) { addToList(Object.assign(paintItem(c), { area: PARTS[partPick.group].label, part: partPick.group, space: '' })); drawAdj(); }
     }
-    if (t.dataset.partReset) {
-      const own = state.parts[partPick.key]; if (own) delete own[partPick.group];
-      refreshParts(partPick.key); partPick = null; closeModal(); toast('Put back');
-    }
+    if (t.dataset.partReset) partReset();
   });
   function onScenePick(id, what) {
     tapTried();
@@ -2017,7 +2138,7 @@
     const t = e.target.closest('#modal button'); if (!t || !furnPick) return;
     if (t.dataset.furnHex) furnSet({ hex: t.dataset.furnHex });
     if (t.dataset.furnFinish) furnSet({ finish: t.dataset.furnFinish });
-    if (t.dataset.furnReset) { delete state.furniture[furnPick.key]; furnPick = null; applyFurniture(); closeModal(); toast('Back to the usual color'); }
+    if (t.dataset.furnReset) furnReset();
   });
 
   // ---- Set Up the Room: windows (and in a kitchen the fridge and stove) where they really are ----
@@ -2064,12 +2185,12 @@
   function recolorScene(id, spec) {
     const L = live[id]; if (!L) return;
     L.spec = Object.assign(L.spec, spec);
-    const roles = L.spec.roles(state.sceneFor[L.spec.key]);
-    if (L.viewer && L.viewer.setLook) { L.viewer.setLook({ roles, tex: L.spec.tex || null }); return; }
-    if (L.spec.stain) { drawScene(id); return; }
-    const pic = $('#' + id + ' .pic');
-    pic.dataset.roles = JSON.stringify(roles);
-    SC.paintScene(pic, state.light);
+    const roles = rolesFor(L.spec, state.sceneFor[L.spec.key]);
+    if (L.viewer && L.viewer.setLook) L.viewer.setLook({ roles, tex: L.spec.tex || null });
+    else if (L.spec.stain) drawScene(id);
+    else { const pic = $('#' + id + ' .pic'); pic.dataset.roles = JSON.stringify(roles); SC.paintScene(pic, state.light); }
+    // (a panel open on it now changes the new color)
+    if (modalAsk === 'part' && partPick && partPick.id === id) openPart(id, partPick.group);
   }
   function relight(id) {
     const L = live[id]; if (!L) return;
@@ -2183,9 +2304,9 @@
       ${tips.length || (stain && R.products.length) ? `<section class="section" aria-labelledby="gtk"><h2 id="gtk">Good to Know</h2><div class="home-tips">${(stain ? R.products.slice(0, 3).map(p => ({ title: p.name, text: p.why })) : []).concat(tips).slice(0, 6).map(t => `<div class="tipcard"><b>${esc(t.title)}</b><span>${esc(t.text)}</span></div>`).join('')}</div></section>` : ''}
     </div>`;
     SC.paintWoods(view(), 'none');
-    fillChosen(kind);
     const cur = list.find(r => idOf(r) === state.pick[kind]);
     mountScene('resScene', stain ? stainSceneSpec(R, cur) : paintSceneSpec(cur.color, a, true));
+    fillChosen(kind);
   }
   // ---------------- spray paint results ----------------
   const sprayMeta = r => [SP.fullLine(r), SP.codeLabel(r), SP.finishName(r.finish)].filter(Boolean).join(' · ');
@@ -2287,13 +2408,32 @@
     const id = idOf(r), onList = session.items.some(x => x.ref === id);
     const stain = kind === 'stain';
     const name = stain ? r.name : r.color.name, meta = stain ? `${sBrand(r)} ${sCode(r) === S.TYPES[r.type] ? '' : sCode(r)} · ${S.TYPES[r.type] || 'Stain'}` : `${brandName(r.color.brand)} ${E.codeLabel(r.color)}${settings.showLrv ? ` · LRV ${r.color.lrv}` : ''}`;
+    const wasSw = $('.chosen-sw', el), from = wasSw && wasSw.style.backgroundColor;
+    const w = stain ? null : changedTo('resScene', r.color);
+    if (w) {
+      const c = w.color, on = session.items.some(x => x.ref === c.id);
+      el.innerHTML = `<div class="chosen-top"><span class="chosen-sw" ${swStyle(c.hex)}></span><div><h2>${esc(c.name)}</h2><p class="meta">${esc(`${brandName(c.brand)} ${E.codeLabel(c)}${settings.showLrv ? ` · LRV ${c.lrv}` : ''}`)}</p></div></div>
+      <p class="muted chosen-was"><span>Changed in the picture from</span> <b>${esc(r.color.name)}</b></p>
+      <div class="actions stack"><button type="button" class="btn big primary${on ? ' done' : ''}" data-add="${esc(c.id)}">${on ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-go="color/${esc(encodeURIComponent(c.id))}">See Everything${chev('right')}</button></div>`;
+      fadeFrom($('.chosen-sw', el), from);
+      return;
+    }
     const reasons = (r.reasons || []).slice(0, 3);
     const warns = settings.showWarnings ? (r.warnings || []) : [];
     el.innerHTML = `<div class="chosen-top"><span class="chosen-sw"${stain ? '' : ' ' + swStyle(r.color.hex)}>${stain ? SC.woodCv({ sp: R.wood, stain: stainSpec(r), w: 160, h: 160, cm: 0.2, seed: 3, sheen: 0.5, label: name }) : ''}</span><div><h2>${esc(name)}</h2><p class="meta">${esc(meta)}</p></div></div>
       ${reasons.length ? `<ul class="why">${reasons.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       ${warns.length ? `<p class="muted">${warns.length === 1 ? 'There’s 1 thing to know' : `There are ${warns.length} things to know`} about it. See Everything to read ${warns.length === 1 ? 'it' : 'them'}.</p>` : ''}
       <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-go="color/${esc(encodeURIComponent(id))}">See Everything${chev('right')}</button></div>`;
-    if (stain) SC.paintWoods(el, 'none');
+    if (stain) SC.paintWoods(el, 'none'); else fadeFrom($('.chosen-sw', el), from);
+  }
+  // the paint color on the part of a scene that shows the color itself, when it was changed by tapping it
+  function changedTo(id, c) {
+    const L = live[id]; if (!L || !c || L.spec.stain || !L.spec.color || L.spec.color.id !== c.id) return null;
+    const base = L.spec.roles(state.sceneFor[L.spec.key]), hx = c.hex.toUpperCase();
+    const g = Object.keys(PARTS).find(k => String(base[PARTS[k].roles[0]] || '').toUpperCase() === hx);
+    const own = g && (state.parts[partKey(L.spec)] || {})[g];
+    const x = own && own.id ? E.findColor(own.id) : null;
+    return x && x.id !== c.id ? { color: x, group: g } : null;
   }
   view().addEventListener('click', e => {
     if (state.view !== 'results') return;
@@ -2308,9 +2448,9 @@
     if (t.dataset.pick) {
       state.pick[kind] = t.dataset.pick;
       $$('#picks .pick').forEach(b => b.setAttribute('aria-pressed', b.dataset.pick === t.dataset.pick));
-      fillChosen(kind);
       const R = state.results[kind], r = R.results.find(x => idOf(x) === t.dataset.pick);
       recolorScene('resScene', kind === 'stain' ? stainSceneSpec(R, r) : paintSceneSpec(r.color, R.answers, true));
+      fillChosen(kind);
       if (window.matchMedia('(max-width: 999px)').matches) { const sc = $('#resScene'); const top = sc.getBoundingClientRect().top; if (top < 0 || top > window.innerHeight * 0.5) sc.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); }
       return;
     }
@@ -2400,9 +2540,34 @@
     if (inStainResults || (!E.findColor(id) && S.find(id))) { renderStainColor(id); return; }
     const c = E.findColor(id);
     if (!c) { view().innerHTML = `<div class="page">${backBtn()}<div class="empty"><h1>Color not found</h1><p class="muted">It may be from a brand that’s turned off.</p><button type="button" class="btn primary big" data-go="lookup">Look Up a Color</button></div></div>`; return; }
-    const R = state.results.paint;
-    const res = R && R.results.concat(R.finalists || []).find(r => r.color.id === c.id);
-    const answers = res ? R.answers : null;
+    const res = colorRes(c), answers = res ? state.results.paint.answers : null;
+    pageVisit = { from: c, answers, fromResults: !!res };
+    view().innerHTML = `<div class="detail">
+      ${backBtn()}
+      <div class="detail-hero">
+        <div>${sceneBox('colorScene')}</div>
+        ${colorCardHtml(c)}
+      </div>
+      ${colorBlocksHtml(c, res, answers)}
+    </div>`;
+    mountScene('colorScene', paintSceneSpec(c, answers, !!res));
+  }
+  // The card (the swatch, name, code and buttons) and what's under the picture are drawn on their own too: when
+  // the walls are changed to another color by tapping them, the whole page follows, without redrawing the room.
+  let pageVisit = null;   // the color this page opened with (Put It Back goes back to it), and the answers it's for
+  function colorRes(c) { const R = state.results.paint; return (R && R.results.concat(R.finalists || []).find(r => r.color.id === c.id)) || null; }
+  function colorCardHtml(c) {
+    const b = E.getIndex().brandById[c.brand] || {}, d = C.describe(c.hex, c.lrv), onList = session.items.some(x => x.ref === c.id);
+    return `<div class="id-card">
+          <div class="id-top"><button type="button" class="id-sw" ${swStyle(c.hex)} data-fullscreen="${esc(c.id)}" aria-label="Show ${esc(c.name)} full screen"><span class="id-sw-hint" aria-hidden="true">${expandIcon(16)}</span></button><div><h1>${esc(c.name)}</h1><p class="meta">${esc(b.name || c.brand)} · <span class="mono">${esc(E.codeLabel(c))}</span></p></div></div>
+          <div class="badges">${popBadge(c)}<span class="badge">${esc(d.familyName)}</span><span class="badge">${esc(d.undertone === 'neutral' ? 'True neutral' : cap(d.undertone) + ' undertone')}</span>${c.flags & E.F.DISC ? '<span class="badge">Discontinued</span>' : ''}</div>
+          ${popWhyLine(c)}
+          ${settings.showLrv ? `<div class="lrv-box"><div class="lrv-top"><span>Light Reflectance (LRV)</span><span class="mono">${c.lrv} of 100</span></div><div class="lrv-bar"><i style="left:${Math.max(0, Math.min(100, c.lrv))}%"></i></div><p>${esc(lrvWords(c.lrv))}.</p></div>` : ''}
+          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-photo="${esc(c.id)}">${ic('camera', 22)}Try on My Photo</button><button type="button" class="btn big" data-sample-one="${esc(c.id)}">${ic('swatch', 22)}Add a Sample</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
+          ${sampleNote(c)}
+        </div>`;
+  }
+  function colorBlocksHtml(c, res, answers) {
     const a = answers || Object.assign({}, E.DEFAULT_ANSWERS);
     const sp = E.SPACES[a.space] || E.SPACES.living;
     const b = E.getIndex().brandById[c.brand] || {};
@@ -2410,27 +2575,13 @@
     const warnings = settings.showWarnings ? (res ? res.warnings : answers ? E.warningsFor(c, a) : []) : [];
     const pairs = E.pairings(c, { collections: settings.collections });
     const matches = settings.showMatches ? E.matchesFor(c, { brands: brandsEnabled(), showDiscontinued: settings.showDiscontinued, collections: settings.collections }).slice(0, 8) : [];
-    const onList = session.items.some(x => x.ref === c.id);
     const pl = bestLine(c, a);
     const pr = E.primerFor(a, c, engineSettings());
     const job = { kind: 'paint', space: a.space, siding: a.siding, sheen: sp.sheens[0] };
     const tools = T.applicators(job);
     const amt = T.amount(job, a.size || 'medium', pr.coats);
-    const pc = E.prosCons(c, a, { inStoreSamples: settings.inStoreSamples }, res ? R.results.map(r => r.color) : null);
-    view().innerHTML = `<div class="detail">
-      ${backBtn()}
-      <div class="detail-hero">
-        <div>${sceneBox('colorScene')}</div>
-        <div class="id-card">
-          <div class="id-top"><button type="button" class="id-sw" ${swStyle(c.hex)} data-fullscreen="${esc(c.id)}" aria-label="Show ${esc(c.name)} full screen"><span class="id-sw-hint" aria-hidden="true">${expandIcon(16)}</span></button><div><h1>${esc(c.name)}</h1><p class="meta">${esc(b.name || c.brand)} · <span class="mono">${esc(E.codeLabel(c))}</span></p></div></div>
-          <div class="badges">${popBadge(c)}<span class="badge">${esc(d.familyName)}</span><span class="badge">${esc(d.undertone === 'neutral' ? 'True neutral' : cap(d.undertone) + ' undertone')}</span>${c.flags & E.F.DISC ? '<span class="badge">Discontinued</span>' : ''}</div>
-          ${popWhyLine(c)}
-          ${settings.showLrv ? `<div class="lrv-box"><div class="lrv-top"><span>Light Reflectance (LRV)</span><span class="mono">${c.lrv} of 100</span></div><div class="lrv-bar"><i style="left:${Math.max(0, Math.min(100, c.lrv))}%"></i></div><p>${esc(lrvWords(c.lrv))}.</p></div>` : ''}
-          <div class="actions stack"><button type="button" class="btn big primary${onList ? ' done' : ''}" data-add="${esc(c.id)}">${onList ? checkIcon + ' In Project' : plusIcon + ' Add to Project'}</button><button type="button" class="btn big" data-photo="${esc(c.id)}">${ic('camera', 22)}Try on My Photo</button><button type="button" class="btn big" data-sample-one="${esc(c.id)}">${ic('swatch', 22)}Add a Sample</button><button type="button" class="btn big" data-copy="${esc(`${c.name}, ${b.name} ${E.codeLabel(c)}`)}">Copy Name &amp; Code</button></div>
-          ${sampleNote(c)}
-        </div>
-      </div>
-      <div class="blocks">
+    const pc = E.prosCons(c, a, { inStoreSamples: settings.inStoreSamples }, res ? state.results.paint.results.map(r => r.color) : null);
+    return `<div class="blocks">
         ${res && res.reasons.length ? `<div class="block"><h2><span class="ic">${ic('ok', 24)}</span>Why It Fits</h2><ul class="why">${res.reasons.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
         ${warnings.length ? `<div class="block"><h2><span class="ic">${ic('unsure', 24)}</span>Things to Know</h2><div class="warns">${warnings.map(w => `<div class="warn ${w.level === 'heads-up' ? 'headsup' : ''}"><b>${esc(w.title)}</b><span>${esc(w.text)}</span></div>`).join('')}</div></div>` : ''}
         <div class="block wide"><h2><span class="ic">${ic('can', 24)}</span>What You’ll Need${answers ? ` for ${esc(PHRASE[a.space] || 'it')}` : ''}</h2><div class="need">
@@ -2447,9 +2598,7 @@
           <div class="pc-grid"><div class="pc pros"><b>Good things</b><ul>${pc.pros.map(x => `<li>${esc(x)}</li>`).join('') || '<li>Nothing stands out</li>'}</ul></div><div class="pc cons"><b>Watch out for</b><ul>${pc.cons.map(x => `<li>${esc(x)}</li>`).join('') || '<li>No problems found for this job</li>'}</ul></div></div>
           <p class="muted small">${esc(d.summary)}.${b.mixNote ? ' ' + esc(b.mixNote) : ''} Source: ${esc(b.source || 'brand data')}${b.date ? `, collected ${esc(b.date)}` : ''}. Screen colors are the brand’s own digital values. Check a real chip before buying.</p>
         </div></details></div>
-      </div>
-    </div>`;
-    mountScene('colorScene', paintSceneSpec(c, answers, !!res));
+      </div>`;
   }
   // ---------- the brands' own popular colors (data/popular.js, looked up on their websites every week) ----------
   const popDate = iso => { const d = iso ? new Date(iso + 'T12:00:00') : null; return d && !isNaN(d) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''; };
@@ -4202,6 +4351,7 @@
   let modalClosing = 0;
   function openModal(title, body, opts) {
     const el = $('#modal');
+    modalAsk = null;   // (the walls and furniture panels say so after opening)
     const wasClosing = !!modalClosing;
     if (wasClosing) { clearTimeout(modalClosing); modalClosing = 0; el.classList.remove('closing'); }
     const swap = !el.hidden && !wasClosing; // already open: change what's in it without playing the pop-in again
@@ -4215,18 +4365,30 @@
   }
   function closeModal() {
     const el = $('#modal'); if (el.hidden || modalClosing) return;
-    state.duel = null; pad = null; camStop(); itemEdit = null;
+    state.duel = null; pad = null; camStop(); itemEdit = null; partPick = null; furnPick = null; modalAsk = null; closePop();
     const done = () => { modalClosing = 0; el.classList.remove('closing'); el.hidden = true; el.innerHTML = ''; };
     if (modalFocus && document.contains(modalFocus)) modalFocus.focus({ preventScroll: true });
     if (reduced()) { done(); return; }
     el.classList.add('closing');
     modalClosing = setTimeout(done, 170);
   }
-  $('#modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.target.closest('[data-modal-close]')) closeModal(); else if (e.target.closest('[data-go]')) closeModal(); });
+  $('#modal').addEventListener('click', e => {
+    // the question before closing a panel that changed something
+    if (e.target.closest('.close-ask')) {
+      if (e.target.closest('[data-ask-stay]')) stayOpen();
+      else if (e.target.closest('[data-ask-close]')) closeModal();
+      else if (e.target.closest('[data-ask-reset]')) { if (modalAsk === 'part') partReset(); else if (modalAsk === 'furn') furnReset(); else closeModal(); }
+      return;
+    }
+    const x = e.target.closest('[data-modal-close]');
+    // (Done, at the bottom, closes it as it is; the X and a tap outside ask first when something changed)
+    if (e.target.id === 'modal' || x) { if (!(x && x.closest('.modal-foot')) && askClose()) return; closeModal(); }
+    else if (e.target.closest('[data-go]')) closeModal();
+  });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (!$('#present').hidden) { closePresent(); return; }
-    if (!$('#modal').hidden) { closeModal(); return; }
+    if (!$('#modal').hidden) { if ($('#modal .close-ask')) stayOpen(); else if (!askClose()) closeModal(); return; }
   });
   function copyText(text, msg) {
     const fallback = () => { const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; } ta.remove(); toast(ok ? msg : 'Select and copy: ' + text.slice(0, 60)); };
